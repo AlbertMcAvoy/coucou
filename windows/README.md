@@ -94,6 +94,18 @@ Each hook costs about 0.3 s for the WSL → Windows hop.
 
 ## Chat and keys
 
+### Mochi on your Claude subscription
+
+Mochi's chat (Ask, and questions about a dropped file) can run on the Claude
+Code you already use instead of an API key. Turn on **Use for Mochi** under
+*Settings… → Claude Code* (Claude Code on Windows) or under a distribution in
+*Settings… → WSL*; only one can be on, and with none on the API key is used.
+
+Coucou then runs `claude -p` there, on your subscription and with Claude Code's
+own model, in Coucou's inbox folder where dropped files land. Mochi only gets
+read-only tools (Read, WebSearch, WebFetch), and its runs never show up in the
+island: hooks are switched off for them.
+
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.

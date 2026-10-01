@@ -27,6 +27,14 @@ pub struct Settings {
     /// The first-launch offer to set up WSL has been made. Shown once, ever.
     #[serde(default)]
     pub wsl_prompted: bool,
+    /// Where Mochi's chat goes: "api" (the API key), "windows" (Claude Code on
+    /// Windows) or "wsl:<distro>" (Claude Code inside that distro).
+    #[serde(default = "default_backend")]
+    pub chat_backend: String,
+}
+
+fn default_backend() -> String {
+    "api".into()
 }
 
 fn default_model() -> String {
@@ -52,6 +60,7 @@ impl Default for Settings {
             model: default_model(),
             wsl_hooks: Vec::new(),
             wsl_prompted: false,
+            chat_backend: default_backend(),
         }
     }
 }

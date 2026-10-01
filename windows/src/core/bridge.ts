@@ -148,6 +148,8 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+  /** Claude Code on Windows, if installed. */
+  claudeCli: string | null;
 }
 
 export interface WslStatus {
@@ -157,6 +159,8 @@ export interface WslStatus {
   settingsPath: string;
   relayPath: string;
   relayReady: boolean;
+  /** Claude Code inside the distro, if installed. */
+  claudeCli: string | null;
   /** The distro could not be reached; nothing else is meaningful then. */
   error: string | null;
 }

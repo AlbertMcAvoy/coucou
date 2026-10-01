@@ -9,7 +9,6 @@
 // follows exactly the same rule as on Windows (hooks.rs): dated backup, merge,
 // diff, and nothing written until the user clicks.
 
-use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -17,9 +16,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 
 use crate::hooks::{self, HookPreview, Target};
-use crate::settings;
-
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+use crate::{platform, settings};
 
 /// A distro that is starting up can take a few seconds to answer; one that is
 /// wedged must not hang the settings window.
@@ -42,6 +39,8 @@ pub struct WslStatus {
     pub relay_path: String,
     /// The relay script is in place and matches what Coucou would write.
     pub relay_ready: bool,
+    /// Claude Code inside the distro, if installed — what "Use for Mochi" runs.
+    pub claude_cli: Option<String>,
     /// Set when the distro could not be reached; nothing else is meaningful then.
     pub error: Option<String>,
 }
@@ -105,18 +104,17 @@ impl Distro {
     }
 }
 
-/// Runs wsl.exe with no window, under a deadline. `None` on any failure.
-fn run_wsl(args: &[&str]) -> Option<String> {
-    let mut child = Command::new("wsl.exe")
-        .args(args)
+/// Runs wsl.exe with no window, under a deadline. `None` on any failure —
+/// including everywhere but on Windows, where there is no wsl.exe to run.
+pub(crate) fn run_wsl(args: &[&str]) -> Option<String> {
+    let mut wsl = Command::new("wsl.exe");
+    wsl.args(args)
         // Newer WSL prints its own messages in UTF-16 unless asked otherwise.
         .env("WSL_UTF8", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .ok()?;
+        .stderr(Stdio::null());
+    let mut child = platform::no_console(&mut wsl).spawn().ok()?;
     let deadline = Instant::now() + WSL_TIMEOUT;
     loop {
         match child.try_wait() {
@@ -207,6 +205,7 @@ pub fn status(name: &str) -> WslStatus {
             settings_path: d.settings_linux(),
             relay_path: d.relay_linux(),
             relay_ready: d.relay_ready(),
+            claude_cli: crate::local_claude::wsl_cli(&d.name),
             distro: d.name,
             error: None,
         },
@@ -216,6 +215,7 @@ pub fn status(name: &str) -> WslStatus {
             settings_path: String::new(),
             relay_path: String::new(),
             relay_ready: false,
+            claude_cli: None,
             error: Some(err),
         },
     }

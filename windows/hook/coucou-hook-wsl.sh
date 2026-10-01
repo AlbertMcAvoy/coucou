@@ -12,6 +12,8 @@
 # when it installs the script. By hand, put your own Windows user name in it.
 EXE=/mnt/c/Users/YOUR_WINDOWS_USER/AppData/Local/Coucou/bin/coucou-hook.exe
 [ -f "$EXE" ] || exit 0
+# Coucou's own Claude Code runs (Mochi's chat) are not sessions to show.
+[ -n "$COUCOU_INTERNAL" ] && exit 0
 # Tells the relay which distro the session lives in.
 WSLENV="${WSLENV:+$WSLENV:}WSL_DISTRO_NAME" "$EXE" "$@"
 exit 0

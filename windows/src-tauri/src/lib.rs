@@ -7,6 +7,7 @@ mod focus;
 mod hooks;
 mod integrations;
 mod island;
+mod local_claude;
 mod log;
 mod pipe;
 mod platform;
@@ -427,18 +428,31 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let (model, backend) = {
+        let s = shared.settings.lock().unwrap();
+        (s.model.clone(), local_claude::Backend::parse(&s.chat_backend))
+    };
+    if backend == local_claude::Backend::Api {
+        return claude::send(&chat, &model, query, context).await;
+    }
+    // Claude Code runs as a process for up to minutes: off the main thread.
+    blocking(move || {
+        let session = app.state::<local_claude::LocalSession>();
+        local_claude::send(&backend, &session, query, context)
+    })
+    .await?
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
+fn chat_reset(chat: State<Chat>, session: State<local_claude::LocalSession>) {
     chat.reset();
+    session.reset();
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -581,6 +595,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(local_claude::LocalSession::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
