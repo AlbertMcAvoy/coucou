@@ -88,6 +88,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // Folds the open island back into its bar right away, like Escape.
+  const reduceBtn = h("button", { title: "Reduce", onclick: () => actions.collapse() }, svg(ICONS.minus, 14));
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -98,7 +100,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, gearBtn, soundBtn, reduceBtn),
   );
 
   return {
@@ -114,6 +116,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
       el.style.opacity = v === "confused" ? "0" : "1";
+      // An alert waiting for an answer stays open, as with Escape.
+      reduceBtn.style.display = State.isPinned ? "none" : "";
     },
   };
 }

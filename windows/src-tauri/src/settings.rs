@@ -15,6 +15,11 @@ pub struct Settings {
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
+    /// Where along the top edge the island rests, 0..=1: 0 flush left, 0.5
+    /// centred, 1 flush right. A fraction, so a drag lands anywhere while the
+    /// presets in the settings still hit the edges exactly.
+    #[serde(default = "default_notch_position")]
+    pub notch_position: f64,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     /// Defaulted explicitly so a settings.json written by an older build still loads.
@@ -40,6 +45,10 @@ fn default_backend() -> String {
     "api".into()
 }
 
+fn default_notch_position() -> f64 {
+    0.5
+}
+
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
 }
@@ -59,6 +68,7 @@ impl Default for Settings {
             ],
             screen: "primary".into(),
             autostart: false,
+            notch_position: default_notch_position(),
             hooks_installed: false,
             model: default_model(),
             wsl_hooks: Vec::new(),

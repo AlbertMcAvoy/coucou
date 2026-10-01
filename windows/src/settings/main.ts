@@ -719,6 +719,32 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // Where the island rests along the top edge. Dragging the bar can leave it
+  // anywhere, which shows here as "Where you left it". (Presets from #47.)
+  const POSITIONS: [number, string][] = [[0, "Left"], [0.5, "Centre"], [1, "Right"]];
+  const CUSTOM = "custom";
+  const position = h("select", {}) as HTMLSelectElement;
+  position.append(
+    ...POSITIONS.map(([v, text]) => h("option", { value: String(v), text })),
+    h("option", { value: CUSTOM, text: "Where you left it", disabled: true }),
+  );
+  const syncPosition = () => {
+    const preset = POSITIONS.find(([v]) => Math.abs(v - settings.notchPosition) < 0.005);
+    position.value = preset ? String(preset[0]) : CUSTOM;
+  };
+  syncPosition();
+  position.addEventListener("change", () => {
+    if (position.value === CUSTOM) return;
+    settings.notchPosition = Number(position.value);
+    void save();
+  });
+  void onEvent<Settings>("settings-changed", (s) => {
+    if (typeof s.notchPosition === "number") {
+      settings.notchPosition = s.notchPosition;
+      syncPosition();
+    }
+  });
+
   return h(
     "section",
     {},
@@ -736,6 +762,11 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: "Island lives on" }),
       screen,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Island position" }),
+      position,
+      h("span", { class: "hint", text: "or drag the bar along the top edge" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),

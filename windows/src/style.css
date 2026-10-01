@@ -68,7 +68,8 @@ body {
 #island {
   position: absolute;
   top: 0;
-  left: 50%;
+  /* Placed by Island.applyGeometry: offset by the resting position, not centred. */
+  left: 0;
   background: #000;
   border-radius: 0 0 14px 14px;
   overflow: visible;

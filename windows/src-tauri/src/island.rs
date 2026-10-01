@@ -115,8 +115,23 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
 }
 
 /// The display the island lives on: the primary one, or the one under the cursor.
+///
+/// Once the island is on a display it stays there, whatever the cursor does: a
+/// bar dragged toward an edge takes the cursor with it, and resolving from the
+/// cursor would hop the island onto the next monitor mid-drag. (From #47.)
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
+    if let Some(win) = window(app) {
+        if let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) {
+            // The window's centre: it is wider than the island and may overhang
+            // an edge, so its left edge says little about which display it is on.
+            let cx = pos.x as f64 + size.width as f64 / 2.0;
+            let cy = pos.y as f64 + size.height as f64 / 2.0;
+            if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
+                return Some(m.clone());
+            }
+        }
+    }
     if pref == "cursor" {
         if let Some((cx, cy)) = cursor_physical() {
             if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
@@ -148,8 +163,23 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
-/// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
-pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
+/// Left edge of the window on the display, in physical pixels, for a resting
+/// `position` normalised 0..=1 (0 flush left, 0.5 centred, 1 flush right).
+///
+/// The window slides by `position × (screen − window)` and the front end slides
+/// the island inside it by `position × (window − island)` (`Island.islandOffsetX`),
+/// so the island lands at `position × (screen − island)` whatever its size: it
+/// never leaves the display, and at an edge it opens inward. (From #47.)
+fn island_left(monitor_x: i32, screen_w: u32, window_w: u32, position: f64) -> i32 {
+    // A saved value outside 0..1, or a NaN from bad JSON, can't push it off-screen.
+    let position = if position.is_finite() { position.clamp(0.0, 1.0) } else { 0.5 };
+    let span = (screen_w as i32 - window_w as i32).max(0);
+    monitor_x + (span as f64 * position).round() as i32
+}
+
+/// Places and sizes the window. `collapsed` picks the wake strip instead of the
+/// panel; `position` is where along the top edge the island rests.
+pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool, position: f64) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
 
@@ -160,7 +190,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
+    let x = island_left(mp.x, ms.width, pw, position);
     let y = mp.y;
 
     let _ = win.set_size(PhysicalSize::new(pw, ph));
@@ -339,5 +369,55 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod position_tests {
+    use super::*;
+
+    const SCREEN: u32 = 1920;
+    /// Hidden notch, compact bar, open panel — layout.ts's NOTCH_W, COMPACT_W, EXPANDED_W.
+    const ISLANDS: [f64; 3] = [184.0, 288.0, 640.0];
+
+    /// Where the island lands: the window's place plus the front end's offset.
+    fn island_x(window_w: u32, island_w: f64, position: f64) -> i32 {
+        let p = if position.is_finite() { position.clamp(0.0, 1.0) } else { 0.5 };
+        island_left(0, SCREEN, window_w, position) + ((window_w as f64 - island_w) * p).round() as i32
+    }
+
+    #[test]
+    fn the_presets_pin_the_island_to_each_edge_or_the_middle() {
+        for w in ISLANDS {
+            assert_eq!(island_x(PANEL_W as u32, w, 0.0), 0);
+            assert_eq!(island_x(PANEL_W as u32, w, 1.0), SCREEN as i32 - w as i32);
+            assert_eq!(island_x(PANEL_W as u32, w, 0.5), (SCREEN as i32 - w as i32) / 2);
+        }
+    }
+
+    #[test]
+    fn no_position_and_no_size_ever_leaves_the_display() {
+        for w in ISLANDS {
+            for step in 0..=100 {
+                let left = island_x(PANEL_W as u32, w, step as f64 / 100.0);
+                assert!(left >= 0 && left + w as i32 <= SCREEN as i32, "{w} at {step}%: {left}");
+            }
+        }
+        for bad in [f64::NAN, -3.0, 7.0] {
+            let left = island_x(PANEL_W as u32, 640.0, bad);
+            assert!(left >= 0 && left + 640 <= SCREEN as i32, "{bad}: {left}");
+        }
+    }
+
+    #[test]
+    fn the_wake_strip_follows_the_island() {
+        // Hidden, the window is the wake strip itself; it must sit where the
+        // hidden island is, give or take the strip being a little wider.
+        for step in 0..=10 {
+            let p = step as f64 / 10.0;
+            let strip = island_left(0, SCREEN, STRIP_W as u32, p);
+            let island = island_x(PANEL_W as u32, 184.0, p);
+            assert!(strip <= island && island + 184 <= strip + STRIP_W as i32 + 1, "at {p}");
+        }
     }
 }
