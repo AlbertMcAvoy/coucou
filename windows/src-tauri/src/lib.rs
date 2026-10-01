@@ -1,6 +1,8 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+#[cfg(windows)]
+mod drop_target;
 mod files;
 #[cfg(windows)]
 mod focus;
