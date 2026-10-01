@@ -11,6 +11,7 @@ export type IslandViewName =
   | "question"
   | "error"
   | "finished"
+  | "gitlab"
   | "confused"
   | "upload"
   | "uploading"
@@ -73,6 +74,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   error: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   finished: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
+  // GitLab's news, laid out like Claude Code's "finished" card.
+  gitlab: { height: 160, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   confused: { height: 160, botX: 76, botY: null, botDiameter: 66, agentMode: "column" },
   upload: { height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: "column" },
   // botY 103 = bar top (42 + 58) + 3, so the dot really rides the bar. The Swift
