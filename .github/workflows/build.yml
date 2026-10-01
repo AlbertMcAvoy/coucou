@@ -23,6 +23,8 @@ jobs:
 
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
+      - name: Test link filter
+        run: bash scripts/test-safe-links.sh
 
       - name: Build
         run: |

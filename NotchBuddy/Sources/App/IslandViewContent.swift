@@ -911,11 +911,14 @@ struct ResultView: View {
                     }
 
                     HStack(spacing: 8) {
+                        // The URL comes from the model, which may have read attacker-controlled
+                        // files or pages: only plain web links may leave the app.
+                        let openURL = safeWebURL(result.items.first?.url)
                         PrimaryButton("Open") {
-                            if let urlStr = result.items.first?.url, let url = URL(string: urlStr) {
-                                NSWorkspace.shared.open(url)
-                            }
+                            if let openURL { NSWorkspace.shared.open(openURL) }
                         }
+                        .disabled(openURL == nil)
+                        .help(openURL?.absoluteString ?? "")
                         SecondaryButton("Copy") {
                             let text = result.items.map { "\($0.label): \($0.detail)" }.joined(separator: "\n")
                             NSPasteboard.general.clearContents()
@@ -1959,7 +1962,7 @@ struct NotionCardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(appState.notionPages.prefix(3)) { page in
                     Button {
-                        if let url = URL(string: page.url) { NSWorkspace.shared.open(url) }
+                        if let url = safeWebURL(page.url) { NSWorkspace.shared.open(url) }
                     } label: {
                         HStack(spacing: 6) {
                             if let emoji = page.emoji {
