@@ -380,14 +380,15 @@ function buildFinished(actions: ViewActions): ViewHost {
   };
 }
 
-// ── GitLab news ───────────────────────────────────────────────────────────────
+// ── GitLab and YouTrack news ──────────────────────────────────────────────────
 
 /**
- * What just happened on GitLab, in the same card as Claude Code's "finished":
- * green, or red as soon as one piece of news is bad (a pipeline failed, an MR
- * can't be merged). The first item is the title; the rest are listed under it.
+ * What just happened on GitLab or YouTrack, in the same card as Claude Code's
+ * "finished": green, or red as soon as one piece of news is bad (a pipeline
+ * failed, an MR can't be merged). The first item is the title; the rest are
+ * listed under it.
  */
-function buildGitlabNews(actions: ViewActions): ViewHost {
+function buildNews(actions: ViewActions, id: string, name: string): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title news-title" });
   const more = h("div", { class: "news-more" });
@@ -401,15 +402,15 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
-      const info = State.integrations.integration_gitlab;
+      const info = State.integrations[id];
       const fresh = (Array.isArray(info?.data?.fresh) ? info.data.fresh : []) as {
         label?: string; url?: string; success?: boolean;
       }[];
       const bad = fresh.some((n) => n.success === false);
       box.style.setProperty("--wash", washRGBA(bad ? "red" : "green"));
-      const task = State.tasks.find((t) => t.id === "integration_gitlab") ?? null;
+      const task = State.tasks.find((t) => t.id === id) ?? null;
       clear(who);
-      who.append(agentWho(task, fresh.length > 1 ? `${fresh.length} updates` : "GitLab update"));
+      who.append(agentWho(task, fresh.length > 1 ? `${fresh.length} updates` : `${name} update`));
       title.textContent = fresh[0]?.label ?? "Nothing new";
       url = fresh[0]?.url ?? "";
       clear(more);
@@ -534,7 +535,8 @@ export function buildViews(
   map.set("question", buildQuestion());
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
-  map.set("gitlab", buildGitlabNews(actions));
+  map.set("gitlab", buildNews(actions, "integration_gitlab", "GitLab"));
+  map.set("youtrack", buildNews(actions, "integration_youtrack", "YouTrack"));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));

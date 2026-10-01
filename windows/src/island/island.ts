@@ -4,7 +4,7 @@
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NEWS_VIEWS, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   type BotStateName, type IslandMode, type IslandViewName,
@@ -133,6 +133,7 @@ export class Island {
         else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
         else if (task.id === "integration_gitlab") void Bridge.openGitlab();
+        else if (task.id === "integration_youtrack") void Bridge.openYoutrack();
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
@@ -896,29 +897,26 @@ export class Island {
   }
 
   /**
-   * Who Mochi stands for right now: the focused pill, except on a GitLab news
-   * card, where he takes GitLab's colour and mood — like its mini Mochi on the
-   * pill — so the card reads at a glance as GitLab's.
+   * Who Mochi stands for right now: the focused pill, except on a news card
+   * (GitLab, YouTrack), where he takes that integration's colour and mood —
+   * like its mini Mochi on the pill — so the card reads at a glance as its own.
    */
-  private get onGitlabCard(): boolean {
+  private get newsCardTask(): AgentTask | null {
     // The view outlives the card: once the island folds back into its bar it
     // still says "gitlab" until the next opening resets it. Only an open card
-    // counts, or Mochi stays orange on the bar.
-    return State.mode === "expanded" && State.view === "gitlab";
+    // counts, or Mochi keeps the colour on the bar.
+    if (State.mode !== "expanded") return null;
+    const id = Object.keys(NEWS_VIEWS).find((k) => NEWS_VIEWS[k] === State.view);
+    return id ? (State.tasks.find((t) => t.id === id) ?? null) : null;
   }
 
   private get shownTask(): AgentTask | null {
-    if (this.onGitlabCard) {
-      return State.tasks.find((t) => t.id === "integration_gitlab") ?? State.focusTask;
-    }
-    return State.focusTask;
+    return this.newsCardTask ?? State.focusTask;
   }
 
   private get shownState(): BotStateName {
-    if (this.onGitlabCard) {
-      const t = State.tasks.find((x) => x.id === "integration_gitlab");
-      if (t && State.stateOverride == null) return t.state;
-    }
+    const t = this.newsCardTask;
+    if (t && State.stateOverride == null) return t.state;
     return State.effectiveState;
   }
 
