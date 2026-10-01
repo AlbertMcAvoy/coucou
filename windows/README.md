@@ -84,6 +84,12 @@ installing, if WSL has distributions, Coucou opens the settings on that section
 once. Looking at a distribution starts it, so Coucou only does that while the
 settings window is open.
 
+Once WSL is set up, "Open terminal" and the ↗ button bring the session's
+terminal window forward (any terminal window if that one is closed), or open
+one in the session folder — for a WSL session, a shell in its own distro
+(`wsl.exe -d <distro> --cd <folder>`). "Open Visual Studio Code" opens a WSL
+session through **Remote WSL**. The relay passes `WSL_DISTRO_NAME` through
+`WSLENV` for that.
 Each hook costs about 0.3 s for the WSL → Windows hop.
 
 ## Chat and keys
@@ -162,7 +168,8 @@ problems. It stays on your machine.
   VS Code sessions.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
   attach it as context, and jumping to a specific terminal window — "Open
-  terminal" opens the working folder in VS Code when `code` is on your `PATH`.
+  terminal" opens the working folder in VS Code when `code` is on your `PATH`
+  (with WSL set up, it brings the session's terminal forward instead; see above).
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 
 ## Linux
