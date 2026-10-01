@@ -378,6 +378,14 @@ fn remember_wsl_hooks(app: &AppHandle, distro: &str, installed: bool) {
     let _ = app.emit("settings-changed", updated);
 }
 
+/// Whether the Claude Code behind "Use for Mochi" (`"windows"` or `"wsl:<d>"`)
+/// is signed in. Asked only while the settings window is open.
+#[tauri::command]
+async fn claude_logged_in(target: String) -> Option<bool> {
+    let backend = local_claude::Backend::parse(&target);
+    blocking(move || local_claude::logged_in(&backend)).await.ok().flatten()
+}
+
 /// First launch after installing: if WSL has distros and none is hooked up yet,
 /// open the settings on the WSL section. Offered once; nothing is written until
 /// the user reviews the diff and clicks, as everywhere else.
@@ -614,6 +622,7 @@ pub fn run() {
             wsl_status,
             wsl_hooks_preview,
             wsl_hooks_apply,
+            claude_logged_in,
             approval_decision,
             approval_ack,
             approval_decline,

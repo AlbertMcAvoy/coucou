@@ -97,6 +97,8 @@ export const Bridge = {
     callOrThrow<string>("wsl_hooks_apply", { distro, install, fingerprint }),
   /** The section the settings window was opened for, once ("" for none). */
   takeSettingsSection: () => call<string>("take_settings_section"),
+  /** Is that Claude Code signed in? (`claude auth status`; null when unknown) */
+  claudeLoggedIn: (target: string) => call<boolean>("claude_logged_in", { target }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
