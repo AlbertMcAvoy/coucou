@@ -1141,6 +1141,7 @@ function generalSection(): HTMLElement {
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
     h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    ...islandPositionRows(),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
@@ -1448,6 +1449,41 @@ function recapRows(): HTMLElement[] {
   ];
 }
 
+/**
+ * Where the island rests along the top edge. Dragging the bar can leave it
+ * anywhere, which shows here as "Where you left it". (Presets from #47.)
+ */
+function islandPositionRows(): HTMLElement[] {
+  const positions: [number, string][] = [[0, t("Left")], [0.5, t("Centre")], [1, t("Right")]];
+  const CUSTOM = "custom";
+  const select = h("select", {}) as HTMLSelectElement;
+  select.append(
+    ...positions.map(([v, text]) => h("option", { value: String(v), text })),
+    h("option", { value: CUSTOM, text: t("Where you left it"), disabled: true }),
+  );
+  const sync = () => {
+    const preset = positions.find(([v]) => Math.abs(v - settings.notchPosition) < 0.005);
+    select.value = preset ? String(preset[0]) : CUSTOM;
+  };
+  sync();
+  select.addEventListener("change", () => {
+    if (select.value === CUSTOM) return;
+    settings.notchPosition = Number(select.value);
+    void save();
+  });
+  positionRedraw = sync;
+  return [
+    h("div", { class: "row" },
+      h("label", { text: t("Island position") }),
+      select,
+      h("span", { class: "hint", text: t("or drag the bar along the top edge") }),
+    ),
+  ];
+}
+
+/** The position select on screen, told when a drag moves the island. */
+let positionRedraw: (() => void) | null = null;
+
 // ── Language ──────────────────────────────────────────────────────────────────
 
 /** The shortcuts section on screen, told about the events listened to once in main. */
@@ -1495,6 +1531,7 @@ async function main() {
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
+    positionRedraw?.();
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
