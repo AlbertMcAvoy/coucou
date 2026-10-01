@@ -164,6 +164,13 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
+    // The processes the session's window may belong to, for "Open terminal",
+    // which only brings windows forward on Windows.
+    #[cfg(windows)]
+    if let Some(map) = payload.as_object_mut() {
+        map.insert("terminal_pids".into(), serde_json::json!(win::ancestor_pids()));
+    }
+
     truncate_strings(&mut payload);
 
     let mut line = payload.to_string();

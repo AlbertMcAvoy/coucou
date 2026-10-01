@@ -19,6 +19,10 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** WSL distribution of the session, when Claude Code runs under WSL. */
+  sessionWslDistro?: string | null;
+  /** The relay's ancestor processes; one of them owns the session's window. */
+  sessionTerminalPids?: number[];
 }
 
 export interface ApprovalInfo {

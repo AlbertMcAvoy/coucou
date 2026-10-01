@@ -52,8 +52,20 @@ export const Bridge = {
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
-  /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
-  openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
+  /**
+   * "Open Visual Studio Code" → opens the folder in VS Code when `code` is on PATH.
+   * With a WSL distro, `path` is a Linux path and opens through Remote WSL.
+   */
+  openInVSCode: (path: string | null, wslDistro: string | null = null) =>
+    call<boolean>("open_in_vscode", { path, wslDistro }),
+
+  /**
+   * "Open terminal" → once WSL is set up, brings the session's terminal window
+   * forward, or any terminal; with none open, a new one in the session folder
+   * (WSL shell for a WSL session). Without WSL: the folder in VS Code.
+   */
+  openTerminal: (path: string | null, wslDistro: string | null, terminalPids: number[]) =>
+    call<boolean>("open_terminal", { path, wslDistro, terminalPids }),
 
   quit: () => call<void>("quit_app"),
 
