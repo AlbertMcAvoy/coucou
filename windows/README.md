@@ -106,6 +106,17 @@ own model, in Coucou's inbox folder where dropped files land. Mochi only gets
 read-only tools (Read, WebSearch, WebFetch), and its runs never show up in the
 island: hooks are switched off for them.
 
+With Claude Code behind it, the **Ask** tab also manages sessions. On the left,
+under Mochi, a menu lists your Claude Code sessions, terminal ones included,
+with their folder and title, read from that Claude Code's own transcripts
+(`~/.claude/projects`). Picking one makes it the active session: the
+conversation shows on the right, and Mochi carries it on in its folder
+(`claude -p --resume`, still read-only). A new session starts from a dropped
+file, as before, or in a folder you pick (**New in a folder…**). Deleting a
+session erases its transcript, after a second click. Carrying on a session that
+is still open in a terminal adds to the same transcript, as a second
+`claude --resume` would.
+
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.

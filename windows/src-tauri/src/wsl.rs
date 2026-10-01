@@ -198,6 +198,44 @@ fn resolve(name: &str) -> Result<Distro, String> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/// The distro user's home as Windows sees it (`\\wsl.localhost\<distro>\home\<user>`).
+/// Asking costs a few wsl.exe calls, so the answer is kept for the app's life.
+pub fn home_unc(name: &str) -> Result<PathBuf, String> {
+    static HOMES: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, PathBuf>>> =
+        std::sync::LazyLock::new(Default::default);
+    if let Some(p) = HOMES.lock().unwrap().get(name) {
+        return Ok(p.clone());
+    }
+    let d = resolve(name)?;
+    let home = d.unc(&d.home);
+    HOMES.lock().unwrap().insert(name.to_string(), home.clone());
+    Ok(home)
+}
+
+/// A Windows path as the distro sees it: `D:\x` → `/mnt/d/x`, and a path under
+/// `\\wsl.localhost\<distro>` (or `\\wsl$`) → the Linux path it stands for.
+pub fn to_linux_path(name: &str, path: &str) -> Result<String, String> {
+    for base in [r"\\wsl.localhost\", r"\\wsl$\"] {
+        if let Some(rest) = strip_prefix_ci(path, base) {
+            let mut parts = rest.split('\\');
+            let distro = parts.next().unwrap_or("");
+            if !distro.eq_ignore_ascii_case(name) {
+                return Err(format!("That folder is in the {distro} distribution, not {name}."));
+            }
+            let linux: Vec<&str> = parts.filter(|p| !p.is_empty()).collect();
+            return Ok(format!("/{}", linux.join("/")));
+        }
+    }
+    run_wsl(&["-d", name, "--exec", "wslpath", "-u", path])
+        .map(|s| s.trim().to_string())
+        .filter(|p| p.starts_with('/'))
+        .ok_or_else(|| format!("{name} can't see {path}."))
+}
+
+fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
+    (s.len() >= prefix.len() && s[..prefix.len()].eq_ignore_ascii_case(prefix)).then(|| &s[prefix.len()..])
+}
+
 pub fn status(name: &str) -> WslStatus {
     match resolve(name) {
         Ok(d) => WslStatus {
@@ -275,6 +313,13 @@ mod tests {
         let bytes: Vec<u8> = "Ubuntu\r\n".encode_utf16().flat_map(u16::to_le_bytes).collect();
         assert_eq!(decode(&bytes), "Ubuntu\r\n");
         assert_eq!(decode(b"Ubuntu\n"), "Ubuntu\n");
+    }
+
+    #[test]
+    fn unc_folders_map_to_their_linux_path() {
+        assert_eq!(to_linux_path("Ubuntu", r"\\wsl.localhost\Ubuntu\home\me\proj").unwrap(), "/home/me/proj");
+        assert_eq!(to_linux_path("Ubuntu", r"\\WSL$\ubuntu\home").unwrap(), "/home");
+        assert!(to_linux_path("Ubuntu", r"\\wsl.localhost\Debian\home").is_err());
     }
 
     #[test]

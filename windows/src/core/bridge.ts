@@ -110,7 +110,17 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+    callOrThrow<{ text: string; session?: string }>("chat_send", { query, context }),
+
+  // ── Mochi's sessions (local Claude Code only) ─────────────────────────────
+  sessionsList: () => callOrThrow<SessionInfo[]>("sessions_list"),
+  sessionHistory: (id: string) => callOrThrow<HistoryItem[]>("session_history", { id }),
+  sessionActive: () => call<ActiveSession>("session_active"),
+  sessionSelect: (id: string, cwd: string) => callOrThrow<void>("session_select", { id, cwd }),
+  /** Erases the transcript — only after the island's second click. */
+  sessionDelete: (id: string) => callOrThrow<void>("session_delete", { id }),
+  /** Folder picker, then a new session there. `null` when cancelled. */
+  sessionNewInFolder: () => callOrThrow<string | null>("session_new_in_folder"),
   chatReset: () => call<void>("chat_reset"),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
@@ -165,6 +175,28 @@ export interface WslStatus {
   claudeCli: string | null;
   /** The distro could not be reached; nothing else is meaningful then. */
   error: string | null;
+}
+
+/** A Claude Code session, as listed in Mochi's session menu. */
+export interface SessionInfo {
+  id: string;
+  /** Working folder, as that Claude Code sees it (a Linux path under WSL). */
+  cwd: string;
+  title: string;
+  /** Last change, ms since the epoch. */
+  updated: number;
+}
+
+export interface HistoryItem {
+  role: "user" | "assistant";
+  text: string;
+}
+
+/** The session Mochi's chat is in. No id yet: a new session (inbox when no cwd). */
+export interface ActiveSession {
+  backend: string;
+  id: string | null;
+  cwd: string | null;
 }
 
 export interface HookPreview {

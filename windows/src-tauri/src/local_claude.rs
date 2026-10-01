@@ -17,6 +17,7 @@ use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::claude::{ChatContext, ChatReply, SYSTEM_PROMPT};
@@ -53,7 +54,7 @@ impl Backend {
         }
     }
 
-    fn key(&self) -> String {
+    pub fn key(&self) -> String {
         match self {
             Self::Api => "api".into(),
             Self::Windows => "windows".into(),
@@ -62,14 +63,33 @@ impl Backend {
     }
 }
 
-/// The Claude Code session Mochi is in, and which backend it belongs to: a
-/// session id from WSL means nothing to the Windows CLI, and vice versa.
+/// The session Mochi is in: the backend it belongs to (a session id from WSL
+/// means nothing to the Windows CLI, and vice versa), its id once Claude Code
+/// has given it one, and the folder it runs in — Coucou's inbox when unset.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveSession {
+    pub backend: String,
+    pub id: Option<String>,
+    pub cwd: Option<String>,
+}
+
 #[derive(Default)]
-pub struct LocalSession(Mutex<Option<(String, String)>>);
+pub struct LocalSession(Mutex<Option<ActiveSession>>);
 
 impl LocalSession {
+    /// A new session in the inbox — what a dropped file starts.
     pub fn reset(&self) {
         *self.0.lock().unwrap() = None;
+    }
+
+    pub fn set(&self, active: Option<ActiveSession>) {
+        *self.0.lock().unwrap() = active;
+    }
+
+    /// The active session, if it belongs to `backend`.
+    pub fn get(&self, backend: &Backend) -> Option<ActiveSession> {
+        self.0.lock().unwrap().clone().filter(|a| a.backend == backend.key())
     }
 }
 
@@ -149,13 +169,9 @@ pub fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let resume = {
-        let current = session.0.lock().unwrap();
-        current
-            .as_ref()
-            .filter(|(owner, _)| *owner == backend.key())
-            .map(|(_, id)| id.clone())
-    };
+    let active = session.get(backend);
+    let resume = active.as_ref().and_then(|a| a.id.clone());
+    let folder = active.as_ref().and_then(|a| a.cwd.clone());
 
     // Context rides along with the first message only, as with the API.
     let mut prompt = String::new();
@@ -198,6 +214,8 @@ pub fn send(
 
     let inbox = crate::files::inbox_dir();
     let _ = std::fs::create_dir_all(&inbox);
+    // A session's own folder, or the inbox for a new one (dropped files land there).
+    let cwd = folder.clone().unwrap_or_else(|| inbox.to_string_lossy().into_owned());
 
     let mut cmd = match backend {
         Backend::Api => return Err("Mochi is set to use the Claude API.".into()),
@@ -205,15 +223,16 @@ pub fn send(
             let cli = windows_cli()
                 .ok_or("Claude Code isn't installed on Windows. Pick another engine in Settings.")?;
             let mut c = Command::new(cli);
-            c.args(&args).current_dir(&inbox);
+            c.args(&args).current_dir(&cwd);
             c
         }
         Backend::Wsl(distro) => {
             // A login shell finds `claude` where the user installed it
             // (~/.local/bin, npm…); the arguments travel as "$@", unparsed.
             let mut c = Command::new("wsl.exe");
+            // --cd takes a Linux path (from the transcript) as well as a Windows one.
             c.args(["-d", distro, "--cd"])
-                .arg(&inbox)
+                .arg(&cwd)
                 .args(["--exec", "sh", "-lc", r#"exec claude "$@""#, "claude"])
                 .args(&args);
             let wslenv = std::env::var("WSLENV").unwrap_or_default();
@@ -230,8 +249,9 @@ pub fn send(
         format!("Claude Code: {}", why.chars().take(200).collect::<String>())
     })?;
 
-    if let Some(id) = reply.session_id {
-        *session.0.lock().unwrap() = Some((backend.key(), id));
+    let id = reply.session_id.clone().or(resume);
+    if id.is_some() {
+        session.set(Some(ActiveSession { backend: backend.key(), id: id.clone(), cwd: folder }));
     }
     if reply.is_error {
         return Err(format!("Claude Code: {}", reply.text.chars().take(300).collect::<String>()));
@@ -239,7 +259,7 @@ pub fn send(
     if reply.text.trim().is_empty() {
         return Err("No response text.".into());
     }
-    Ok(ChatReply { text: reply.text.trim().to_string() })
+    Ok(ChatReply { text: reply.text.trim().to_string(), session: id })
 }
 
 /// Spawns the CLI, feeds it the prompt and collects its output under a deadline.

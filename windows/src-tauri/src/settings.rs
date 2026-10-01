@@ -31,6 +31,9 @@ pub struct Settings {
     /// Windows) or "wsl:<distro>" (Claude Code inside that distro).
     #[serde(default = "default_backend")]
     pub chat_backend: String,
+    /// The session Mochi's chat is in, kept across restarts. Owned by Rust.
+    #[serde(default)]
+    pub mochi_session: Option<crate::local_claude::ActiveSession>,
 }
 
 fn default_backend() -> String {
@@ -61,6 +64,7 @@ impl Default for Settings {
             wsl_hooks: Vec::new(),
             wsl_prompted: false,
             chat_backend: default_backend(),
+            mochi_session: None,
         }
     }
 }

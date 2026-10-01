@@ -12,6 +12,7 @@ mod log;
 mod pipe;
 mod platform;
 mod secrets;
+mod sessions;
 mod settings;
 mod tray;
 mod wsl;
@@ -76,6 +77,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // Rust's own bookkeeping: a window holding an older copy must not undo it.
         settings.wsl_hooks = current.wsl_hooks.clone();
         settings.wsl_prompted = current.wsl_prompted;
+        settings.mochi_session = current.mochi_session.clone();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         *current = settings.clone();
@@ -450,17 +452,115 @@ async fn chat_send(
         return claude::send(&chat, &model, query, context).await;
     }
     // Claude Code runs as a process for up to minutes: off the main thread.
-    blocking(move || {
-        let session = app.state::<local_claude::LocalSession>();
+    let handle = app.clone();
+    let reply = blocking(move || {
+        let session = handle.state::<local_claude::LocalSession>();
         local_claude::send(&backend, &session, query, context)
     })
-    .await?
+    .await?;
+    persist_session(&app);
+    reply
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>, session: State<local_claude::LocalSession>) {
+fn chat_reset(app: AppHandle, chat: State<Chat>, session: State<local_claude::LocalSession>) {
     chat.reset();
     session.reset();
+    persist_session(&app);
+}
+
+// ── Mochi's sessions (local Claude Code only) ─────────────────────────────────
+// Reading transcripts goes through \\wsl.localhost for WSL: off the main thread.
+
+fn mochi_backend(app: &AppHandle) -> local_claude::Backend {
+    local_claude::Backend::parse(&app.state::<Shared>().settings.lock().unwrap().chat_backend)
+}
+
+/// Writes the active session to the settings, so a restart picks it up again.
+fn persist_session(app: &AppHandle) {
+    let active = app.state::<local_claude::LocalSession>().get(&mochi_backend(app));
+    let shared = app.state::<Shared>();
+    let mut current = shared.settings.lock().unwrap();
+    if current.mochi_session != active {
+        current.mochi_session = active;
+        let _ = settings::save(&current);
+    }
+}
+
+#[tauri::command]
+async fn sessions_list(app: AppHandle) -> Result<Vec<sessions::SessionInfo>, String> {
+    let backend = mochi_backend(&app);
+    blocking(move || sessions::list(&backend)).await?
+}
+
+#[tauri::command]
+async fn session_history(app: AppHandle, id: String) -> Result<Vec<sessions::HistoryItem>, String> {
+    let backend = mochi_backend(&app);
+    blocking(move || sessions::history(&backend, &id)).await?
+}
+
+/// The session Mochi is in, if it belongs to the current engine.
+#[tauri::command]
+fn session_active(app: AppHandle) -> Option<local_claude::ActiveSession> {
+    app.state::<local_claude::LocalSession>().get(&mochi_backend(&app))
+}
+
+/// Makes a listed session the active one: Mochi carries it on, in its folder.
+#[tauri::command]
+fn session_select(app: AppHandle, chat: State<Chat>, id: String, cwd: String) -> Result<(), String> {
+    if !sessions::is_session_id(&id) {
+        return Err("Not a session id.".into());
+    }
+    chat.reset();
+    let backend = mochi_backend(&app);
+    app.state::<local_claude::LocalSession>().set(Some(local_claude::ActiveSession {
+        backend: backend.key(),
+        id: Some(id),
+        cwd: Some(cwd),
+    }));
+    persist_session(&app);
+    Ok(())
+}
+
+/// Erases a session's transcript — the island has already asked twice.
+#[tauri::command]
+async fn session_delete(app: AppHandle, id: String) -> Result<(), String> {
+    let backend = mochi_backend(&app);
+    let target = id.clone();
+    blocking(move || sessions::delete(&backend, &target)).await??;
+    let session = app.state::<local_claude::LocalSession>();
+    if session.get(&mochi_backend(&app)).and_then(|a| a.id).as_deref() == Some(id.as_str()) {
+        session.reset();
+        persist_session(&app);
+    }
+    Ok(())
+}
+
+/// "New in a folder…": the folder picker, then a new session that runs there.
+/// `None` when the picker was cancelled.
+#[tauri::command]
+async fn session_new_in_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let backend = mochi_backend(&app);
+    // The island owns the picker, so it comes up above it rather than behind.
+    #[cfg(windows)]
+    let owner = app
+        .get_webview_window(island::WINDOW_LABEL)
+        .and_then(|w| w.hwnd().ok())
+        .map(|h| h.0 as isize);
+    #[cfg(not(windows))]
+    let owner: Option<isize> = None;
+    let key = backend.key();
+    let picked = blocking(move || sessions::pick_folder(&backend, owner)).await??;
+    if let Some(cwd) = &picked {
+        app.state::<Chat>().reset();
+        app.state::<local_claude::LocalSession>().set(Some(local_claude::ActiveSession {
+            backend: key,
+            id: None,
+            cwd: Some(cwd.clone()),
+        }));
+        persist_session(&app);
+    }
+    Ok(picked)
 }
 
 /// Copies a dropped file into the inbox and reports its name back.
@@ -603,7 +703,12 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
-        .manage(local_claude::LocalSession::default())
+        .manage({
+            // Back in the session Mochi was in before the restart.
+            let session = local_claude::LocalSession::default();
+            session.set(loaded.mochi_session.clone());
+            session
+        })
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -636,6 +741,12 @@ pub fn run() {
             refresh_integration,
             open_n8n,
             open_settings_window,
+            sessions_list,
+            session_history,
+            session_active,
+            session_select,
+            session_delete,
+            session_new_in_folder,
             take_settings_section,
             set_paused,
         ])
