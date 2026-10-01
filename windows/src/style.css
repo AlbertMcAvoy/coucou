@@ -1329,8 +1329,8 @@ input[type="range"]::-webkit-slider-thumb {
   padding-top: 4px;
 }
 
-/* GitLab's card: five rows on screen, the rest a scroll away. Fixed rows so
-   the five fill the window exactly. */
+/* GitLab's and YouTrack's cards: five rows on screen, the rest a scroll away.
+   Fixed rows so the five fill the window exactly. */
 .int-rows.scroll {
   max-height: 117px; /* 5 × 21 px rows + 4 × 3 px gaps */
   overflow-y: auto;
@@ -1343,6 +1343,18 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 0 0 21px;
   min-height: 0;
   box-sizing: border-box;
+}
+
+/* A saved search's name can be long: it gives way, the issue count doesn't. */
+.int-card.youtrack .int-head > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.int-card.youtrack .int-total {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .int-row {

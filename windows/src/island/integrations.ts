@@ -3,6 +3,7 @@
 // the pill isn't focused, plays a sound, and clears itself after 60 s.
 
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
+import { NEWS_VIEWS } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
@@ -12,6 +13,7 @@ const KEY_FOR: Record<string, string> = {
   integration_stripe: "stripe-api-key",
   integration_github: "github-token",
   integration_gitlab: "gitlab-token",
+  integration_youtrack: "youtrack-token",
   integration_vercel: "vercel-token",
   integration_n8n: "n8n-api-key",
   integration_resend: "resend-api-key",
@@ -63,11 +65,13 @@ function handle(island: Island, update: IntegrationUpdate) {
         task.pillBadge = event.success ? "finished" : "error";
       }
       Sound.play(event.success ? "finish" : "error");
-      // GitLab's news opens its own card, like Claude Code's "finished" — unless
-      // an alert is waiting for an answer: an approval must not be pushed away.
-      // The others, as the Swift pollers do, only show the compact island so the
-      // badge is seen, never stealing the screen for a successful deploy.
-      if (update.id === "integration_gitlab" && !State.isPinned) island.alert("gitlab");
+      // GitLab's and YouTrack's news open their own card, like Claude Code's
+      // "finished" — unless an alert is waiting for an answer: an approval must
+      // not be pushed away. The others, as the Swift pollers do, only show the
+      // compact island so the badge is seen, never stealing the screen for a
+      // successful deploy.
+      const newsView = NEWS_VIEWS[update.id];
+      if (newsView && !State.isPinned) island.alert(newsView);
       else island.reveal();
 
       const existing = clearTimers.get(update.id);
