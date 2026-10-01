@@ -4582,6 +4582,28 @@
    "pt-BR": "Reduzir",
    "ru": "Свернуть",
    "id": "Perkecil"
+  },
+  "Keep on screen": {
+   "zh-Hans": "始终显示",
+   "hi": "स्क्रीन पर रखें",
+   "es": "Mantener en pantalla",
+   "ar": "إبقاؤها على الشاشة",
+   "fr": "Garder à l'écran",
+   "bn": "স্ক্রিনে রাখুন",
+   "pt-BR": "Manter na tela",
+   "ru": "Держать на экране",
+   "id": "Tetap di layar"
+  },
+  "otherwise the island tucks away after a minute": {
+   "zh-Hans": "否则岛会在一分钟后收起",
+   "hi": "वरना आइलैंड एक मिनट बाद छिप जाता है",
+   "es": "si no, la isla se esconde al cabo de un minuto",
+   "ar": "وإلا تختفي الجزيرة بعد دقيقة",
+   "fr": "sinon l'île se range au bout d'une minute",
+   "bn": "নইলে এক মিনিট পরে আইল্যান্ড লুকিয়ে যায়",
+   "pt-BR": "senão a ilha se recolhe depois de um minuto",
+   "ru": "иначе остров прячется через минуту",
+   "id": "jika tidak, pulau bersembunyi setelah satu menit"
   }
  }
 }
