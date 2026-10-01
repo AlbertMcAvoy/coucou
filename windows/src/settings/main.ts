@@ -41,6 +41,53 @@ function renderDiff(text: string): HTMLElement {
   return box;
 }
 
+// ── Mochi's engine ────────────────────────────────────────────────────────────
+// Mochi's chat can run on the user's own Claude Code (Windows or a WSL distro)
+// instead of the API key. One "Use for Mochi" switch per Claude Code; at most
+// one is on, and with none on the API key is used.
+
+const engineListeners: (() => void)[] = [];
+const engineSwitches: { backend: string; el: HTMLElement }[] = [];
+
+function engineLabel(backend: string): string {
+  if (backend === "windows") return "Claude Code on Windows";
+  if (backend.startsWith("wsl:")) return `Claude Code in WSL · ${backend.slice(4)}`;
+  return "the Claude API";
+}
+
+function syncEngine() {
+  for (let i = engineSwitches.length - 1; i >= 0; i--) {
+    const s = engineSwitches[i];
+    if (!s.el.isConnected) engineSwitches.splice(i, 1); // a redrawn block
+    else s.el.classList.toggle("on", settings.chatBackend === s.backend);
+  }
+  for (const fn of engineListeners) fn();
+}
+
+function mochiRow(backend: string, cli: string | null, missing: string): HTMLElement {
+  const sw = h("button", { class: settings.chatBackend === backend ? "switch on" : "switch" });
+  engineSwitches.push({ backend, el: sw });
+  if (!cli) {
+    sw.disabled = true;
+    sw.title = missing;
+  }
+  sw.addEventListener("click", () => {
+    settings.chatBackend = settings.chatBackend === backend ? "api" : backend;
+    void save();
+    syncEngine();
+  });
+  return h("div", { class: "row" },
+    h("label", { text: "Use for Mochi" }),
+    sw,
+    h("span", {
+      class: "hint",
+      text: cli
+        ? "Mochi's chat answers through this Claude Code — your subscription, no API key."
+        : missing,
+    }),
+  );
+}
+
 // ── Diff → confirm → write ────────────────────────────────────────────────────
 // The one path by which hooks are ever written, for Windows and WSL alike: show
 // the exact diff and the backup, write only on the click, and refuse a file
@@ -147,6 +194,7 @@ function claudeSection(status: HookStatus): HTMLElement {
         h("span", { class: "path", text: status.hookPath }),
         statusDot(status.hookReady),
       ),
+      mochiRow("windows", status.claudeCli, "Claude Code isn't installed on Windows."),
     );
 
     if (!status.hookReady) {
@@ -222,7 +270,7 @@ function wslSection(hookReady: boolean): { section: HTMLElement; refresh: () => 
         } catch (err) {
           statuses.push({
             distro: name, installed: false, settingsPath: "", relayPath: "",
-            relayReady: false, error: String(err),
+            relayReady: false, claudeCli: null, error: String(err),
           });
         }
       }
@@ -265,6 +313,7 @@ function wslSection(hookReady: boolean): { section: HTMLElement; refresh: () => 
         h("span", { class: "path", text: st.relayPath }),
         statusDot(st.relayReady),
       ),
+      mochiRow(`wsl:${st.distro}`, st.claudeCli, "Claude Code isn't installed in this distribution."),
     );
     if (st.installed && !st.relayReady) {
       block.append(h("div", {
@@ -382,10 +431,22 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  const engine = h("div", { class: "notice" });
+  const drawEngine = () => {
+    const api = settings.chatBackend === "api";
+    engine.className = api ? "hint" : "notice ok";
+    engine.textContent = api
+      ? "Mochi answers with this key. To use your Claude subscription instead, turn on \"Use for Mochi\" on a Claude Code above."
+      : `Mochi answers through ${engineLabel(settings.chatBackend)}, on your subscription — the key below isn't used. The model is Claude Code's own.`;
+  };
+  engineListeners.push(drawEngine);
+  drawEngine();
+
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
+    engine,
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
     h("div", { class: "row" }, h("label", { text: "Model" }), model),
@@ -565,7 +626,7 @@ async function main() {
     version = boot.version;
   }
   const status = (await Bridge.hooksStatus()) ?? {
-    installed: false, settingsPath: "", hookPath: "", hookReady: false,
+    installed: false, settingsPath: "", hookPath: "", hookReady: false, claudeCli: null,
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;

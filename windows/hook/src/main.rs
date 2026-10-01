@@ -45,6 +45,10 @@ mod unix;
 use unix::connect;
 
 fn main() {
+    // Coucou's own Claude Code runs (Mochi's chat) must never reach the island.
+    if std::env::var_os("COUCOU_INTERNAL").is_some_and(|v| !v.is_empty()) {
+        std::process::exit(0);
+    }
     let Some((payload, event)) = read_event() else { std::process::exit(0) };
 
     let waits_for_answer = event == "PermissionRequest";

@@ -46,6 +46,8 @@ pub struct HookStatus {
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
+    /// Claude Code on Windows, if installed — what "Use for Mochi" would run.
+    pub claude_cli: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -273,6 +275,7 @@ pub fn status() -> HookStatus {
         settings_path: settings_path().to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
+        claude_cli: crate::local_claude::windows_cli().map(|p| p.to_string_lossy().to_string()),
     }
 }
 
