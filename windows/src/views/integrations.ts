@@ -82,6 +82,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openN8n(),
       }),
     );
+  } else if (task.id === "integration_gitlab") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open GitLab",
+        onclick: () => void Bridge.openGitlab(),
+      }),
+    );
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -227,6 +236,60 @@ function githubCard(): HTMLElement {
       statRow(ICONS.stack, "#6B7079", "Repositories", String(repos)),
     ),
   );
+}
+
+// ── GitLab ────────────────────────────────────────────────────────────────────
+
+const PIPELINE_COLORS: Record<string, string> = {
+  success: "#22C55E",
+  failed: "#F4505E",
+  running: "#F5A524",
+  pending: "#F5A524",
+  created: "#F5A524",
+  preparing: "#F5A524",
+  waiting_for_resource: "#F5A524",
+  canceled: "#6B7079",
+  skipped: "#6B7079",
+  manual: "#6B7079",
+};
+
+function gitlabCard(): HTMLElement {
+  const d = get("integration_gitlab");
+  const reviews = Number(d.reviews ?? 0);
+  const username = String(d.username ?? "");
+  // The review count doubles as the link to the reviews list.
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: "Merge requests waiting for your review",
+      onclick: () =>
+        void Bridge.openGitlab(`/dashboard/merge_requests?reviewer_username=${encodeURIComponent(username)}`),
+    },
+    h("span", {
+      style: reviews > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
+      text: `${reviews}${d.reviewsCapped ? "+" : ""} to review`,
+    }),
+  );
+  const rows = h("div", { class: "int-rows" });
+  const pipelines = arr("integration_gitlab", "pipelines");
+  if (pipelines.length === 0) rows.append(h("div", { class: "int-empty", text: "No recent pipelines" }));
+  pipelines.slice(0, 3).forEach((p, i) => {
+    const accent = PIPELINE_COLORS[String(p.status)] ?? "#6B7079";
+    const row = listRow(accent, i === 0,
+      // The branch gives way first: the project is what you scan for.
+      h("span", { class: "int-name", style: "flex:0 0 auto;max-width:60%", text: String(p.project ?? "") }),
+      h("span", { class: "int-sub", style: "flex:0 1 auto", text: String(p.ref ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(p.updatedAt) }),
+    );
+    row.title = String(p.status ?? "");
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => {
+      if (typeof p.url === "string") void Bridge.openUrl(p.url);
+    });
+    rows.append(row);
+  });
+  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", "Pipelines", extra), rows);
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
@@ -398,6 +461,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_gitlab":
+      return info.loaded;
     default:
       return false;
   }
@@ -426,6 +491,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_gitlab":
+      return gitlabCard();
     default:
       return idleCard(task, hooks.openSettings);
   }
