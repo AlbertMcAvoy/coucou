@@ -610,15 +610,18 @@ async fn poll_calcom(app: AppHandle) {
 
 // ── GitLab ────────────────────────────────────────────────────────────────────
 // gitlab.com or a self-hosted instance (the URL is configurable), with a token
-// that has the `read_api` scope. Three sources, every minute:
+// that has the `read_api` scope. Four sources, every minute:
 // - the To-Do list, GitLab's own inbox for the user: review requests,
 //   assignments, mentions, a pipeline failing on their MR, an MR that can't be
 //   merged, a review submitted… Every new to-do is news;
 // - the merge requests the user authored: approved (and by whom), merged;
+// - every open MR the user is involved in — authored, assigned, to review: one
+//   updated since the last poll has its discussion read, and what someone else
+//   did there (a comment, commits, an approval, a status change) is news;
 // - the latest pipeline the user triggered in their three most active projects.
 // Everything new in one poll becomes one notification — one sound, one badge —
 // that lists all of it, so nothing landing in the same minute is lost. The card
-// keeps that news on top of the pending to-dos and the pipelines.
+// keeps that news on top of the pending to-dos and the MRs.
 
 pub const GITLAB_DEFAULT_URL: &str = "https://gitlab.com";
 
@@ -637,6 +640,8 @@ pub fn gitlab_base() -> Result<String, String> {
 /// Approvals are asked for this many of the user's open MRs, the most recently
 /// updated: one request each, every minute.
 const GITLAB_APPROVAL_CHECKS: usize = 5;
+/// The discussion is read for at most this many updated MRs a minute.
+const GITLAB_ACTIVITY_CHECKS: usize = 5;
 /// News stays on the card this long, and at most this many items.
 const GITLAB_NEWS_FOR_MS: i64 = 30 * 60 * 1000;
 const GITLAB_NEWS_KEEP: usize = 5;
@@ -651,7 +656,9 @@ struct GitlabMemory {
     pipeline_max: Option<i64>,
     /// The user's own MRs as last seen: id → (state, approvers).
     authored: Option<std::collections::HashMap<i64, (String, Vec<String>)>>,
-    /// Recent news, newest first: { label, url, success, at, todoId? }.
+    /// The open MRs the user is involved in, as last seen: id → updated_at.
+    involved: Option<std::collections::HashMap<i64, String>>,
+    /// Recent news, newest first: { label, url, success, at, todoId?, mrId? }.
     news: Vec<Value>,
 }
 
@@ -684,9 +691,63 @@ fn s(v: &Value, key: &str) -> String {
     v.get(key).and_then(Value::as_str).unwrap_or("").to_string()
 }
 
+/// The open MRs the user is involved in, once each, most recently updated
+/// first, with what the user is on each: author, assignee, reviewer.
+fn gitlab_involved(authored: &[Value], assigned: &[Value], reviewing: &[Value]) -> Vec<Value> {
+    let mut items: Vec<Value> = Vec::new();
+    let sources = [(authored, "Yours"), (assigned, "Assigned"), (reviewing, "Review")];
+    for (list, role) in sources {
+        for mr in list.iter().filter(|m| s(m, "state") == "opened") {
+            let Some(id) = mr.get("id").and_then(Value::as_i64) else { continue };
+            if let Some(item) = items.iter_mut().find(|i| i["id"].as_i64() == Some(id)) {
+                if let Some(roles) = item["roles"].as_array_mut() {
+                    roles.push(json!(role));
+                }
+                continue;
+            }
+            // "group/sub/project!12" → "project".
+            let reference = mr.get("references").map(|r| s(r, "full")).unwrap_or_default();
+            let path = reference.split('!').next().unwrap_or("");
+            items.push(json!({
+                "id": id,
+                "iid": mr.get("iid").and_then(Value::as_i64).unwrap_or(0),
+                "projectId": mr.get("project_id").and_then(Value::as_i64).unwrap_or(0),
+                "title": s(mr, "title"),
+                "url": s(mr, "web_url"),
+                "project": path.rsplit('/').next().unwrap_or(""),
+                "author": mr.get("author").map(|a| s(a, "name")).unwrap_or_default(),
+                "draft": mr.get("draft").and_then(Value::as_bool).unwrap_or(false),
+                "roles": [role],
+                "updatedAt": s(mr, "updated_at"),
+            }));
+        }
+    }
+    // ISO-8601 in UTC sorts as text.
+    items.sort_by(|a, b| b["updatedAt"].as_str().cmp(&a["updatedAt"].as_str()));
+    items
+}
+
+/// The involved MRs updated since the last poll: their discussion says what
+/// happened. An MR seen for the first time is not one — its to-do tells it —
+/// and nothing is before the first answer.
+fn gitlab_changed(memory: &GitlabMemory, involved: &[Value]) -> Vec<Value> {
+    let Some(known) = &memory.involved else { return Vec::new() };
+    involved
+        .iter()
+        .filter(|mr| {
+            let id = mr["id"].as_i64().unwrap_or(0);
+            known.get(&id).is_some_and(|seen| mr["updatedAt"].as_str().unwrap_or("") > seen.as_str())
+        })
+        .take(GITLAB_ACTIVITY_CHECKS)
+        .cloned()
+        .collect()
+}
+
 /// What's new since the last poll, against what `memory` remembers, which it
-/// then updates. `None` for a source that failed this time. Returns the news
-/// (newest sources first) and the pending to-dos as the card shows them.
+/// then updates. `None` for a source that failed this time. `activity` holds the
+/// latest notes of the MRs `gitlab_changed` picked, newest first. Returns the
+/// news (newest sources first) and the pending to-dos as the card shows them.
+#[allow(clippy::too_many_arguments)]
 fn gitlab_fresh(
     memory: &mut GitlabMemory,
     projects_answer: &Option<Vec<Value>>,
@@ -694,12 +755,15 @@ fn gitlab_fresh(
     todos_answer: &Option<Vec<Value>>,
     authored_answer: &Option<Vec<Value>>,
     approvers: &std::collections::HashMap<i64, Vec<String>>,
+    involved_answer: &Option<Vec<Value>>,
+    activity: &std::collections::HashMap<i64, Vec<Value>>,
+    me: &str,
 ) -> (Vec<Value>, Vec<Value>) {
     let todos = todos_answer.clone().unwrap_or_default();
     let authored = authored_answer.clone().unwrap_or_default();
     let mut fresh: Vec<Value> = Vec::new();
-    let news = |label: String, url: String, success: bool, todo: Option<i64>| {
-        json!({ "label": label, "url": url, "success": success, "at": now_ms(), "todoId": todo })
+    let news = |label: String, url: String, success: bool, todo: Option<i64>, mr: Option<i64>| {
+        json!({ "label": label, "url": url, "success": success, "at": now_ms(), "todoId": todo, "mrId": mr })
     };
 
     // Pipelines: finished ones above every id seen before. Canceled is no news.
@@ -720,7 +784,7 @@ fn gitlab_fresh(
             }
             let verb = if ok { "Pipeline passed" } else { "Pipeline failed" };
             let label = format!("{verb}: {project} · {}", p["ref"].as_str().unwrap_or(""));
-            fresh.push(news(label, p["url"].as_str().unwrap_or("").to_string(), ok, None));
+            fresh.push(news(label, p["url"].as_str().unwrap_or("").to_string(), ok, None, None));
         }
     }
     if projects_answer.is_some() {
@@ -744,9 +808,10 @@ fn gitlab_fresh(
         let title = Some(s(&target, "title")).filter(|x| !x.is_empty()).unwrap_or_else(|| s(t, "body"));
         let project = t.get("project").map(|p| s(p, "name")).unwrap_or_default();
         let url = s(t, "target_url");
+        let mr = (s(t, "target_type") == "MergeRequest").then(|| target.get("id").and_then(Value::as_i64)).flatten();
         let is_new = memory.todo_max.is_some_and(|seen| id > seen);
         if is_new && !(action == "build_failed" && failed_projects.contains(&project)) {
-            fresh.push(news(format!("{kind}: {title}"), url.clone(), ok, Some(id)));
+            fresh.push(news(format!("{kind}: {title}"), url.clone(), ok, Some(id), mr));
         }
         todo_items.push(json!({
             "id": id,
@@ -757,6 +822,7 @@ fn gitlab_fresh(
             "author": t.get("author").map(|a| s(a, "name")).unwrap_or_default(),
             "url": url,
             "createdAt": s(t, "created_at"),
+            "mrId": mr,
         }));
     }
     if todos_answer.is_some() {
@@ -782,14 +848,58 @@ fn gitlab_fresh(
                 .unwrap_or_default();
             if let (true, Some((was, had))) = (primed, &before) {
                 if state == "merged" && was != "merged" {
-                    fresh.push(news(format!("Merged: {title}"), url.clone(), true, None));
+                    fresh.push(news(format!("Merged: {title}"), url.clone(), true, None, Some(id)));
                 }
                 for name in now_approvers.iter().filter(|n| !had.contains(n)) {
-                    fresh.push(news(format!("Approved by {name}: {title}"), url.clone(), true, None));
+                    fresh.push(news(format!("Approved by {name}: {title}"), url.clone(), true, None, Some(id)));
                 }
             }
             known.insert(id, (state, now_approvers));
         }
+    }
+
+    // The MRs the user is involved in: what someone else did on an updated one
+    // since it was last seen, as its discussion tells — comments, but also the
+    // system notes for commits, approvals, status changes. One piece of news per
+    // MR, and none for an MR that is already news above.
+    if let Some(involved) = involved_answer {
+        let told: std::collections::HashSet<i64> = fresh.iter().filter_map(|n| n["mrId"].as_i64()).collect();
+        let known = memory.involved.clone().unwrap_or_default();
+        for mr in involved {
+            let id = mr["id"].as_i64().unwrap_or(0);
+            let (Some(notes), Some(since)) = (activity.get(&id), known.get(&id)) else { continue };
+            if told.contains(&id) {
+                continue;
+            }
+            let others: Vec<&Value> = notes
+                .iter()
+                .filter(|n| s(n, "created_at").as_str() > since.as_str())
+                .filter(|n| n.get("author").map(|a| s(a, "username")).unwrap_or_default() != me)
+                .collect();
+            let Some(latest) = others.first() else { continue };
+            let name = latest.get("author").map(|a| s(a, "name")).unwrap_or_default();
+            let commented = others.iter().any(|n| !n["system"].as_bool().unwrap_or(false));
+            let verb = if commented { "Comment by" } else { "Updated by" };
+            let title = mr["title"].as_str().unwrap_or("");
+            let url = mr["url"].as_str().unwrap_or("").to_string();
+            fresh.push(news(format!("{verb} {name}: {title}"), url, true, None, Some(id)));
+        }
+        // An updated MR whose discussion wasn't read this time (more than
+        // GITLAB_ACTIVITY_CHECKS changed, or the request failed) keeps its old
+        // mark, so the next poll reads it rather than forgetting it.
+        memory.involved = Some(
+            involved
+                .iter()
+                .filter_map(|mr| {
+                    let id = mr["id"].as_i64()?;
+                    let seen = match known.get(&id) {
+                        Some(old) if !activity.contains_key(&id) => old.clone(),
+                        _ => mr["updatedAt"].as_str()?.to_string(),
+                    };
+                    Some((id, seen))
+                })
+                .collect(),
+        );
     }
 
     (fresh, todo_items)
@@ -866,6 +976,28 @@ async fn poll_gitlab(app: AppHandle) {
         approvers.insert(id, names);
     }
 
+    // ── Every open MR the user is involved in, and the discussion of the updated ones ──
+    let mrs = |scope: String| list(format!("merge_requests?{scope}&state=opened&order_by=updated_at&sort=desc&per_page=20"));
+    let assigned_answer = mrs("scope=assigned_to_me".into()).await;
+    let reviewing_answer = mrs(format!("scope=all&reviewer_username={username}")).await;
+    // All three or nothing: a source missing would pass its MRs off as new later.
+    let involved_answer = match (&authored_answer, &assigned_answer, &reviewing_answer) {
+        (Some(a), Some(b), Some(c)) => Some(gitlab_involved(a, b, c)),
+        _ => None,
+    };
+    let involved = involved_answer.clone().unwrap_or_default();
+    let changed = gitlab_changed(&GITLAB.lock().unwrap(), &involved);
+    let mut activity: std::collections::HashMap<i64, Vec<Value>> = Default::default();
+    for mr in &changed {
+        let (Some(id), Some(project), Some(iid)) = (mr["id"].as_i64(), mr["projectId"].as_i64(), mr["iid"].as_i64()) else {
+            continue;
+        };
+        let path = format!("projects/{project}/merge_requests/{iid}/notes?sort=desc&order_by=created_at&per_page=20");
+        if let Some(notes) = list(path).await {
+            activity.insert(id, notes);
+        }
+    }
+
     // ── The latest pipeline the user triggered in each of their busiest projects ──
     let projects_answer =
         list("projects?membership=true&archived=false&simple=true&order_by=last_activity_at&sort=desc&per_page=3".into()).await;
@@ -895,8 +1027,10 @@ async fn poll_gitlab(app: AppHandle) {
     pipelines.sort_by(|a, b| b["updatedAt"].as_str().cmp(&a["updatedAt"].as_str()));
 
     let mut memory = GITLAB.lock().unwrap();
-    let (fresh, todo_items) =
-        gitlab_fresh(&mut memory, &projects_answer, &pipelines, &todos_answer, &authored_answer, &approvers);
+    let (fresh, todo_items) = gitlab_fresh(
+        &mut memory, &projects_answer, &pipelines, &todos_answer, &authored_answer, &approvers,
+        &involved_answer, &activity, &username,
+    );
 
     // News for the card: the fresh items first, then what is still recent.
     let cutoff = now_ms() - GITLAB_NEWS_FOR_MS;
@@ -924,7 +1058,7 @@ async fn poll_gitlab(app: AppHandle) {
             "todoCount": todos.len(),
             "todosCapped": todos.len() >= 20,
             "todos": todo_items,
-            "pipelines": pipelines,
+            "mergeRequests": involved,
             "news": kept,
             // This poll's news alone: what the notification card shows.
             "fresh": fresh,
@@ -1106,6 +1240,74 @@ mod gitlab_tests {
         news.iter().map(|n| n["label"].as_str().unwrap().to_string()).collect()
     }
 
+    /// The sources before the involved MRs, which these tests leave out.
+    fn without_involved(
+        m: &mut GitlabMemory,
+        projects: &Option<Vec<Value>>,
+        pipelines: &[Value],
+        todos: &Option<Vec<Value>>,
+        authored: &Option<Vec<Value>>,
+        approvers: &std::collections::HashMap<i64, Vec<String>>,
+    ) -> (Vec<Value>, Vec<Value>) {
+        gitlab_fresh(m, projects, pipelines, todos, authored, approvers, &None, &Default::default(), "me")
+    }
+
+    fn open_mr(id: i64, title: &str, updated: &str) -> Value {
+        json!({ "id": id, "iid": id, "project_id": 1, "state": "opened", "title": title, "web_url": format!("https://gl/mr/{id}"),
+                "updated_at": updated, "references": { "full": "team/web!3" }, "author": { "name": "Ada" } })
+    }
+
+    fn note(by: &str, at: &str, system: bool) -> Value {
+        json!({ "author": { "username": by, "name": by.to_uppercase() }, "created_at": at, "system": system })
+    }
+
+    #[test]
+    fn involved_mrs_are_listed_once_with_every_role() {
+        let a = open_mr(1, "Mine", "2026-10-01T10:00:00Z");
+        let b = open_mr(2, "To review", "2026-10-01T11:00:00Z");
+        let items = gitlab_involved(&[a.clone()], &[a], &[b]);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["title"], "To review", "most recently updated first");
+        assert_eq!(items[1]["roles"], json!(["Yours", "Assigned"]));
+        assert_eq!(items[1]["project"], "web");
+    }
+
+    #[test]
+    fn an_updated_mr_tells_what_someone_else_did_on_it() {
+        let mut m = GitlabMemory::default();
+        let none = std::collections::HashMap::new();
+        let run = |m: &mut GitlabMemory, involved: Vec<Value>, activity: &std::collections::HashMap<i64, Vec<Value>>| {
+            gitlab_fresh(m, &None, &[], &None, &None, &none, &Some(involved), activity, "me").0
+        };
+        let at = |t: &str| format!("2026-10-01T{t}:00Z");
+
+        let first = gitlab_involved(&[], &[], &[open_mr(1, "Login", &at("10:00")), open_mr(2, "Cache", &at("10:00"))]);
+        assert!(gitlab_changed(&m, &first).is_empty(), "nothing before the first answer");
+        assert!(run(&mut m, first, &Default::default()).is_empty());
+
+        let later = gitlab_involved(&[], &[], &[
+            open_mr(1, "Login", &at("10:05")), open_mr(2, "Cache", &at("10:06")), open_mr(3, "New one", &at("10:07")),
+        ]);
+        let changed: Vec<i64> = gitlab_changed(&m, &later).iter().filter_map(|mr| mr["id"].as_i64()).collect();
+        assert_eq!(changed, vec![2, 1], "only the updated ones; a newcomer is its to-do's business");
+
+        let activity = [
+            (1, vec![note("ada", &at("10:05"), true), note("me", &at("10:04"), false), note("bob", &at("09:00"), false)]),
+            (2, vec![note("me", &at("10:06"), false)]),
+        ]
+        .into();
+        // MR 1: Ada's commits (a system note) count; the user's comment and Bob's
+        // old one don't. MR 2: only the user did something.
+        assert_eq!(labels(&run(&mut m, later, &activity)), vec!["Updated by ADA: Login"]);
+
+        let again = gitlab_involved(&[], &[], &[open_mr(2, "Cache", &at("10:20")), open_mr(1, "Login", &at("10:30"))]);
+        // MR 1's discussion is not read this time: it stays to be read next time.
+        let activity = [(2, vec![note("bob", &at("10:20"), false), note("ada", &at("10:19"), true)])].into();
+        assert_eq!(labels(&run(&mut m, again.clone(), &activity)), vec!["Comment by BOB: Cache"]);
+        let changed: Vec<i64> = gitlab_changed(&m, &again).iter().filter_map(|mr| mr["id"].as_i64()).collect();
+        assert_eq!(changed, vec![1]);
+    }
+
     #[test]
     fn the_first_answer_is_silent_and_the_next_one_tells_what_is_new() {
         let mut m = GitlabMemory::default();
@@ -1114,11 +1316,11 @@ mod gitlab_tests {
         let projects = Some(vec![]);
         let pipe = |id: i64, status: &str| vec![json!({ "id": id, "status": status, "project": "api", "ref": "main", "url": "p" })];
 
-        let (fresh, _) = gitlab_fresh(&mut m, &projects, &pipe(10, "success"), &Some(vec![todo(1, "assigned", "api")]), &mr("opened"), &none);
+        let (fresh, _) = without_involved(&mut m, &projects, &pipe(10, "success"), &Some(vec![todo(1, "assigned", "api")]), &mr("opened"), &none);
         assert!(fresh.is_empty(), "launch fills the memory without a word");
 
         let approved: std::collections::HashMap<i64, Vec<String>> = [(7, vec!["Ada".to_string()])].into();
-        let (fresh, todos) = gitlab_fresh(
+        let (fresh, todos) = without_involved(
             &mut m, &projects, &pipe(11, "failed"),
             &Some(vec![todo(1, "assigned", "api"), todo(2, "review_requested", "web"), todo(3, "build_failed", "api")]),
             &mr("opened"), &approved,
@@ -1134,7 +1336,7 @@ mod gitlab_tests {
             ]
         );
 
-        let (fresh, _) = gitlab_fresh(&mut m, &projects, &pipe(11, "failed"), &Some(vec![]), &mr("merged"), &none);
+        let (fresh, _) = without_involved(&mut m, &projects, &pipe(11, "failed"), &Some(vec![]), &mr("merged"), &none);
         assert_eq!(labels(&fresh), vec!["Merged: Login fix".to_string()], "and the approver is remembered");
     }
 
@@ -1143,12 +1345,12 @@ mod gitlab_tests {
         let mut m = GitlabMemory::default();
         let none = Default::default();
         let backlog = Some((1..=5).map(|i| todo(i, "mentioned", "x")).collect::<Vec<_>>());
-        let (fresh, _) = gitlab_fresh(&mut m, &None, &[], &None, &None, &none);
+        let (fresh, _) = without_involved(&mut m, &None, &[], &None, &None, &none);
         assert!(fresh.is_empty());
-        let (fresh, _) = gitlab_fresh(&mut m, &None, &[], &backlog, &None, &none);
+        let (fresh, _) = without_involved(&mut m, &None, &[], &backlog, &None, &none);
         assert!(fresh.is_empty(), "the first answer of a source primes it, whenever it comes");
         let more = Some((1..=6).map(|i| todo(i, "mentioned", "x")).collect::<Vec<_>>());
-        let (fresh, _) = gitlab_fresh(&mut m, &None, &[], &more, &None, &none);
+        let (fresh, _) = without_involved(&mut m, &None, &[], &more, &None, &none);
         assert_eq!(labels(&fresh), vec!["Mentioned: MR 6".to_string()]);
     }
 }

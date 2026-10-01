@@ -19,6 +19,7 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { usesSessions } from "../views/sessions";
+import { wantsTallOverview } from "../views/integrations";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -65,6 +66,7 @@ export class Island {
   private running = false;
   private lastFrame = 0;
   private dirty = true;
+  private wasTall = false;
   private canvasPx = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
@@ -458,10 +460,15 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  /** The overview grows while its card lists more than three rows. */
+  private get tallOverview(): boolean {
+    return State.view === "overview" && wantsTallOverview(State.focusTask);
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
     // An open session menu wants the room: the chat grows to its tallest.
     const chatCount = State.sessionsMenuOpen ? Infinity : State.chatHistory.length;
-    const { w, h } = islandSize(State.mode, State.view, chatCount);
+    const { w, h } = islandSize(State.mode, State.view, chatCount, this.tallOverview);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -700,6 +707,13 @@ export class Island {
 
     if (this.dirty) {
       this.dirty = false;
+      // Focusing another pill, or the integration's first answer, changes the
+      // height without changing the view.
+      const tall = this.tallOverview;
+      if (tall !== this.wasTall) {
+        this.wasTall = tall;
+        if (State.mode === "expanded") this.animateGeometry(!tall);
+      }
       this.syncDom();
     }
 
