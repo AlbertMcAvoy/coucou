@@ -117,6 +117,8 @@ export interface Settings {
   autostart: boolean;
   /** Where along the top edge the island rests: 0 left, 0.5 centre, 1 right. */
   notchPosition: number;
+  /** The compact island stays on screen instead of tucking away after a minute. */
+  keepVisible: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
@@ -187,6 +189,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   notchPosition: 0.5,
+  keepVisible: true,
   hooksInstalled: false,
   model: "claude-opus-5",
   showPlanInNotch: false,

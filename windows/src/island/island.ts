@@ -990,6 +990,8 @@ export class Island {
     const wasIn = this.wasInIsland;
     this.wasInIsland = inIsland;
     if (inIsland && !wasIn) {
+      // A resting island has stopped its loop; the hover is what restarts it.
+      this.ensureRunning();
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
     }
@@ -1147,13 +1149,22 @@ export class Island {
     // looping animation — breathing, ratelimit sweat, sleeping z's, the search
     // sweep — so a hidden island went on burning frames in exactly the states it
     // spends most of its life in. Geometry still has to finish retracting.
+    //
+    // Resting: compact, nobody hovering, nothing going on. Mochi then holds
+    // still — no breathing, no z's — and the loop stops, so an island kept on
+    // screen (Settings → Keep on screen) costs nothing. A hover, a session at
+    // work or any event wakes it; an emote or easing under way still finishes.
+    const resting =
+      State.mode === "compact" && !this.wasInIsland &&
+      (State.effectiveState === "idle" || State.effectiveState === "sleeping");
+    const mochiBusy = resting ? this.engine.transient : this.engine.busy;
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+        greetingActive || mochiBusy || UploadSeq.isActive || viewAnimating;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -1403,6 +1414,8 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // Not while paused: Pause hides the island on purpose.
+    if (!State.paused) this.fsm.setKeepVisible(State.settings.keepVisible);
     State.notify();
     // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
     this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);

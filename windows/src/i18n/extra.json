@@ -8964,6 +8964,36 @@
       "tr": "Küçült",
       "ko": "줄이기",
       "ja": "縮小"
+    },
+    "Keep on screen": {
+      "zh-Hans": "始终显示",
+      "hi": "स्क्रीन पर रखें",
+      "es": "Mantener en pantalla",
+      "ar": "إبقاؤها على الشاشة",
+      "fr": "Garder à l'écran",
+      "bn": "স্ক্রিনে রাখুন",
+      "pt-BR": "Manter na tela",
+      "ru": "Держать на экране",
+      "id": "Tetap di layar",
+      "de": "Auf dem Bildschirm lassen",
+      "tr": "Ekranda tut",
+      "ko": "화면에 계속 표시",
+      "ja": "画面に表示したままにする"
+    },
+    "otherwise the island tucks away after a minute": {
+      "zh-Hans": "否则岛会在一分钟后收起",
+      "hi": "वरना आइलैंड एक मिनट बाद छिप जाता है",
+      "es": "si no, la isla se esconde al cabo de un minuto",
+      "ar": "وإلا تختفي الجزيرة بعد دقيقة",
+      "fr": "sinon l'île se range au bout d'une minute",
+      "bn": "নইলে এক মিনিট পরে আইল্যান্ড লুকিয়ে যায়",
+      "pt-BR": "senão a ilha se recolhe depois de um minuto",
+      "ru": "иначе остров прячется через минуту",
+      "id": "jika tidak, pulau bersembunyi setelah satu menit",
+      "de": "sonst verschwindet die Insel nach einer Minute",
+      "tr": "yoksa ada bir dakika sonra gizlenir",
+      "ko": "그렇지 않으면 1분 후 아일랜드가 숨겨져요",
+      "ja": "オフにすると 1 分後にアイランドが隠れます"
     }
   }
 }
