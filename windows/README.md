@@ -397,6 +397,9 @@ own window.
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
+- GitLab is Windows-only: your latest pipelines and the merge requests waiting
+  for your review, on gitlab.com or your own instance (Settings… → Integrations,
+  token with the `read_api` scope).
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

@@ -1548,6 +1548,13 @@ input[type="range"]::-webkit-slider-thumb {
   margin-left: 2px;
 }
 
+.int-review {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .int-total span {
   font: 500 11px var(--font);
   color: #c5c8cd;
