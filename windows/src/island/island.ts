@@ -18,6 +18,7 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { usesSessions } from "../views/sessions";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -394,6 +395,8 @@ export class Island {
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
+    // A dropped file starts a new session (in the inbox, where the file lands).
+    State.activeSession = null;
     void Bridge.chatReset();
 
     UploadSeq.performDrop(State.uploadDuration);
@@ -455,7 +458,9 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    // An open session menu wants the room: the chat grows to its tallest.
+    const chatCount = State.sessionsMenuOpen ? Infinity : State.chatHistory.length;
+    const { w, h } = islandSize(State.mode, State.view, chatCount);
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
@@ -749,7 +754,9 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(
+      State.mode, State.view, this.height.value, State.uploadProgress, usesSessions(),
+    );
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;

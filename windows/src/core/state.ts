@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { ActiveSession, SessionInfo } from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -143,6 +144,11 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** Mochi's session menu (local Claude Code only). */
+  sessions: SessionInfo[] = [];
+  activeSession: ActiveSession | null = null;
+  /** The session menu is open: the Ask view takes its full height for it. */
+  sessionsMenuOpen = false;
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
