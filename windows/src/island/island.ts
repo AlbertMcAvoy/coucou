@@ -193,6 +193,7 @@ export class Island {
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        else if (task.id === "integration_gitlab") void Bridge.openGitlab();
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
