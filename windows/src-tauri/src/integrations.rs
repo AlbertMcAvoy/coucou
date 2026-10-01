@@ -1160,6 +1160,8 @@ async fn poll_gitlab(app: AppHandle) {
             "todos": todo_items,
             "pipelines": pipelines,
             "news": kept,
+            // This poll's news alone: what the notification card shows.
+            "fresh": fresh,
         }),
         error: None,
         event,
