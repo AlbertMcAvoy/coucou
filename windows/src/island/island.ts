@@ -682,7 +682,8 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    const offsetX = this.islandOffsetX(w);
+    this.islandEl.style.transform = `translateX(${offsetX}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -690,7 +691,7 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = { x: offsetX, y: 0, w, h: hh };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -702,7 +703,84 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    return { x: this.islandOffsetX(w), y: 0, w, h: hh };
+  }
+
+  /**
+   * Where the island sits inside its window: `(window − island) × position`.
+   * Rust slides the window itself by `(screen − window) × position`, so the
+   * island ends up at `(screen − island) × position` — never off the display,
+   * and a bar resting at an edge opens inward. At 0.5 it is the old centring.
+   * Always measured against the full panel width, so the island doesn't lurch
+   * when the window shrinks to the wake strip. (From #47.)
+   */
+  private islandOffsetX(w: number): number {
+    const p = State.settings.notchPosition;
+    const position = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : 0.5;
+    return (PANEL_W - w) * position;
+  }
+
+  // ── Dragging the island (from #47, extended to the open island) ─────────────
+
+  /**
+   * The open island is grabbed by its top band, the header with the tabs —
+   * like a title bar — and only where that band has no control of its own.
+   */
+  private static readonly KEEPS_ITS_PRESS = "button, input, textarea, select, a, label, [contenteditable]";
+  /** Height of that band: the 8 px inset plus the 34 px header (layout.ts). */
+  private static readonly GRAB_BAND = 42;
+
+  private pressGrabsTheIsland(e: MouseEvent): boolean {
+    const y = e.clientY - this.islandRect().y;
+    if (y < 0 || y > Island.GRAB_BAND) return false;
+    return !(e.target instanceof Element && e.target.closest(Island.KEEPS_ITS_PRESS));
+  }
+
+  /**
+   * Grabs the island and follows the pointer along the top edge; it stays where
+   * it is let go. Works on the resting bar and on the open island alike. A press
+   * that moves less than a few pixels is a click and runs `onClick` instead —
+   * for the bar, opening it on release, as opening on press would resize the
+   * window out from under a drag.
+   */
+  private beginDrag(e: MouseEvent, onClick: () => void) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    // Both in logical pixels: screenX is CSS pixels, and so is window.screen.
+    const barW = islandSize(State.mode, State.view).w;
+    const span = Math.max(1, window.screen.width - barW);
+    const startX = e.screenX;
+    const start = State.settings.notchPosition;
+    let moved = false;
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.screenX - startX;
+      if (!moved && Math.abs(dx) < 4) return;
+      moved = true;
+      const next = Math.max(0, Math.min(1, start + dx / span));
+      State.settings.notchPosition = next;
+      void Bridge.setNotchPosition(next, false);
+      this.ensureRunning();
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (moved) {
+        void Bridge.setNotchPosition(State.settings.notchPosition, true);
+        // The release still sends a click to whatever is under the pointer — a
+        // pill, a card. A drag is not a click: swallow that one.
+        const swallow = (c: MouseEvent) => {
+          c.stopPropagation();
+          c.preventDefault();
+        };
+        window.addEventListener("click", swallow, { capture: true, once: true });
+        window.setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
+      } else {
+        onClick();
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -753,13 +831,20 @@ export class Island {
         return;
       }
       if (State.mode !== "expanded") {
-        this.fsm.click();
+        // Mochi himself is dragged out to the desktop: a press on him opens the
+        // island as before. Anywhere else the resting bar drags along the top
+        // edge, and a press that doesn't move opens it on release.
+        if (this.botPress) this.fsm.click();
+        else this.beginDrag(e, () => this.fsm.click());
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
         this.engine.slap();
+        return;
       }
+      // The open island drags by its top band, away from the tabs and buttons.
+      if (this.pressGrabsTheIsland(e)) this.beginDrag(e, () => {});
     });
 
     // No browser menu over Mochi: his right-click is the wardrobe. Everywhere

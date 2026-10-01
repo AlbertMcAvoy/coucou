@@ -111,6 +111,8 @@ export interface Settings {
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
   autostart: boolean;
+  /** Where along the top edge the island rests: 0 left, 0.5 centre, 1 right. */
+  notchPosition: number;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
@@ -165,6 +167,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
   autostart: false,
+  notchPosition: 0.5,
   hooksInstalled: false,
   model: "claude-opus-5",
   showPlanInNotch: false,

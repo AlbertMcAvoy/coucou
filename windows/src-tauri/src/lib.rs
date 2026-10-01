@@ -86,7 +86,8 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     let (screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
-        let screen_changed = current.screen != settings.screen;
+        let screen_changed = current.screen != settings.screen
+            || current.notch_position != settings.notch_position;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
@@ -108,7 +109,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-        island::apply_geometry(&app, &settings.screen, collapsed);
+        island::apply_geometry(&app, &settings.screen, collapsed, settings.notch_position);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
@@ -144,9 +145,12 @@ fn language_changed(app: &AppHandle) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let (pref, position) = {
+        let s = shared.settings.lock().unwrap();
+        (s.screen.clone(), s.notch_position)
+    };
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
+    island::apply_geometry(&app, &pref, collapsed, position);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
@@ -174,9 +178,35 @@ fn focus_window(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let (pref, position) = {
+        let s = shared.settings.lock().unwrap();
+        (s.screen.clone(), s.notch_position)
+    };
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
-    island::apply_geometry(&app, &pref, collapsed);
+    island::apply_geometry(&app, &pref, collapsed, position);
+}
+
+/// Moves the island along the top edge — live while the bar is dragged, then
+/// once more with `persist` when it is let go. Only that last call writes the
+/// settings file, and tells the settings window, whose copy would otherwise
+/// put the old position back the next time it saves.
+#[tauri::command]
+fn set_notch_position(app: AppHandle, shared: State<Shared>, position: f64, persist: bool) {
+    let position = if position.is_finite() { position.clamp(0.0, 1.0) } else { 0.5 };
+    island::DRAGGING.store(!persist, Ordering::Relaxed);
+    let (pref, saved) = {
+        let mut current = shared.settings.lock().unwrap();
+        current.notch_position = position;
+        (current.screen.clone(), current.clone())
+    };
+    let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+    island::apply_geometry(&app, &pref, collapsed, position);
+    if persist {
+        if let Err(err) = settings::save(&saved) {
+            log::line(format!("could not save settings: {err}"));
+        }
+        let _ = app.emit("settings-changed", saved);
+    }
 }
 
 /// The displays the island can be pinned to, for Settings.
@@ -701,6 +731,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            set_notch_position,
             list_monitors,
             open_url,
             open_in_vscode,
@@ -788,7 +819,8 @@ pub fn run() {
                 platform::make_non_activating(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
-                island::apply_geometry(&handle, &loaded.screen, false);
+                // Back where it was left (Settings → General → Island position).
+                island::apply_geometry(&handle, &loaded.screen, false, loaded.notch_position);
                 let _ = win.show();
             }
             gate.collapsed.store(false, Ordering::Relaxed);

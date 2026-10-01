@@ -4505,6 +4505,83 @@
    "pt-BR": "Salve primeiro o token",
    "ru": "Сначала сохраните токен",
    "id": "Simpan token dulu"
+  },
+  "Island position": {
+   "zh-Hans": "岛的位置",
+   "hi": "आइलैंड की स्थिति",
+   "es": "Posición de la isla",
+   "ar": "موضع الجزيرة",
+   "fr": "Position de l'île",
+   "bn": "আইল্যান্ডের অবস্থান",
+   "pt-BR": "Posição da ilha",
+   "ru": "Положение острова",
+   "id": "Posisi pulau"
+  },
+  "Left": {
+   "zh-Hans": "左",
+   "hi": "बाएँ",
+   "es": "Izquierda",
+   "ar": "يسار",
+   "fr": "Gauche",
+   "bn": "বাঁয়ে",
+   "pt-BR": "Esquerda",
+   "ru": "Слева",
+   "id": "Kiri"
+  },
+  "Centre": {
+   "zh-Hans": "居中",
+   "hi": "बीच में",
+   "es": "Centro",
+   "ar": "الوسط",
+   "fr": "Centre",
+   "bn": "মাঝখানে",
+   "pt-BR": "Centro",
+   "ru": "По центру",
+   "id": "Tengah"
+  },
+  "Right": {
+   "zh-Hans": "右",
+   "hi": "दाएँ",
+   "es": "Derecha",
+   "ar": "يمين",
+   "fr": "Droite",
+   "bn": "ডানে",
+   "pt-BR": "Direita",
+   "ru": "Справа",
+   "id": "Kanan"
+  },
+  "Where you left it": {
+   "zh-Hans": "你放下的位置",
+   "hi": "जहाँ आपने छोड़ा था",
+   "es": "Donde la dejaste",
+   "ar": "حيث تركتها",
+   "fr": "Là où vous l'avez laissée",
+   "bn": "যেখানে রেখেছিলেন",
+   "pt-BR": "Onde você deixou",
+   "ru": "Там, где вы его оставили",
+   "id": "Di tempat Anda meninggalkannya"
+  },
+  "or drag the bar along the top edge": {
+   "zh-Hans": "或沿屏幕顶边拖动横条",
+   "hi": "या बार को ऊपरी किनारे पर खींचें",
+   "es": "o arrastra la barra por el borde superior",
+   "ar": "أو اسحب الشريط على طول الحافة العلوية",
+   "fr": "ou faites glisser la barre le long du bord du haut",
+   "bn": "অথবা বারটি ওপরের কিনারা ধরে টেনে নিন",
+   "pt-BR": "ou arraste a barra pela borda superior",
+   "ru": "или перетащите полоску вдоль верхнего края",
+   "id": "atau seret bilahnya di sepanjang tepi atas"
+  },
+  "Reduce": {
+   "zh-Hans": "收起",
+   "hi": "छोटा करें",
+   "es": "Reducir",
+   "ar": "تصغير",
+   "fr": "Réduire",
+   "bn": "ছোট করুন",
+   "pt-BR": "Reduzir",
+   "ru": "Свернуть",
+   "id": "Perkecil"
   }
  }
 }

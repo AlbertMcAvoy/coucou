@@ -54,6 +54,10 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
 
+  /** Moves the island along the top edge; `persist` on release writes it down. */
+  setNotchPosition: (position: number, persist: boolean) =>
+    call<void>("set_notch_position", { position, persist }),
+
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 
