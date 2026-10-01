@@ -34,6 +34,8 @@ pub struct Settings {
     /// presets in the settings still hit the edges exactly.
     #[serde(default = "default_notch_position")]
     pub notch_position: f64,
+    /// The compact island stays on screen instead of tucking away after a minute.
+    pub keep_visible: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
@@ -153,6 +155,7 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             notch_position: default_notch_position(),
+            keep_visible: true,
             hooks_installed: false,
             model: default_model(),
             show_plan_in_notch: false,
@@ -443,6 +446,7 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "notchPosition": 0.25,
+  "keepVisible": false,
   "hooksInstalled": true,
   "model": "some-model",
   "showPlanInNotch": true,
@@ -953,6 +957,7 @@ mod tests {
                 "screen",
                 "autostart",
                 "notchPosition",
+                "keepVisible",
                 "hooksInstalled",
                 "model",
                 "showPlanInNotch",
