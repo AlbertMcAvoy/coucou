@@ -75,11 +75,71 @@ impl LocalSession {
 
 /// Claude Code on this machine: the native installer's `~/.local/bin/claude`
 /// (`claude.exe` on Windows), else whatever `claude` PATH finds (an npm shim,
-/// say).
+/// say), else the copy the Claude desktop app keeps for its Code tab.
 pub fn windows_cli() -> Option<PathBuf> {
     let exe = if cfg!(windows) { "claude.exe" } else { "claude" };
     let native = Some(platform::home_dir().join(".local").join("bin").join(exe)).filter(|p| p.is_file());
-    native.or_else(|| platform::find_on_path("claude"))
+    native
+        .or_else(|| platform::find_on_path("claude"))
+        .or_else(desktop_app_cli)
+}
+
+/// The Claude desktop app ships Claude Code in `…\Claude\claude-code\<version>\`,
+/// under the Store package's LocalCache or, for the classic installer, under
+/// %APPDATA%. The folder changes with every update, so the newest one wins.
+/// That copy is signed in through the app, not on its own: see `logged_in`.
+/// There is no such app, and none of these variables, outside Windows.
+fn desktop_app_cli() -> Option<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        roots.push(PathBuf::from(appdata).join(r"Claude\claude-code"));
+    }
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        if let Ok(packages) = std::fs::read_dir(PathBuf::from(local).join("Packages")) {
+            for pkg in packages.flatten() {
+                if pkg.file_name().to_string_lossy().starts_with("Claude_") {
+                    roots.push(pkg.path().join(r"LocalCache\Roaming\Claude\claude-code"));
+                }
+            }
+        }
+    }
+    roots
+        .iter()
+        .filter_map(|root| std::fs::read_dir(root).ok())
+        .flatten()
+        .flatten()
+        .map(|v| (version_key(&v.file_name().to_string_lossy()), v.path().join("claude.exe")))
+        .filter(|(_, exe)| exe.is_file())
+        .max_by(|a, b| a.0.cmp(&b.0))
+        .map(|(_, exe)| exe)
+}
+
+/// "2.1.284" → [2, 1, 284], so 2.1.300 sorts after 2.1.29.
+fn version_key(name: &str) -> Vec<u64> {
+    name.split('.').map(|p| p.parse().unwrap_or(0)).collect()
+}
+
+/// Whether that Claude Code is signed in, from its own `claude auth status` —
+/// which costs nothing. `None` when it can't be asked. A copy that comes with
+/// the Claude desktop app answers "no" until it is signed in on its own.
+pub fn logged_in(backend: &Backend) -> Option<bool> {
+    let cmd = match backend {
+        Backend::Api => return None,
+        Backend::Windows => {
+            let mut c = Command::new(windows_cli()?);
+            c.args(["auth", "status"]);
+            c
+        }
+        Backend::Wsl(distro) => {
+            let mut c = Command::new("wsl.exe");
+            c.args(["-d", distro, "--exec", "sh", "-lc", "exec claude auth status"]);
+            c
+        }
+    };
+    let (out, _) = run(cmd, "", Duration::from_secs(20)).ok()?;
+    // Pretty-printed JSON; a login shell may print its own lines first.
+    let json = &out[out.find('{')?..];
+    serde_json::from_str::<Value>(json).ok()?.get("loggedIn")?.as_bool()
 }
 
 /// One chat turn through Claude Code. Blocking: run it off the main thread.
@@ -164,7 +224,7 @@ pub fn send(
     };
     cmd.env("COUCOU_INTERNAL", "1");
 
-    let (stdout, stderr) = run(cmd, &prompt)?;
+    let (stdout, stderr) = run(cmd, &prompt, TIMEOUT)?;
     let reply = parse_reply(&stdout).ok_or_else(|| {
         let why = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("no answer");
         format!("Claude Code: {}", why.chars().take(200).collect::<String>())
@@ -183,7 +243,7 @@ pub fn send(
 }
 
 /// Spawns the CLI, feeds it the prompt and collects its output under a deadline.
-fn run(mut cmd: Command, prompt: &str) -> Result<(String, String), String> {
+fn run(mut cmd: Command, prompt: &str, timeout: Duration) -> Result<(String, String), String> {
     let mut child = platform::no_console(cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()))
         .spawn()
         .map_err(|e| format!("Can't start Claude Code: {e}"))?;
@@ -206,7 +266,7 @@ fn run(mut cmd: Command, prompt: &str) -> Result<(String, String), String> {
     let out = drain(child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
     let err = drain(child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
 
-    let deadline = Instant::now() + TIMEOUT;
+    let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
             Ok(Some(_)) => break,
@@ -259,6 +319,13 @@ pub fn wsl_cli(distro: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_newest_bundled_version_wins() {
+        let mut v = vec!["2.1.29", "2.1.284", "2.1.300", "2.0.999"];
+        v.sort_by_key(|s| version_key(s));
+        assert_eq!(v.last(), Some(&"2.1.300"));
+    }
 
     #[test]
     fn backends_parse_and_refuse_odd_distros() {

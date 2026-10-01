@@ -64,6 +64,22 @@ function syncEngine() {
   for (const fn of engineListeners) fn();
 }
 
+/** Why a found Claude Code can't answer yet, and the one command that fixes it. */
+function signInNotice(backend: string, cli: string): HTMLElement {
+  const wsl = backend.startsWith("wsl:");
+  const app = !wsl && /\\Claude\\claude-code\\/i.test(cli);
+  const why = wsl
+    ? `This Claude Code isn't signed in. Sign it in once in ${backend.slice(4)}, then reopen the settings:`
+    : app
+      ? "This is the Claude app's own copy of Claude Code. The app signs it in only when the app itself runs it, so for Mochi it needs signing in once on its own. In a terminal, run this, then reopen the settings:"
+      : "This Claude Code isn't signed in. Sign it in once in a terminal, then reopen the settings:";
+  const command = wsl ? "claude auth login" : `& "${cli}" auth login`;
+  return h("div", { class: "notice warn" },
+    h("div", { text: why }),
+    h("code", { class: "cmd", text: command }),
+  );
+}
+
 function mochiRow(backend: string, cli: string | null, missing: string): HTMLElement {
   const sw = h("button", { class: settings.chatBackend === backend ? "switch on" : "switch" });
   engineSwitches.push({ backend, el: sw });
@@ -76,7 +92,7 @@ function mochiRow(backend: string, cli: string | null, missing: string): HTMLEle
     void save();
     syncEngine();
   });
-  return h("div", { class: "row" },
+  const row = h("div", { class: "row" },
     h("label", { text: "Use for Mochi" }),
     sw,
     h("span", {
@@ -86,6 +102,20 @@ function mochiRow(backend: string, cli: string | null, missing: string): HTMLEle
         : missing,
     }),
   );
+  const box = h("div", { style: "display:flex;flex-direction:column;gap:8px" }, row);
+  // Installed is not enough: a Claude Code nobody signed in to can't answer.
+  if (cli) {
+    void Bridge.claudeLoggedIn(backend).then((loggedIn) => {
+      if (loggedIn !== false) return;
+      box.append(signInNotice(backend, cli));
+      // Leave a switch that is already on alone, so it can still be turned off.
+      if (settings.chatBackend !== backend) {
+        sw.disabled = true;
+        sw.title = "Sign this Claude Code in first";
+      }
+    });
+  }
+  return box;
 }
 
 // ── Diff → confirm → write ────────────────────────────────────────────────────
@@ -236,6 +266,9 @@ function claudeSection(status: HookStatus): HTMLElement {
       what: "settings.json",
     });
   }
+
+  // Claude Code may have been installed (or signed in) since launch.
+  void onEvent<null>("settings-shown", () => void rebuild());
 
   draw();
   return section;
