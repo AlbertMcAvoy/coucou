@@ -63,7 +63,7 @@ const task = (
 
 /** AgentTask.integrationAgents — same ids, names and colours as macOS. */
 export const INTEGRATION_AGENTS: AgentTask[] = [
-  task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
+  task("integration_claude", "Mochi", "#F5F6F8", "claudeCode"),
   task("integration_resend", "Resend", "#22C55E", "n8n"),
   task("integration_n8n", "n8n", "#F29B38", "n8n"),
   task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
@@ -104,6 +104,8 @@ export interface Settings {
   model: string;
   /** Mochi's chat engine: "api", "windows" or "wsl:<distro>" (local Claude Code). */
   chatBackend: string;
+  /** The compact island stays on screen instead of tucking away after a minute. */
+  keepVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -120,6 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hooksInstalled: false,
   model: "claude-opus-5",
   chatBackend: "api",
+  keepVisible: true,
 };
 
 type Listener = () => void;
@@ -218,7 +221,7 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** loadIntegrationTasks() — Mochi (Claude Code) always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
       const shouldLoad =

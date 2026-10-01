@@ -711,6 +711,8 @@ export class Island {
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
 
     if (inIsland && !this.wasInIsland) {
+      // A resting island has stopped its loop; the hover is what restarts it.
+      this.ensureRunning();
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
       this.homeCollapseAt = null;
@@ -863,13 +865,21 @@ export class Island {
     // spends most of its life in. Geometry still has to finish retracting.
     // The view's own animation counts too: the step ticker must never be left
     // stopped mid-scroll.
+    // Resting: compact, nobody hovering, nothing going on. Mochi then holds
+    // still — no breathing, no zz — and the loop stops, so an island kept on
+    // screen (Settings → Keep on screen) costs nothing. A hover, a session at
+    // work or any event wakes it; an emote or easing under way still finishes.
+    const resting =
+      State.mode === "compact" && !this.wasInIsland &&
+      (State.effectiveState === "idle" || State.effectiveState === "sleeping");
+    const mochiBusy = resting ? this.engine.transient : this.engine.busy;
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
     const busy = State.mode === "hidden"
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive ||
+        greetingActive || mochiBusy || UploadSeq.isActive ||
         (view?.animating ?? false);
 
     if (busy) {
@@ -1048,6 +1058,8 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    // Not while paused: Pause hides the island on purpose.
+    if (!State.paused) this.fsm.setKeepVisible(State.settings.keepVisible);
     State.notify();
   }
 

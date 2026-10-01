@@ -455,10 +455,21 @@ export class BotEngine {
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
     return (
-      this.tweens.size > 0 ||
-      this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
       this.isMini ||
+      this.transient
+    );
+  }
+
+  /**
+   * Something that ends on its own is under way — an emote, particles, a pose or
+   * colour easing to its target. Unlike the looping idle animations above, this
+   * is always let finish, even when the island is resting (see Island.frame).
+   */
+  get transient(): boolean {
+    return (
+      this.tweens.size > 0 ||
+      this.particles.length > 0 ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
       Math.abs(this.tgTilt - this.tilt) > 0.002 ||

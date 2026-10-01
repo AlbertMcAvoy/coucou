@@ -25,6 +25,9 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// The compact island stays on screen instead of tucking away after a minute.
+    #[serde(default = "default_true")]
+    pub keep_visible: bool,
     /// WSL distros whose Claude Code has Coucou's hooks, as last written or seen.
     /// Owned by Rust: the windows never send it (see `save_settings`).
     #[serde(default)]
@@ -39,6 +42,10 @@ pub struct Settings {
     /// The session Mochi's chat is in, kept across restarts. Owned by Rust.
     #[serde(default)]
     pub mochi_session: Option<crate::local_claude::ActiveSession>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_backend() -> String {
@@ -71,6 +78,7 @@ impl Default for Settings {
             notch_position: default_notch_position(),
             hooks_installed: false,
             model: default_model(),
+            keep_visible: true,
             wsl_hooks: Vec::new(),
             wsl_prompted: false,
             chat_backend: default_backend(),

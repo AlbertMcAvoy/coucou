@@ -18,6 +18,10 @@ export class IslandStateMachine {
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
   pinned = false;
+  /** Settings → "Keep the island on screen": the compact island never tucks away. */
+  keepVisible = false;
+  /** Before launch() the greeting owns the first appearance. */
+  private launched = false;
 
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -26,6 +30,7 @@ export class IslandStateMachine {
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
   launch() {
+    this.launched = true;
     this.cancelTimers();
     this.transition("coucou");
   }
@@ -104,8 +109,20 @@ export class IslandStateMachine {
 
   // ── Timers ──────────────────────────────────────────────────────────────────
 
+  /** Applies the setting at once: hidden comes back, compact may tuck away again. */
+  setKeepVisible(on: boolean) {
+    this.keepVisible = on;
+    if (on) {
+      this.clear("petitHide");
+      if (this.state === "hidden" && this.launched) this.transition("petit");
+    } else if (this.state === "petit") {
+      this.schedulePetitHide();
+    }
+  }
+
   private schedulePetitHide() {
     this.clear("petitHide");
+    if (this.keepVisible) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit") this.transition("hidden");
