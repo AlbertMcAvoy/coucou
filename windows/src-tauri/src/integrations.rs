@@ -1,5 +1,6 @@
 // Integration pollers — the Rust side of StripePoller / GithubPoller /
-// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
+// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller, plus
+// GitLab, which only exists on Windows.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
@@ -65,6 +66,7 @@ pub fn set_paused(on: bool) {
 /// Spawns every poller with the macOS delays and intervals.
 pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_n8n", 3, 15, poll_n8n);
+    spawn(app.clone(), "integration_gitlab", 4, 60, poll_gitlab);
     spawn(app.clone(), "integration_vercel", 5, 30, poll_vercel);
     spawn(app.clone(), "integration_stripe", 6, 30, poll_stripe);
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
@@ -120,6 +122,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_gitlab" => poll_gitlab(app).await,
         _ => {}
     }
 }
@@ -843,6 +846,160 @@ async fn poll_calcom(app: AppHandle) {
         data: json!({ "bookings": bookings }),
         error: None,
         event: None,
+    });
+}
+
+// ── GitLab ────────────────────────────────────────────────────────────────────
+// gitlab.com or a self-hosted instance (the URL is configurable). Shows the
+// latest pipelines the user triggered in their most active projects and the
+// merge requests waiting for their review; a pipeline finishing or a new review
+// request is the event. Needs a token with the `read_api` scope.
+
+pub const GITLAB_DEFAULT_URL: &str = "https://gitlab.com";
+
+/// The configured instance, without a trailing slash. Only http(s): the value
+/// ends up in requests and in the browser.
+pub fn gitlab_base() -> Result<String, String> {
+    let raw = secrets::get("gitlab-url").unwrap_or_else(|| GITLAB_DEFAULT_URL.to_string());
+    let base = raw.trim().trim_end_matches('/').to_string();
+    if base.starts_with("https://") || base.starts_with("http://") {
+        Ok(base)
+    } else {
+        Err("The GitLab URL must start with https://".into())
+    }
+}
+
+/// Fires only for an id above every one seen before, so an item leaving a list
+/// (an MR reviewed, merged or closed) never passes for a new one.
+fn is_newer(key: &'static str, id: i64) -> bool {
+    let mut map = SEEN.0.lock().unwrap();
+    let previous = map.get(key).and_then(|v| v.parse::<i64>().ok());
+    if previous.is_some_and(|p| id <= p) {
+        return false;
+    }
+    map.insert(key, id.to_string());
+    previous.is_some() // first poll: populate silently
+}
+
+async fn poll_gitlab(app: AppHandle) {
+    let Some(token) = secrets::get("gitlab-token") else { return };
+    let fail = |error: String| {
+        emit(&app, IntegrationUpdate { id: "integration_gitlab", data: json!({}), error: Some(error), event: None });
+    };
+    let base = match gitlab_base() {
+        Ok(b) => b,
+        Err(e) => return fail(e),
+    };
+    let http = client();
+    let get = |path: String| {
+        http.get(format!("{base}/api/v4/{path}"))
+            .header("PRIVATE-TOKEN", &token)
+            .header("Accept", "application/json")
+            .send()
+    };
+
+    let user = match get("user".into()).await {
+        Ok(r) if r.status().is_success() => r.json::<Value>().await.unwrap_or(json!({})),
+        Ok(r) => return fail(status_error(r.status().as_u16(), "Token lacks the read_api scope")),
+        // Without the URL: a self-hosted address is the user's business, not the log's.
+        Err(e) => return fail(format!("No connection: {}", e.without_url())),
+    };
+    let Some(username) = user.get("username").and_then(Value::as_str).map(str::to_string) else {
+        return fail("Unexpected answer from GitLab — check the URL".into());
+    };
+
+    // Merge requests waiting for this user's review.
+    let reviews: Vec<Value> = match get(format!(
+        "merge_requests?state=opened&scope=all&reviewer_username={username}&per_page=20&order_by=created_at"
+    ))
+    .await
+    {
+        Ok(r) if r.status().is_success() => r.json::<Value>().await.ok().and_then(|v| v.as_array().cloned()).unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    let newest_review = reviews.iter().filter_map(|m| m.get("id").and_then(Value::as_i64)).max();
+    let review_items: Vec<Value> = reviews
+        .iter()
+        .take(3)
+        .map(|m| {
+            json!({
+                "title": m.get("title").and_then(Value::as_str).unwrap_or(""),
+                "url": m.get("web_url").and_then(Value::as_str).unwrap_or(""),
+                "project": m.get("references").and_then(|r| r.get("full")).and_then(Value::as_str).unwrap_or(""),
+            })
+        })
+        .collect();
+
+    // The user's latest pipeline in each of their three most active projects.
+    let projects: Vec<Value> = match get(
+        "projects?membership=true&archived=false&simple=true&order_by=last_activity_at&sort=desc&per_page=3".into(),
+    )
+    .await
+    {
+        Ok(r) if r.status().is_success() => r.json::<Value>().await.ok().and_then(|v| v.as_array().cloned()).unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    let mut pipelines: Vec<Value> = Vec::new();
+    for project in &projects {
+        let Some(pid) = project.get("id").and_then(Value::as_i64) else { continue };
+        let name = project.get("name").and_then(Value::as_str).unwrap_or("Project");
+        let Ok(r) = get(format!("projects/{pid}/pipelines?per_page=1&username={username}")).await else { continue };
+        if !r.status().is_success() {
+            continue;
+        }
+        let Some(p) = r.json::<Value>().await.ok().and_then(|v| v.as_array().and_then(|a| a.first().cloned())) else {
+            continue;
+        };
+        pipelines.push(json!({
+            "id": p.get("id").and_then(Value::as_i64).unwrap_or(0),
+            "project": name,
+            "ref": p.get("ref").and_then(Value::as_str).unwrap_or(""),
+            "status": p.get("status").and_then(Value::as_str).unwrap_or(""),
+            "url": p.get("web_url").and_then(Value::as_str).unwrap_or(""),
+            "updatedAt": p.get("updated_at").and_then(Value::as_str).unwrap_or(""),
+        }));
+    }
+    // ISO-8601 in UTC sorts as text.
+    pipelines.sort_by(|a, b| b["updatedAt"].as_str().cmp(&a["updatedAt"].as_str()));
+
+    // A pipeline that just finished is the news; one still running is not yet.
+    let finished = pipelines
+        .iter()
+        .filter(|p| matches!(p["status"].as_str(), Some("success" | "failed" | "canceled")))
+        .max_by_key(|p| p["id"].as_i64().unwrap_or(0));
+    let pipeline_event = finished.and_then(|p| {
+        let id = p["id"].as_i64()?;
+        let status = p["status"].as_str()?;
+        if !is_newer("gitlab_pipeline", id) || status == "canceled" {
+            return None;
+        }
+        Some(IntegrationEvent {
+            success: status == "success",
+            label: p["project"].as_str()?.to_string(),
+            detail: Some(format!("{} · {status}", p["ref"].as_str().unwrap_or(""))),
+        })
+    });
+    let review_event = newest_review.filter(|id| is_newer("gitlab_review", *id)).and_then(|id| {
+        let mr = reviews.iter().find(|m| m.get("id").and_then(Value::as_i64) == Some(id))?;
+        Some(IntegrationEvent {
+            success: true,
+            label: format!("Review: {}", mr.get("title").and_then(Value::as_str).unwrap_or("merge request")),
+            detail: None,
+        })
+    });
+
+    emit(&app, IntegrationUpdate {
+        id: "integration_gitlab",
+        data: json!({
+            "base": base,
+            "username": username,
+            "reviews": reviews.len(),
+            "reviewsCapped": reviews.len() >= 20,
+            "reviewItems": review_items,
+            "pipelines": pipelines,
+        }),
+        error: None,
+        event: pipeline_event.or(review_event),
     });
 }
 
