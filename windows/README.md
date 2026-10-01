@@ -187,6 +187,9 @@ problems. It stays on your machine.
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
+- GitLab is Windows-only: your latest pipelines and the merge requests waiting
+  for your review, on gitlab.com or your own instance (Settings… → Integrations,
+  token with the `read_api` scope).
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - Not in this version: sending a file by email, dragging Mochi onto a window to
