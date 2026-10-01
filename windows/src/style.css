@@ -591,6 +591,31 @@ body {
   color: var(--red-text);
 }
 
+/* GitLab's news card: one title line, then the rest of the news. */
+.news-title {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-more {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font: 400 12px var(--font);
+  color: var(--dim);
+  min-width: 0;
+}
+
+.news-more > div {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 .who-row {
   display: flex;
   align-items: center;
