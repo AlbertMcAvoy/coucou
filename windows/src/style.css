@@ -1627,6 +1627,22 @@ input[type="range"]::-webkit-slider-thumb {
   padding-top: 4px;
 }
 
+/* GitLab's card: five rows on screen, the rest a scroll away. Fixed rows so
+   the five fill the window exactly. */
+.int-rows.scroll {
+  max-height: 117px; /* 5 × 21 px rows + 4 × 3 px gaps */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.int-rows.scroll > .int-row {
+  flex: 0 0 21px;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
 .int-row {
   display: flex;
   align-items: center;
