@@ -22,6 +22,7 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { wantsTallOverview } from "../views/integrations";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
@@ -79,6 +80,7 @@ export class Island {
   private running = false;
   private lastFrame = 0;
   private dirty = true;
+  private wasTall = false;
   private canvasPx = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
@@ -644,8 +646,13 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  /** The overview grows while its card lists more than three rows. */
+  private get tallOverview(): boolean {
+    return State.view === "overview" && wantsTallOverview(State.focusTask);
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.tallOverview);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -958,6 +965,13 @@ export class Island {
 
     if (this.dirty) {
       this.dirty = false;
+      // Focusing another pill, or the integration's first answer, changes the
+      // height without changing the view.
+      const tall = this.tallOverview;
+      if (tall !== this.wasTall) {
+        this.wasTall = tall;
+        if (State.mode === "expanded") this.animateGeometry(!tall);
+      }
       this.syncDom();
     }
 

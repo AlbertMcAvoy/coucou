@@ -400,8 +400,10 @@ own window.
 - GitLab is Windows-only, on gitlab.com or your own instance (Settings… →
   Integrations, token with the `read_api` scope): your To-Do list (review
   requests, assignments, mentions, failed pipelines on your merge requests…),
-  your merge requests being approved or merged, and your latest pipelines.
-  Everything new in a minute arrives as one notification.
+  your merge requests being approved or merged, someone else commenting on or
+  updating a merge request you authored, are assigned or review, and your
+  latest pipelines. Everything new in a minute arrives as one notification; the
+  pill lists your to-dos and those merge requests, five at a time.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
