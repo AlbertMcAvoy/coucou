@@ -5243,17 +5243,6 @@
    "ru": "Обновить",
    "id": "Muat ulang"
   },
-  "Save the URL and the token first": {
-   "zh-Hans": "请先保存地址和令牌",
-   "hi": "पहले URL और टोकन सहेजें",
-   "es": "Guarda primero la URL y el token",
-   "ar": "احفظ العنوان والرمز أولًا",
-   "fr": "Enregistrez d'abord l'URL et le jeton",
-   "bn": "আগে URL আর টোকেন সংরক্ষণ করুন",
-   "pt-BR": "Salve primeiro a URL e o token",
-   "ru": "Сначала сохраните URL и токен",
-   "id": "Simpan URL dan token dulu"
-  },
   "Choose a saved search…": {
    "zh-Hans": "选择一个已保存的搜索…",
    "hi": "कोई सहेजी गई खोज चुनें…",
@@ -5658,6 +5647,61 @@
    "pt-BR": "Salve primeiro o token",
    "ru": "Сначала сохраните токен",
    "id": "Simpan token dulu"
+  },
+  "Island position": {
+   "zh-Hans": "岛的位置",
+   "hi": "आइलैंड की स्थिति",
+   "es": "Posición de la isla",
+   "ar": "موضع الجزيرة",
+   "fr": "Position de l'île",
+   "bn": "আইল্যান্ডের অবস্থান",
+   "pt-BR": "Posição da ilha",
+   "ru": "Положение острова",
+   "id": "Posisi pulau"
+  },
+  "Centre": {
+   "zh-Hans": "居中",
+   "hi": "बीच में",
+   "es": "Centro",
+   "ar": "الوسط",
+   "fr": "Centre",
+   "bn": "মাঝখানে",
+   "pt-BR": "Centro",
+   "ru": "По центру",
+   "id": "Tengah"
+  },
+  "Where you left it": {
+   "zh-Hans": "你放下的位置",
+   "hi": "जहाँ आपने छोड़ा था",
+   "es": "Donde la dejaste",
+   "ar": "حيث تركتها",
+   "fr": "Là où vous l'avez laissée",
+   "bn": "যেখানে রেখেছিলেন",
+   "pt-BR": "Onde você deixou",
+   "ru": "Там, где вы его оставили",
+   "id": "Di tempat Anda meninggalkannya"
+  },
+  "or drag the bar along the top edge": {
+   "zh-Hans": "或沿屏幕顶边拖动横条",
+   "hi": "या बार को ऊपरी किनारे पर खींचें",
+   "es": "o arrastra la barra por el borde superior",
+   "ar": "أو اسحب الشريط على طول الحافة العلوية",
+   "fr": "ou faites glisser la barre le long du bord du haut",
+   "bn": "অথবা বারটি ওপরের কিনারা ধরে টেনে নিন",
+   "pt-BR": "ou arraste a barra pela borda superior",
+   "ru": "или перетащите полоску вдоль верхнего края",
+   "id": "atau seret bilahnya di sepanjang tepi atas"
+  },
+  "Reduce": {
+   "zh-Hans": "收起",
+   "hi": "छोटा करें",
+   "es": "Reducir",
+   "ar": "تصغير",
+   "fr": "Réduire",
+   "bn": "ছোট করুন",
+   "pt-BR": "Reduzir",
+   "ru": "Свернуть",
+   "id": "Perkecil"
   }
  }
 }

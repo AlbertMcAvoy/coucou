@@ -29,6 +29,11 @@ pub struct Settings {
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
+    /// Where along the top edge the island rests, 0..=1: 0 flush left, 0.5
+    /// centred, 1 flush right. A fraction, so a drag lands anywhere while the
+    /// presets in the settings still hit the edges exactly.
+    #[serde(default = "default_notch_position")]
+    pub notch_position: f64,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
@@ -119,6 +124,10 @@ pub struct DesktopSpot {
     pub space: String,
 }
 
+fn default_notch_position() -> f64 {
+    0.5
+}
+
 fn default_model() -> String {
     crate::claude::DEFAULT_MODEL.to_string()
 }
@@ -141,6 +150,7 @@ impl Default for Settings {
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
             autostart: false,
+            notch_position: default_notch_position(),
             hooks_installed: false,
             model: default_model(),
             show_plan_in_notch: false,
@@ -429,6 +439,7 @@ mod tests {
   "mainPill": "agent_cursor",
   "screen": "cursor",
   "autostart": true,
+  "notchPosition": 0.25,
   "hooksInstalled": true,
   "model": "some-model",
   "showPlanInNotch": true,
@@ -937,6 +948,7 @@ mod tests {
                 "mainPill",
                 "screen",
                 "autostart",
+                "notchPosition",
                 "hooksInstalled",
                 "model",
                 "showPlanInNotch",
