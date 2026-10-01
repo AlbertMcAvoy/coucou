@@ -20,6 +20,13 @@ pub struct Settings {
     /// Defaulted explicitly so a settings.json written by an older build still loads.
     #[serde(default = "default_model")]
     pub model: String,
+    /// WSL distros whose Claude Code has Coucou's hooks, as last written or seen.
+    /// Owned by Rust: the windows never send it (see `save_settings`).
+    #[serde(default)]
+    pub wsl_hooks: Vec<String>,
+    /// The first-launch offer to set up WSL has been made. Shown once, ever.
+    #[serde(default)]
+    pub wsl_prompted: bool,
 }
 
 fn default_model() -> String {
@@ -43,6 +50,8 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            wsl_hooks: Vec::new(),
+            wsl_prompted: false,
         }
     }
 }

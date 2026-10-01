@@ -73,6 +73,19 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Claude Code under WSL ─────────────────────────────────────────────────
+  /** Installed distros. Listing them starts nothing. */
+  wslDistros: () => call<string[]>("wsl_distros"),
+  /** Starts the distro if it isn't running — only call it when the user is looking. */
+  wslStatus: (distro: string) => callOrThrow<WslStatus>("wsl_status", { distro }),
+  wslHooksPreview: (distro: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_hooks_preview", { distro, install }),
+  /** Writes the relay script and the distro's settings.json — explicit click only. */
+  wslHooksApply: (distro: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_hooks_apply", { distro, install, fingerprint }),
+  /** The section the settings window was opened for, once ("" for none). */
+  takeSettingsSection: () => call<string>("take_settings_section"),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -123,6 +136,17 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+}
+
+export interface WslStatus {
+  distro: string;
+  installed: boolean;
+  /** Linux paths, as the user knows them. */
+  settingsPath: string;
+  relayPath: string;
+  relayReady: boolean;
+  /** The distro could not be reached; nothing else is meaningful then. */
+  error: string | null;
 }
 
 export interface HookPreview {
