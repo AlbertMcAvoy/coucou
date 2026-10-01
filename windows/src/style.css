@@ -482,6 +482,8 @@ body {
 }
 
 .ticker-row .tick-text {
+  /* Block, so the ellipsis applies; inline spans ignore overflow. */
+  display: block;
   font: 500 13px var(--font);
   white-space: nowrap;
   overflow: hidden;
