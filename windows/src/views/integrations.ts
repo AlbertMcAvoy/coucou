@@ -295,43 +295,75 @@ const PIPELINE_COLORS: Record<string, string> = {
   manual: "#6B7079",
 };
 
+/** One clickable row of the GitLab card. */
+function gitlabRow(accent: string, highlight: boolean, url: unknown, tip: string, ...cells: Node[]): HTMLElement {
+  const row = listRow(accent, highlight, ...cells);
+  row.title = tip;
+  if (typeof url === "string" && url) {
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => void Bridge.openUrl(url));
+  }
+  return row;
+}
+
+/**
+ * Three rows at most, most important first: the news of the last half hour
+ * (highlighted), then the pending to-dos not already told, then the user's
+ * latest pipelines.
+ */
 function gitlabCard(): HTMLElement {
   const d = get("integration_gitlab");
-  const reviews = Number(d.reviews ?? 0);
-  const username = String(d.username ?? "");
-  // The review count doubles as the link to the reviews list.
+  const count = Number(d.todoCount ?? 0);
   const extra = h(
     "button",
     {
       class: "int-total int-review",
-      title: "Merge requests waiting for your review",
-      onclick: () =>
-        void Bridge.openGitlab(`/dashboard/merge_requests?reviewer_username=${encodeURIComponent(username)}`),
+      title: "Your GitLab To-Do list",
+      onclick: () => void Bridge.openGitlab("/dashboard/todos"),
     },
     h("span", {
-      style: reviews > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
-      text: `${reviews}${d.reviewsCapped ? "+" : ""} to review`,
+      style: count > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
+      text: `${count}${d.todosCapped ? "+" : ""} to do`,
     }),
   );
+
   const rows = h("div", { class: "int-rows" });
-  const pipelines = arr("integration_gitlab", "pipelines");
-  if (pipelines.length === 0) rows.append(h("div", { class: "int-empty", text: "No recent pipelines" }));
-  pipelines.slice(0, 3).forEach((p, i) => {
-    const accent = PIPELINE_COLORS[String(p.status)] ?? "#6B7079";
-    const row = listRow(accent, i === 0,
+  const MAX = 3;
+  let shown = 0;
+  const told = new Set<number>();
+
+  for (const n of arr("integration_gitlab", "news")) {
+    if (shown >= MAX) break;
+    if (typeof n.todoId === "number") told.add(n.todoId);
+    rows.append(gitlabRow(n.success === false ? "#F4505E" : "#22C55E", true, n.url, String(n.label ?? ""),
+      h("span", { class: "int-name", text: String(n.label ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(n.at) }),
+    ));
+    shown++;
+  }
+  for (const t of arr("integration_gitlab", "todos")) {
+    if (shown >= MAX) break;
+    if (told.has(Number(t.id))) continue;
+    const tip = [t.kind, t.project, t.author].filter(Boolean).join(" · ");
+    rows.append(gitlabRow(t.bad ? "#F4505E" : "#FC6D26", false, t.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(t.title ?? "") }),
+      h("span", { class: "int-sub", style: "flex:0 3 auto", text: String(t.kind ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(t.createdAt) }),
+    ));
+    shown++;
+  }
+  for (const p of arr("integration_gitlab", "pipelines")) {
+    if (shown >= MAX) break;
+    rows.append(gitlabRow(PIPELINE_COLORS[String(p.status)] ?? "#6B7079", false, p.url, String(p.status ?? ""),
       // The branch gives way first: the project is what you scan for.
       h("span", { class: "int-name", style: "flex:0 0 auto;max-width:60%", text: String(p.project ?? "") }),
       h("span", { class: "int-sub", style: "flex:0 1 auto", text: String(p.ref ?? "") }),
       h("span", { class: "int-ago", text: timeAgo(p.updatedAt) }),
-    );
-    row.title = String(p.status ?? "");
-    row.style.cursor = "pointer";
-    row.addEventListener("click", () => {
-      if (typeof p.url === "string") void Bridge.openUrl(p.url);
-    });
-    rows.append(row);
-  });
-  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", "Pipelines", extra), rows);
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing new on GitLab" }));
+  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", "Inbox", extra), rows);
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
