@@ -478,7 +478,7 @@ function apiSection(hasKey: boolean): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Anthropic API" })),
     engine,
     state,
     h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
@@ -685,9 +685,10 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
 }
 
-// ── General section ───────────────────────────────────────────────────────────
+// ── General tab ───────────────────────────────────────────────────────────────
 
-function generalSection(): HTMLElement {
+/** Sound, the island, startup: the macOS app's Sound / Behavior / Startup groups. */
+function generalSections(): HTMLElement[] {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -745,39 +746,128 @@ function generalSection(): HTMLElement {
     }
   });
 
-  return h(
-    "section",
-    {},
-    h("h2", {}, h("span", { text: "General" })),
-    h("div", { class: "row" },
-      h("label", { text: "Sound" }),
-      toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
-      volume,
+  return [
+    h("section", {},
+      h("h2", {}, h("span", { text: "Sound" })),
+      h("div", { class: "row" },
+        h("label", { text: "Play sounds" }),
+        toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Volume" }),
+        volume,
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
-      autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+    h("section", {},
+      h("h2", {}, h("span", { text: "Island" })),
+      h("div", { class: "row" },
+        h("label", { text: "Auto-close" }),
+        autoClose,
+        h("span", { class: "hint", text: "seconds after you leave the island" }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Island lives on" }),
+        screen,
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Island position" }),
+        position,
+        h("span", { class: "hint", text: "or drag the bar along the top edge" }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Keep on screen" }),
+        toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
+        h("span", { class: "hint", text: "otherwise the island tucks away after a minute" }),
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Island lives on" }),
-      screen,
+    h("section", {},
+      h("h2", {}, h("span", { text: "Startup" })),
+      h("div", { class: "row" },
+        h("label", { text: "Launch at startup" }),
+        toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
+      ),
     ),
-    h("div", { class: "row" },
-      h("label", { text: "Island position" }),
-      position,
-      h("span", { class: "hint", text: "or drag the bar along the top edge" }),
-    ),
-    h("div", { class: "row" },
-      h("label", { text: "Keep on screen" }),
-      toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
-      h("span", { class: "hint", text: "otherwise the island tucks away after a minute" }),
-    ),
-    h("div", { class: "row" },
-      h("label", { text: "Launch at startup" }),
-      toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
-    ),
-  );
+  ];
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type TabId = "general" | "agents" | "integrations";
+
+/** The last tab open, for the next time — a convenience, so it may be lost. */
+const TAB_KEY = "coucou.settings.tab";
+
+function storedTab(): TabId | null {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return v === "general" || v === "agents" || v === "integrations" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A tab bar over one panel per tab; `onSelect` hears every switch. */
+function tabbed(defs: { id: TabId; label: string; content: HTMLElement[] }[], onSelect: (id: TabId) => void) {
+  const bar = h("div", { class: "tabs", role: "tablist" });
+  const panels = h("div", {});
+  const buttons = new Map<TabId, HTMLButtonElement>();
+  const bodies = new Map<TabId, HTMLElement>();
+  let current: TabId | null = null;
+
+  function select(id: TabId) {
+    if (id === current) return;
+    current = id;
+    for (const [key, button] of buttons) {
+      const on = key === id;
+      button.setAttribute("aria-selected", String(on));
+      button.tabIndex = on ? 0 : -1;
+      bodies.get(key)!.hidden = !on;
+    }
+    try {
+      localStorage.setItem(TAB_KEY, id);
+    } catch {
+      // Remembering the tab is a nicety; nothing depends on it.
+    }
+    window.scrollTo(0, 0);
+    onSelect(id);
+  }
+
+  for (const d of defs) {
+    const button = h("button", {
+      role: "tab", id: `tab-${d.id}`, "aria-controls": `panel-${d.id}`, text: d.label,
+    }) as HTMLButtonElement;
+    button.addEventListener("click", () => select(d.id));
+    bar.append(button);
+    buttons.set(d.id, button);
+    const body = h("div", { class: "panel", role: "tabpanel", id: `panel-${d.id}`, "aria-labelledby": `tab-${d.id}` },
+      ...d.content);
+    panels.append(body);
+    bodies.set(d.id, body);
+  }
+
+  // Arrow keys move between tabs, as in any tab bar.
+  bar.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !current) return;
+    const ids = defs.map((d) => d.id);
+    const step = e.key === "ArrowRight" ? 1 : ids.length - 1;
+    const next = ids[(ids.indexOf(current) + step) % ids.length];
+    select(next);
+    buttons.get(next)!.focus();
+  });
+
+  return {
+    bar,
+    panels,
+    select,
+    get current() {
+      return current;
+    },
+    /** The tab holding the element with this id, if any. */
+    tabOf(elementId: string): TabId | null {
+      const el = document.getElementById(elementId);
+      return el ? (defs.find((d) => bodies.get(d.id)!.contains(el))?.id ?? null) : null;
+    },
+  };
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -806,14 +896,25 @@ async function main() {
   // says "Windows" in its user agent, WebKitGTK says "Linux".
   const wsl = /Windows/.test(navigator.userAgent) ? wslSection(status.hookReady) : null;
 
+  // Asking WSL starts its distros: only while someone is looking at the Agents
+  // tab, never while the window is still hidden at launch.
+  let visible = false;
+  const tabs = tabbed([
+    { id: "general", label: "General", content: generalSections() },
+    { id: "agents", label: "Agents", content: [claudeSection(status), ...(wsl ? [wsl.section] : []), apiSection(hasKey)] },
+    { id: "integrations", label: "Integrations", content: [integrationsSection(present)] },
+  ], (id) => {
+    if (id === "agents" && visible) void wsl?.refresh();
+  });
+  tabs.select(storedTab() ?? "general");
+
   clear(root);
   root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    wsl?.section ?? "",
-    apiSection(hasKey),
-    integrationsSection(present),
-    generalSection(),
+    h("header", { class: "settings-head" },
+      h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+      tabs.bar,
+    ),
+    tabs.panels,
     h("div", {
       class: "hint",
       text: "No telemetry. Network requests only go to the services you configure yourself.",
@@ -824,11 +925,14 @@ async function main() {
     settings = { ...settings, ...s };
   });
 
-  // Every time the window comes up: refresh WSL (slow, so only while someone is
-  // looking) and scroll to the section it was opened for, if any.
+  // Every time the window comes up: open the tab and scroll to the section it
+  // was opened for, if any, and refresh WSL if the Agents tab is the one shown.
   const shown = (target: string) => {
+    visible = true;
+    const tab = target ? tabs.tabOf(target) : null;
+    if (tab) tabs.select(tab);
     if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    void wsl?.refresh();
+    if (tabs.current === "agents") void wsl?.refresh();
   };
   void onEvent<null>("settings-shown", async () => shown((await Bridge.takeSettingsSection()) ?? ""));
   // The first-launch offer can show the window before this page has loaded; the
