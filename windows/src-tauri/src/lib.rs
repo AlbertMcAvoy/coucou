@@ -197,6 +197,9 @@ fn open_in_vscode(path: Option<String>, wsl_distro: Option<String>) -> bool {
 /// plain console otherwise; a WSL session gets a shell in its own distro.
 /// Without WSL — and so everywhere but on Windows — they keep their original
 /// job: the folder in VS Code.
+///
+/// A session in the Claude desktop app's Code tab, WSL or not, brings the app
+/// forward instead: it has no terminal, and the app is where it is going on.
 #[tauri::command]
 fn open_terminal(
     shared: State<Shared>,
@@ -204,6 +207,10 @@ fn open_terminal(
     wsl_distro: Option<String>,
     terminal_pids: Option<Vec<u32>>,
 ) -> bool {
+    #[cfg(windows)]
+    if focus::claude_desktop(terminal_pids.as_deref().unwrap_or_default()) {
+        return true;
+    }
     if shared.settings.lock().unwrap().wsl_hooks.is_empty() {
         return open_in_vscode(path, wsl_distro);
     }

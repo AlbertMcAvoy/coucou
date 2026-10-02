@@ -92,6 +92,10 @@ session through **Remote WSL**. The relay passes `WSL_DISTRO_NAME` through
 `WSLENV` for that.
 Each hook costs about 0.3 s for the WSL → Windows hop.
 
+A session in the **Claude desktop app**'s Code tab has no terminal: "Open
+terminal" and ↗ bring the app forward instead, from the tray if it was closed
+there — WSL set up or not.
+
 ## Chat and keys
 
 ### Mochi on your Claude subscription
