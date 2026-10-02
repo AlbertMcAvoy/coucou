@@ -671,13 +671,15 @@ async function main() {
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
 
-  const wsl = wslSection(status.hookReady);
+  // WSL is a Windows thing: the Linux build leaves the section out. WebView2
+  // says "Windows" in its user agent, WebKitGTK says "Linux".
+  const wsl = /Windows/.test(navigator.userAgent) ? wslSection(status.hookReady) : null;
 
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    wsl.section,
+    wsl?.section ?? "",
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
@@ -695,7 +697,7 @@ async function main() {
   // looking) and scroll to the section it was opened for, if any.
   const shown = (target: string) => {
     if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    void wsl.refresh();
+    void wsl?.refresh();
   };
   void onEvent<null>("settings-shown", async () => shown((await Bridge.takeSettingsSection()) ?? ""));
   // The first-launch offer can show the window before this page has loaded; the
