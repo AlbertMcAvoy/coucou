@@ -7,7 +7,7 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { OVERVIEW_TALL_H } from "../core/layout";
-import { State, type AgentTask } from "../core/state";
+import { State, isGlass, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
@@ -83,6 +83,17 @@ export function idleStatus(
   return configured ? ok(t("Connected · loading…")) : missing(t("Key not configured"));
 }
 
+/**
+ * A link in a pill's colour at `alpha` (two hex digits). Mochi's own pill is
+ * near-white, which the glass island would swallow: a colour that light falls
+ * back to the theme's ink there.
+ */
+function linkColor(color: string, alpha: string): string {
+  const n = parseInt(color.slice(1, 7), 16);
+  const light = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 225;
+  return light && isGlass() ? "var(--dim)" : `${color}${alpha}`;
+}
+
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
@@ -94,7 +105,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}b3`,
+        style: `color:${linkColor(task.color, "b3")}`,
         text: t("Open Visual Studio Code"),
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
@@ -103,7 +114,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Open Claude"),
         onclick: () => void Bridge.openClaudeDesktop(),
       }),
@@ -112,7 +123,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Open {name}", { name: "n8n" }),
         onclick: () => void Bridge.openN8n(),
       }),
@@ -121,7 +132,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Open {name}", { name: "GitLab" }),
         onclick: () => void Bridge.openGitlab(),
       }),
@@ -130,7 +141,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Open {name}", { name: "YouTrack" }),
         onclick: () => void Bridge.openYoutrack(),
       }),
@@ -139,7 +150,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Open {name}", { name: task.name }),
         onclick: () => void Bridge.openUrl(OPEN_URLS[task.id]),
       }),
@@ -152,7 +163,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: t("Refresh"),
         // A hook pill has nothing to poll: look at its hooks again instead.
         onclick: () => void (hookPill ? refreshHookPills() : Bridge.refreshIntegration(task.id)),
