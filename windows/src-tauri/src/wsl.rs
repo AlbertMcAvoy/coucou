@@ -258,7 +258,9 @@ pub fn write(name: &str, install: bool, fingerprint: &str) -> Result<String, Str
         .unwrap_or(backup))
 }
 
-#[cfg(test)]
+// WSL paths are Windows UNC paths: they only mean anything, and only join the
+// way these tests expect, on Windows.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 
