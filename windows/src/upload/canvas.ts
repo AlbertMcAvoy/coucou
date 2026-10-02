@@ -5,13 +5,51 @@
 // the file being sucked in. The island's own Mochi is hidden for the duration,
 // exactly as on macOS, because this canvas draws its own.
 
-import { State } from "../core/state";
+import { State, isGlass } from "../core/state";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
 } from "./sequence";
 
 const FONT = 'system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif';
+
+/**
+ * What the scene is painted in, per theme (Settings → General → Island →
+ * Theme). Glass leaves the island's background to its own frost (`island:
+ * null`); Mochi, the bar and the greens are the same in both.
+ */
+const SCENE = {
+  dark: {
+    island: "#000000" as string | null,
+    card: "#0D0E10",
+    zone: "rgba(255,255,255,0.14)",
+    title: "#D5D7DB",
+    chip: "rgba(255,255,255,0.07)",
+    chipText: "#B9BDC4",
+    label: "#A9ADB5",
+    track: "rgba(255,255,255,0.08)",
+    ink: "#F5F6F8",
+    dim: "#9398A1",
+    onInk: "#0B0C0E",
+    second: "rgba(255,255,255,0.09)",
+    secondText: "#F1F2F4",
+  },
+  glass: {
+    island: null as string | null,
+    card: "rgba(255,255,255,0.66)",
+    zone: "rgba(20,24,36,0.2)",
+    title: "#23262D",
+    chip: "rgba(20,24,36,0.06)",
+    chipText: "#3E434C",
+    label: "#3E434C",
+    track: "rgba(20,24,36,0.08)",
+    ink: "#16181D",
+    dim: "#5D636D",
+    onInk: "#FFFFFF",
+    second: "rgba(20,24,36,0.07)",
+    secondText: "#23262D",
+  },
+};
 
 /** Mirrors the reference `rr()`: a rounded rect, radius clamped to the box. */
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -70,6 +108,8 @@ export class UploadCanvas {
 
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
+  /** The palette of the frame being drawn: the theme can change between two. */
+  private pal = SCENE.dark;
   private overlay: HTMLElement;
   private sizedFor = 0;
 
@@ -124,15 +164,19 @@ export class UploadCanvas {
   // ── Scene ─────────────────────────────────────────────────────────────────
 
   private drawScene(ctx: CanvasRenderingContext2D, f: UploadFrame, wallTime: number) {
-    // Island background.
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    this.pal = isGlass() ? SCENE.glass : SCENE.dark;
+    // Island background. The glass island paints its own frost underneath.
+    ctx.clearRect(0, 0, USC.W, USC.ISL_H);
+    if (this.pal.island) {
+      ctx.fillStyle = this.pal.island;
+      ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    }
 
     // Card.
     ctx.save();
     rr(ctx, USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H, USC.CARD_R);
     ctx.clip();
-    ctx.fillStyle = "#0D0E10";
+    ctx.fillStyle = this.pal.card;
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
     // Green glow, fanning up from the bottom edge of the card.
@@ -152,7 +196,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : this.pal.zone;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -174,16 +218,16 @@ export class UploadCanvas {
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, "#D5D7DB");
+    text(ctx, "Drop your files here", USC.TEXT_X, USC.TEXT_Y - 4, `500 13px ${FONT}`, this.pal.title);
 
     let cx = USC.TEXT_X;
     for (const chip of ["PDF", "Images", "Code", "Docs"]) {
       // The macOS port measures chips the same rough way, so the row lines up.
       const w = chip.length * 6.5 + 16;
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.fillStyle = this.pal.chip;
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 11px ${FONT}`, this.pal.chipText);
       cx += w + 6;
     }
     ctx.restore();
@@ -201,7 +245,7 @@ export class UploadCanvas {
     const barLen = (x1 - x0) * f.barReveal;
 
     const name = State.droppedFile?.name ?? "file";
-    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, "#A9ADB5");
+    text(ctx, `Uploading ${name}`, x0, by - 30, `500 12.5px ${FONT}`, this.pal.label);
 
     if (f.check > 0) {
       ctx.save();
@@ -222,12 +266,12 @@ export class UploadCanvas {
       ctx.stroke();
       ctx.restore();
     } else {
-      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, "#A9ADB5", "right");
+      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, this.pal.label, "right");
     }
 
     // Track.
     if (barLen > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = this.pal.track;
       rr(ctx, x0, by - 3, barLen, 6, 3);
       ctx.fill();
     }
@@ -273,18 +317,18 @@ export class UploadCanvas {
     ctx.translate(0, (1 - f.chooseAlpha) * 4);
 
     const name = State.droppedFile?.name ?? "file";
-    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, "#F5F6F8");
-    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
+    text(ctx, `${name} is ready.`, 114, 80, `600 14px ${FONT}`, this.pal.ink);
+    text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, this.pal.dim);
 
-    ctx.fillStyle = "#F5F6F8";
+    ctx.fillStyle = this.pal.ink;
     rr(ctx, 114, 113, 168, 26, 13);
     ctx.fill();
-    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, this.pal.onInk, "center");
 
-    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.fillStyle = this.pal.second;
     rr(ctx, 290, 113, 120, 26, 13);
     ctx.fill();
-    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
+    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, this.pal.secondText, "center");
     ctx.restore();
   }
 

@@ -50,6 +50,13 @@ pub struct Settings {
     /// round white one.
     #[serde(default)]
     pub character_seed: String,
+    /// "dark" (the island as on macOS) or "glass" (white, frosted).
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_theme() -> String {
+    "dark".into()
 }
 
 fn default_true() -> bool {
@@ -97,6 +104,7 @@ impl Default for Settings {
             mochi_session: None,
             character: default_character(),
             character_seed: String::new(),
+            theme: default_theme(),
         }
     }
 }

@@ -4,12 +4,23 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type WslStatus } from "../core/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, applyTheme, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 import { expressionFor, miniBlobatar } from "../mochi/blobatar";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+
+/**
+ * Puts the window in `theme`. settings.html paints the body dark inline, so the
+ * window never flashes white while it loads; that inline colour is dropped here
+ * for the stylesheet's, which follows the theme.
+ */
+function showTheme(theme: Settings["theme"] | undefined) {
+  applyTheme(theme);
+  document.body.style.removeProperty("background");
+  document.body.style.removeProperty("color");
+}
 
 const root = document.getElementById("settings-root")!;
 
@@ -721,6 +732,19 @@ function generalSections(): HTMLElement[] {
     void save();
   });
 
+  // The island's look, and this window's with it.
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "dark", text: "Dark" }),
+    h("option", { value: "glass", text: "Glass" }),
+  );
+  theme.value = settings.theme ?? "dark";
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    showTheme(settings.theme);
+    void save();
+  });
+
   // Who lives in the island. Blobatar (github.com/Alain00/blobatar) stands in
   // for Mochi on the island and the pills; the greeting and the drop sequence
   // need Mochi's hands and mouth, which it doesn't have.
@@ -834,6 +858,11 @@ function generalSections(): HTMLElement[] {
         h("span", { class: "hint", text: "otherwise the island tucks away after a minute" }),
       ),
       h("div", { class: "row" },
+        h("label", { text: "Theme" }),
+        theme,
+        h("span", { class: "hint", text: "Glass: a white, frosted island" }),
+      ),
+      h("div", { class: "row" },
         h("label", { text: "Character" }),
         character,
         h("span", { class: "hint", text: "Blobatar is a prototype: Mochi still greets you and takes your files" }),
@@ -938,6 +967,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  showTheme(settings.theme);
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false, claudeCli: null,
   };

@@ -6,7 +6,7 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { State, type AgentTask } from "../core/state";
+import { State, isGlass, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
@@ -53,6 +53,17 @@ const OPEN_URLS: Record<string, string> = {
   integration_calcom: "https://app.cal.com/bookings",
 };
 
+/**
+ * A link in a pill's colour at `alpha` (two hex digits). Mochi's own pill is
+ * near-white, which the glass island would swallow: a colour that light falls
+ * back to the theme's ink there.
+ */
+function linkColor(color: string, alpha: string): string {
+  const n = parseInt(color.slice(1, 7), 16);
+  const light = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 225;
+  return light && isGlass() ? "var(--dim)" : `${color}${alpha}`;
+}
+
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
@@ -68,7 +79,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}b3`,
+        style: `color:${linkColor(task.color, "b3")}`,
         text: "Open Visual Studio Code",
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null, task.sessionWslDistro ?? null),
       }),
@@ -77,7 +88,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: "Open n8n",
         onclick: () => void Bridge.openN8n(),
       }),
@@ -86,7 +97,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: "Open GitLab",
         onclick: () => void Bridge.openGitlab(),
       }),
@@ -95,7 +106,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: "Open YouTrack",
         onclick: () => void Bridge.openYoutrack(),
       }),
@@ -104,7 +115,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: `Open ${task.name}`,
         onclick: () => void Bridge.openUrl(OPEN_URLS[task.id]),
       }),
@@ -114,14 +125,14 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     actions.append(
       h("button", {
         class: "link-btn",
-        style: `color:${task.color}d9`,
+        style: `color:${linkColor(task.color, "d9")}`,
         text: "Refresh",
         onclick: () => void Bridge.refreshIntegration(task.id),
       }),
     );
   } else {
     actions.append(
-      h("button", { class: "link-btn", style: "color:#8e939c", text: "Settings…", onclick: openSettings }),
+      h("button", { class: "link-btn", style: "color:var(--dim-2)", text: "Settings…", onclick: openSettings }),
     );
   }
 

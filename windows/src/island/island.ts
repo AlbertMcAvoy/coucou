@@ -10,7 +10,7 @@ import {
   type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State, type AgentTask } from "../core/state";
+import { State, applyTheme, type AgentTask } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { BlobatarFace, expressionFor } from "../mochi/blobatar";
@@ -1089,6 +1089,7 @@ export class Island {
 
   /** Applies settings coming from Rust at boot. */
   applySettings() {
+    applyTheme(State.settings.theme);
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
