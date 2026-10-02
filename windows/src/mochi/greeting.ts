@@ -6,6 +6,7 @@
 import { closeCurve } from "../core/anim";
 import { Sound } from "../core/sound";
 import { COMPACT_W, NOTCH_H, NOTCH_W } from "../core/layout";
+import { isGlass } from "../core/state";
 
 // ── Timing (GT in the Swift file) ─────────────────────────────────────────────
 
@@ -557,7 +558,8 @@ function drawParticles(x: CanvasRenderingContext2D, t: number, p: Pose) {
     const fade = (1 - k) * (k < 0.08 ? k / 0.08 : 1) * p.fx * p.card;
     for (const dot of PARTICLES.ring) {
       const r = 1 + dot.j;
-      x.fillStyle = `rgba(255,255,255,${dot.al * fade})`;
+      // Sparks of light on the dark island; of ink on the white one.
+      x.fillStyle = isGlass() ? `rgba(20,24,36,${dot.al * fade * 0.6})` : `rgba(255,255,255,${dot.al * fade})`;
       x.fillRect(C0.x + Math.cos(dot.a) * rx * r, C0.y + Math.sin(dot.a) * ry * r, dot.s, dot.s);
     }
   }
@@ -657,7 +659,8 @@ export class Greeting {
       x.save();
       x.globalAlpha = p.card;
       rr(x, CARD.x, CARD.y, CARD.w, CARD.h, CARD_R);
-      x.fillStyle = "#141518";
+      // The overview's card, in whichever theme the island wears.
+      x.fillStyle = isGlass() ? "rgba(255,255,255,0.66)" : "#141518";
       x.fill();
       x.restore();
 

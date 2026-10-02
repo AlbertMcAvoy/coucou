@@ -107,6 +107,9 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// "dark" (the island as on macOS) or "glass" (white, frosted). Kept as it
+    /// comes: the island reads anything else as "dark".
+    pub theme: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -179,6 +182,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            theme: "dark".into(),
         }
     }
 }
@@ -468,7 +472,8 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "theme": "glass"
 }"##;
 
     fn custom() -> Value {
@@ -979,6 +984,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "theme",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
