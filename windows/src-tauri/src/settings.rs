@@ -115,6 +115,9 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// "dark" (the island as on macOS) or "glass" (white, frosted). Kept as it
+    /// comes: the island reads anything else as "dark".
+    pub theme: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -190,6 +193,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            theme: "dark".into(),
         }
     }
 }
@@ -491,7 +495,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "theme": "glass"
 }"##;
 
     fn custom() -> Value {
@@ -1014,6 +1019,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "theme",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

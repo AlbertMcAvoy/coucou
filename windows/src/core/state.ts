@@ -172,7 +172,20 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** "dark", the island as on macOS, or "glass": white and frosted. */
+  theme: "dark" | "glass";
 }
+
+/** Puts `theme` on the page: style.css keys off `data-theme`. */
+export function applyTheme(theme: Settings["theme"] | undefined) {
+  document.documentElement.dataset.theme = theme === "glass" ? "glass" : "dark";
+}
+
+/**
+ * Whether the page is in the glass theme — for what canvases paint themselves.
+ * A view drawn outside a page (the tests' bare DOM) is in the dark one.
+ */
+export const isGlass = () => document.documentElement?.dataset?.theme === "glass";
 
 export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
@@ -205,6 +218,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  theme: "dark",
 };
 
 type Listener = () => void;
