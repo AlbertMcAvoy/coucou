@@ -1070,6 +1070,18 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 // ── General section ───────────────────────────────────────────────────────────
 
 function generalSection(): HTMLElement {
+  // The island's look; the Coucou window keeps its own.
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "dark", text: t("Dark") }),
+    h("option", { value: "glass", text: t("Glass") }),
+  );
+  theme.value = settings.theme === "glass" ? "glass" : "dark";
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    void save();
+  });
+
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -1165,6 +1177,11 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Keep on screen") }),
       toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
       h("span", { class: "hint", text: t("otherwise the island tucks away after a minute") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Theme") }),
+      theme,
+      h("span", { class: "hint", text: t("Glass: a white, frosted island") }),
     ),
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
