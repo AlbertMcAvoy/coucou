@@ -5,7 +5,7 @@
 // the file being sucked in. The island's own Mochi is hidden for the duration,
 // exactly as on macOS, because this canvas draws its own.
 
-import { State } from "../core/state";
+import { State, isGlass } from "../core/state";
 import { SCRIPT_FONTS } from "../core/fonts";
 import { N_, isRtl, t } from "../i18n/i18n";
 import {
@@ -22,6 +22,44 @@ const ASK_BTN = { x: 114, w: 168 };
 const CANCEL_BTN = { x: 290, w: 120 };
 /** Drop-zone chips (English keys, shown with `t()`). */
 const CHIPS = [N_("PDF"), N_("Images"), N_("Code"), N_("Docs")];
+
+/**
+ * What the scene is painted in, per theme (Settings → General → Island →
+ * Theme). Glass leaves the island's background to its own frost (`island:
+ * null`); Mochi, the bar and the greens are the same in both.
+ */
+const SCENE = {
+  dark: {
+    island: "#000000" as string | null,
+    card: "#0D0E10",
+    zone: "rgba(255,255,255,0.14)",
+    title: "#D5D7DB",
+    chip: "rgba(255,255,255,0.07)",
+    chipText: "#B9BDC4",
+    label: "#A9ADB5",
+    track: "rgba(255,255,255,0.08)",
+    ink: "#F5F6F8",
+    dim: "#9398A1",
+    onInk: "#0B0C0E",
+    second: "rgba(255,255,255,0.09)",
+    secondText: "#F1F2F4",
+  },
+  glass: {
+    island: null as string | null,
+    card: "rgba(255,255,255,0.66)",
+    zone: "rgba(20,24,36,0.2)",
+    title: "#23262D",
+    chip: "rgba(20,24,36,0.06)",
+    chipText: "#3E434C",
+    label: "#3E434C",
+    track: "rgba(20,24,36,0.08)",
+    ink: "#16181D",
+    dim: "#5D636D",
+    onInk: "#FFFFFF",
+    second: "rgba(20,24,36,0.07)",
+    secondText: "#23262D",
+  },
+};
 
 /** Mirrors the reference `rr()`: a rounded rect, radius clamped to the box. */
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -119,6 +157,8 @@ export class UploadCanvas {
 
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
+  /** The palette of the frame being drawn: the theme can change between two. */
+  private pal = SCENE.dark;
   private overlay: HTMLElement;
   private sizedFor = 0;
 
@@ -173,15 +213,19 @@ export class UploadCanvas {
   // ── Scene ─────────────────────────────────────────────────────────────────
 
   private drawScene(ctx: CanvasRenderingContext2D, f: UploadFrame, wallTime: number) {
-    // Island background.
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    this.pal = isGlass() ? SCENE.glass : SCENE.dark;
+    // Island background. The glass island paints its own frost underneath.
+    ctx.clearRect(0, 0, USC.W, USC.ISL_H);
+    if (this.pal.island) {
+      ctx.fillStyle = this.pal.island;
+      ctx.fillRect(0, 0, USC.W, USC.ISL_H);
+    }
 
     // Card.
     ctx.save();
     rr(ctx, USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H, USC.CARD_R);
     ctx.clip();
-    ctx.fillStyle = "#0D0E10";
+    ctx.fillStyle = this.pal.card;
     ctx.fillRect(USC.CARD_X, USC.CARD_Y, USC.CARD_W, USC.CARD_H);
 
     // Green glow, fanning up from the bottom edge of the card.
@@ -201,7 +245,7 @@ export class UploadCanvas {
     if (f.zoneAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = f.zoneAlpha;
-      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.strokeStyle = f.zoneOver ? "rgba(52,212,153,0.55)" : this.pal.zone;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 5]);
       ctx.lineDashOffset = -wallTime * 20;
@@ -224,7 +268,7 @@ export class UploadCanvas {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
     const title = fitted(ctx, t("Drop your files here"), TEXT_RIGHT - USC.TEXT_X, 500, 13);
-    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, "#D5D7DB");
+    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, this.pal.title);
 
     // The macOS port measures chips the same rough way, so the row lines up; a
     // translation wider than that estimate gets the room it needs.
@@ -243,10 +287,10 @@ export class UploadCanvas {
     let cx = USC.TEXT_X;
     labels.forEach((chip, i) => {
       const w = ws[i];
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.fillStyle = this.pal.chip;
       rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
       ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, "#B9BDC4");
+      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, this.pal.chipText);
       cx += w + 6;
     });
     ctx.restore();
@@ -266,7 +310,7 @@ export class UploadCanvas {
     // Room up to the percentage (or the check mark) at the bar's right end.
     const uploading = t("Uploading {name}", { name: State.droppedFile?.name ?? t("file") });
     const label = fitted(ctx, uploading, x1 - x0 - 56, 500, 12.5);
-    text(ctx, label.s, x0, by - 30, label.font, "#A9ADB5");
+    text(ctx, label.s, x0, by - 30, label.font, this.pal.label);
 
     if (f.check > 0) {
       ctx.save();
@@ -287,12 +331,12 @@ export class UploadCanvas {
       ctx.stroke();
       ctx.restore();
     } else {
-      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, "#A9ADB5", "right");
+      text(ctx, `${Math.round(f.progress * 100)} %`, x1, by - 30, `500 12.5px ${FONT}`, this.pal.label, "right");
     }
 
     // Track.
     if (barLen > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = this.pal.track;
       rr(ctx, x0, by - 3, barLen, 6, 3);
       ctx.fill();
     }
@@ -339,21 +383,21 @@ export class UploadCanvas {
 
     const maxW = TEXT_RIGHT - 114;
     const ready = fitted(ctx, t("{name} is ready.", { name: State.droppedFile?.name ?? t("file") }), maxW, 600, 14);
-    text(ctx, ready.s, 114, 80, ready.font, "#F5F6F8");
+    text(ctx, ready.s, 114, 80, ready.font, this.pal.ink);
     const what = fitted(ctx, t("What do you want to do with it?"), maxW, 400, 12.5);
-    text(ctx, what.s, 114, 100, what.font, "#9398A1");
+    text(ctx, what.s, 114, 100, what.font, this.pal.dim);
 
-    ctx.fillStyle = "#F5F6F8";
+    ctx.fillStyle = this.pal.ink;
     rr(ctx, ASK_BTN.x, 113, ASK_BTN.w, 26, 13);
     ctx.fill();
     const ask = fitted(ctx, t("Ask a question about it"), ASK_BTN.w - 14, 500, 12.5);
-    text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, "#0B0C0E", "center");
+    text(ctx, ask.s, ASK_BTN.x + ASK_BTN.w / 2, 126, ask.font, this.pal.onInk, "center");
 
-    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.fillStyle = this.pal.second;
     rr(ctx, CANCEL_BTN.x, 113, CANCEL_BTN.w, 26, 13);
     ctx.fill();
     const cancel = fitted(ctx, t("Cancel"), CANCEL_BTN.w - 14, 500, 12.5);
-    text(ctx, cancel.s, CANCEL_BTN.x + CANCEL_BTN.w / 2, 126, cancel.font, "#F1F2F4", "center");
+    text(ctx, cancel.s, CANCEL_BTN.x + CANCEL_BTN.w / 2, 126, cancel.font, this.pal.secondText, "center");
     ctx.restore();
   }
 

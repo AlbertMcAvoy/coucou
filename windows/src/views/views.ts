@@ -5,7 +5,7 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, isGlass, type AgentTask } from "../core/state";
 import { NEWS_VIEWS, washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -372,7 +372,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
-          language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
+          language(), State.settings.theme, task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
         ].join("~");
@@ -394,7 +394,8 @@ function buildOverview(actions: ViewActions): ViewHost {
       shownSelection = State.cardSelection;
 
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
+      // The theme is in the key: switching it redraws the pills' little ones.
+      const pillKey = State.settings.theme + "/" + others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
         clear(pills);
@@ -437,16 +438,19 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
     canvas,
     h("span", { class: "lbl", text: label }),
   );
-  pill.style.borderColor = `${task.color}24`;
+  // A hint of the pill's colour on the dark island; the white one needs more of
+  // it for the pill to stand out, and a hovered label darker rather than lighter.
+  const rest = () => `${task.color}${isGlass() ? "73" : "24"}`;
+  pill.style.borderColor = rest();
   pill.addEventListener("mouseenter", () => {
-    pill.style.background = `${task.color}2e`;
+    pill.style.background = `${task.color}${isGlass() ? "24" : "2e"}`;
     pill.style.borderColor = `${task.color}8c`;
     pill.style.boxShadow = `0 2px 10px ${task.color}59`;
-    (pill.querySelector(".lbl") as HTMLElement).style.color = lighten(task.color, 0.3);
+    (pill.querySelector(".lbl") as HTMLElement).style.color = lighten(task.color, isGlass() ? -0.3 : 0.3);
   });
   pill.addEventListener("mouseleave", () => {
     pill.style.background = "";
-    pill.style.borderColor = `${task.color}24`;
+    pill.style.borderColor = rest();
     pill.style.boxShadow = "";
     (pill.querySelector(".lbl") as HTMLElement).style.color = "";
   });
@@ -465,7 +469,7 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
 function lighten(hex: string, amount: number): string {
   const v = parseInt(hex.replace("#", ""), 16);
   const c = [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((x) =>
-    Math.min(255, Math.round(x + amount * 255)),
+    Math.max(0, Math.min(255, Math.round(x + amount * 255))),
   );
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
@@ -874,7 +878,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       h("div", { class: "grow" }),
       h("button", {
         class: "link-btn",
-        style: "color:#8e939c;font-size:11.5px",
+        style: "color:var(--dim-2);font-size:11.5px",
         text: tl("Settings…"),
         onclick: () => actions.openSettingsWindow(),
       }),

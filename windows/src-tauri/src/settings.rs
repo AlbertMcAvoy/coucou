@@ -76,6 +76,9 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// "dark" (the island as on macOS) or "glass" (white, frosted). Kept as it
+    /// comes: the island reads anything else as "dark".
+    pub theme: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -137,6 +140,7 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            theme: "dark".into(),
         }
     }
 }
@@ -415,7 +419,8 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "theme": "glass"
 }"##;
 
     fn custom() -> Value {
@@ -821,6 +826,7 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "theme",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

@@ -4604,6 +4604,50 @@
    "pt-BR": "senão a ilha se recolhe depois de um minuto",
    "ru": "иначе остров прячется через минуту",
    "id": "jika tidak, pulau bersembunyi setelah satu menit"
+  },
+  "Theme": {
+   "zh-Hans": "主题",
+   "hi": "थीम",
+   "es": "Tema",
+   "ar": "السمة",
+   "fr": "Thème",
+   "bn": "থিম",
+   "pt-BR": "Tema",
+   "ru": "Тема",
+   "id": "Tema"
+  },
+  "Dark": {
+   "zh-Hans": "深色",
+   "hi": "गहरा",
+   "es": "Oscuro",
+   "ar": "داكن",
+   "fr": "Sombre",
+   "bn": "গাঢ়",
+   "pt-BR": "Escuro",
+   "ru": "Тёмная",
+   "id": "Gelap"
+  },
+  "Glass": {
+   "zh-Hans": "玻璃",
+   "hi": "ग्लास",
+   "es": "Cristal",
+   "ar": "زجاجي",
+   "fr": "Verre",
+   "bn": "কাচ",
+   "pt-BR": "Vidro",
+   "ru": "Стекло",
+   "id": "Kaca"
+  },
+  "Glass: a white, frosted island": {
+   "zh-Hans": "玻璃：白色磨砂的岛",
+   "hi": "ग्लास: एक सफ़ेद, धुंधला आइलैंड",
+   "es": "Cristal: una isla blanca y esmerilada",
+   "ar": "زجاجي: جزيرة بيضاء مصنفرة",
+   "fr": "Verre : une île blanche et dépolie",
+   "bn": "কাচ: একটি সাদা, ঘষা কাচের আইল্যান্ড",
+   "pt-BR": "Vidro: uma ilha branca e fosca",
+   "ru": "Стекло: белый матовый остров",
+   "id": "Kaca: pulau putih yang buram"
   }
  }
 }

@@ -9,7 +9,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, applyTheme, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -30,6 +30,17 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+
+/**
+ * Puts the window in `theme`. settings.html paints the body dark inline, so the
+ * window never flashes white while it loads; that inline colour is dropped here
+ * for the stylesheet's, which follows the theme.
+ */
+function showTheme(theme: Settings["theme"] | undefined) {
+  applyTheme(theme);
+  document.body.style.removeProperty("background");
+  document.body.style.removeProperty("color");
+}
 
 const root = document.getElementById("settings-root")!;
 
@@ -968,6 +979,19 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 /** The general preferences, in the Mac's groups: General, Behavior, Sound, Weekly recap. */
 function generalSections(): HTMLElement[] {
+  // The island's look, and this window's with it.
+  const theme = h("select", {}) as HTMLSelectElement;
+  theme.append(
+    h("option", { value: "dark", text: t("Dark") }),
+    h("option", { value: "glass", text: t("Glass") }),
+  );
+  theme.value = settings.theme === "glass" ? "glass" : "dark";
+  theme.addEventListener("change", () => {
+    settings.theme = theme.value as Settings["theme"];
+    showTheme(settings.theme);
+    void save();
+  });
+
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -1058,6 +1082,11 @@ function generalSections(): HTMLElement[] {
         h("label", { text: t("Keep on screen") }),
         toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
         h("span", { class: "hint", text: t("otherwise the island tucks away after a minute") }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: t("Theme") }),
+        theme,
+        h("span", { class: "hint", text: t("Glass: a white, frosted island") }),
       ),
     ),
     h("section", {},
@@ -1515,6 +1544,7 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  showTheme(settings.theme);
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
   onLanguageChange(() => {
