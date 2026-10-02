@@ -6,6 +6,7 @@ import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type WslStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
+import { expressionFor, miniBlobatar } from "../mochi/blobatar";
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
@@ -720,6 +721,59 @@ function generalSections(): HTMLElement[] {
     void save();
   });
 
+  // Who lives in the island. Blobatar (github.com/Alain00/blobatar) stands in
+  // for Mochi on the island and the pills; the greeting and the drop sequence
+  // need Mochi's hands and mouth, which it doesn't have.
+  const character = h("select", {}) as HTMLSelectElement;
+  character.append(
+    h("option", { value: "mochi", text: "Mochi" }),
+    h("option", { value: "blobatar", text: "Blobatar" }),
+  );
+  character.value = settings.character ?? "mochi";
+
+  // Blobatar's character is generated from a string, as in its demo: any name,
+  // an e-mail, a word. Empty is the classic round white one. Saved as it is
+  // typed (after a pause), so the island changes along with the preview.
+  const seed = h("input", {
+    type: "text",
+    placeholder: "Empty for the classic one — a name, an e-mail…",
+    autocomplete: "off",
+    spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  seed.value = settings.characterSeed ?? "";
+  const preview = h("span", { class: "character-preview" });
+  const drawPreview = () => {
+    const { markup, span } = miniBlobatar(seed.value, expressionFor("idle", null), null);
+    preview.innerHTML = markup;
+    const svg = preview.firstElementChild as SVGSVGElement | null;
+    if (svg) svg.style.width = svg.style.height = `${28 / span}px`;
+  };
+  drawPreview();
+  let seedTimer: number | undefined;
+  seed.addEventListener("input", () => {
+    drawPreview();
+    window.clearTimeout(seedTimer);
+    seedTimer = window.setTimeout(() => {
+      settings.characterSeed = seed.value;
+      void save();
+    }, 400);
+  });
+  const seedRow = h("div", { class: "row" },
+    h("label", { text: "Generated from" }),
+    seed,
+    preview,
+  );
+  const showSeed = () => {
+    seedRow.style.display = character.value === "blobatar" ? "" : "none";
+  };
+  showSeed();
+  character.addEventListener("change", () => {
+    settings.character = character.value as Settings["character"];
+    showSeed();
+    void save();
+  });
+
   // Where the island rests along the top edge. Dragging the bar can leave it
   // anywhere, which shows here as "Where you left it". (Presets from #47.)
   const POSITIONS: [number, string][] = [[0, "Left"], [0.5, "Centre"], [1, "Right"]];
@@ -779,6 +833,12 @@ function generalSections(): HTMLElement[] {
         toggle(settings.keepVisible, (v) => { settings.keepVisible = v; void save(); }),
         h("span", { class: "hint", text: "otherwise the island tucks away after a minute" }),
       ),
+      h("div", { class: "row" },
+        h("label", { text: "Character" }),
+        character,
+        h("span", { class: "hint", text: "Blobatar is a prototype: Mochi still greets you and takes your files" }),
+      ),
+      seedRow,
     ),
     h("section", {},
       h("h2", {}, h("span", { text: "Startup" })),

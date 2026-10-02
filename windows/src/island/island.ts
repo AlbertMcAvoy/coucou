@@ -13,6 +13,7 @@ import { Sound } from "../core/sound";
 import { State, type AgentTask } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
+import { BlobatarFace, expressionFor } from "../mochi/blobatar";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
@@ -67,6 +68,8 @@ export class Island {
   private lastFrame = 0;
   private dirty = true;
   private wasTall = false;
+  /** Blobatar, when it is the character (Settings → General → Character). */
+  private face = new BlobatarFace();
   private canvasPx = 0;
 
   // Rust starts the window at full size so the launch greeting has room.
@@ -218,6 +221,7 @@ export class Island {
       this.clipEl,
       this.botGlow,
       this.botCanvas,
+      this.face.el,
       this.miniGrid,
       this.countdown,
     );
@@ -869,10 +873,14 @@ export class Island {
     // still — no breathing, no zz — and the loop stops, so an island kept on
     // screen (Settings → Keep on screen) costs nothing. A hover, a session at
     // work or any event wakes it; an emote or easing under way still finishes.
-    const resting =
-      State.mode === "compact" && !this.wasInIsland &&
-      (State.effectiveState === "idle" || State.effectiveState === "sleeping");
-    const mochiBusy = resting ? this.engine.transient : this.engine.busy;
+    const resting = this.resting;
+    // Blobatar animates itself in CSS: the engine's own loops need no frames
+    // then, only its passing events do — and, open, the eyes following the cursor.
+    const mochiBusy = resting
+      ? this.engine.transient
+      : this.usesBlobatar
+        ? this.engine.transient || State.mode === "expanded"
+        : this.engine.busy;
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
     const busy = State.mode === "hidden"
@@ -890,6 +898,16 @@ export class Island {
     }
   };
 
+  /** Resting: compact, nobody hovering, nothing going on. */
+  private get resting(): boolean {
+    return State.mode === "compact" && !this.wasInIsland &&
+      (State.effectiveState === "idle" || State.effectiveState === "sleeping");
+  }
+
+  private get usesBlobatar(): boolean {
+    return State.settings.character === "blobatar";
+  }
+
   private updateBotTargets() {
     const p = botPosition(
       State.mode, State.view, this.height.value, State.uploadProgress, usesSessions(),
@@ -901,7 +919,8 @@ export class Island {
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     // The drop canvas draws its own Mochi; two of them would overlap.
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
-    this.botCanvas.style.opacity = visible ? "1" : "0";
+    this.botCanvas.style.opacity = visible && !this.usesBlobatar ? "1" : "0";
+    this.face.setVisible(visible && this.usesBlobatar);
 
     if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
       const d = p.diameter;
@@ -919,6 +938,20 @@ export class Island {
   }
 
   private drawBot(dt: number) {
+    if (this.usesBlobatar) {
+      // Mochi's engine keeps the time (states, emotes); blobatar draws.
+      this.engine.update(dt);
+      const focus = this.shownTask;
+      this.face.show(
+        State.settings.characterSeed ?? "",
+        expressionFor(this.shownState, this.engine.activeEmote),
+        focus?.isIntegration ? focus.color : null,
+      );
+      this.face.place(this.botCx.value, this.botCy.value, this.botSize.value * 0.6);
+      this.face.look(this.lookX(), this.lookY());
+      this.face.setStill(this.resting);
+      return;
+    }
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
@@ -1014,7 +1047,8 @@ export class Island {
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
-      const key = others.map((t) => t.id).join("|");
+      const key = State.settings.character + "/" + State.settings.characterSeed + "/" +
+        others.map((t) => t.id).join("|");
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
         this.miniGrid.replaceChildren();

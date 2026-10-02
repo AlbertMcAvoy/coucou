@@ -42,10 +42,22 @@ pub struct Settings {
     /// The session Mochi's chat is in, kept across restarts. Owned by Rust.
     #[serde(default)]
     pub mochi_session: Option<crate::local_claude::ActiveSession>,
+    /// Who lives in the island: "mochi" (drawn here) or "blobatar" (the
+    /// blobatar library's character, a prototype).
+    #[serde(default = "default_character")]
+    pub character: String,
+    /// The string blobatar generates its character from; empty for the classic
+    /// round white one.
+    #[serde(default)]
+    pub character_seed: String,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_character() -> String {
+    "mochi".into()
 }
 
 fn default_backend() -> String {
@@ -83,6 +95,8 @@ impl Default for Settings {
             wsl_prompted: false,
             chat_backend: default_backend(),
             mochi_session: None,
+            character: default_character(),
+            character_seed: String::new(),
         }
     }
 }

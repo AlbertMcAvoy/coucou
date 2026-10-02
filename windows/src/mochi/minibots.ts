@@ -2,7 +2,8 @@
 // Each canvas owns a BotEngine; the island's frame loop ticks every live one.
 
 import { BotEngine, hexToRGB } from "./engine";
-import type { AgentTask } from "../core/state";
+import { expressionFor, miniBlobatar } from "./blobatar";
+import { State, type AgentTask } from "../core/state";
 
 interface MiniBot {
   canvas: HTMLCanvasElement;
@@ -12,6 +13,34 @@ interface MiniBot {
 }
 
 const live = new Map<HTMLCanvasElement, MiniBot>();
+
+/**
+ * Pills with blobatar as the character (Settings → General → Character): static
+ * markup, redrawn when the pill's state or colour changes, and no frames at all.
+ */
+interface MiniBlob {
+  slot: HTMLElement;
+  taskId: string;
+  bodySize: number;
+  drawn: string;
+}
+
+const blobs = new Map<HTMLElement, MiniBlob>();
+
+function drawBlob(mb: MiniBlob, task: AgentTask) {
+  const seed = State.settings.characterSeed ?? "";
+  const key = `${seed}|${task.state}|${task.emote ?? ""}|${task.color}`;
+  if (key === mb.drawn) return;
+  mb.drawn = key;
+  const { markup, span } = miniBlobatar(seed, expressionFor(task.state, task.emote ?? null), task.color);
+  mb.slot.innerHTML = markup;
+  const svg = mb.slot.firstElementChild as SVGSVGElement | null;
+  if (svg) {
+    const size = mb.bodySize / span;
+    svg.style.width = `${size}px`;
+    svg.style.height = `${size}px`;
+  }
+}
 
 /**
  * Creates a mini Mochi whose **body** is `bodySize` CSS pixels across.
@@ -27,6 +56,13 @@ export function createMiniBot(task: AgentTask, bodySize: number): HTMLElement {
   slot.className = "mini";
   slot.style.width = `${bodySize}px`;
   slot.style.height = `${bodySize}px`;
+
+  if (State.settings.character === "blobatar") {
+    const mb: MiniBlob = { slot, taskId: task.id, bodySize, drawn: "" };
+    drawBlob(mb, task);
+    blobs.set(slot, mb);
+    return slot;
+  }
 
   const canvas = document.createElement("canvas");
   const engineSize = bodySize / 0.6;
@@ -61,9 +97,16 @@ export function pruneMiniBots() {
   for (const [canvas] of live) {
     if (!canvas.isConnected) live.delete(canvas);
   }
+  for (const [slot] of blobs) {
+    if (!slot.isConnected) blobs.delete(slot);
+  }
 }
 
 export function syncMiniBotStates(tasks: AgentTask[]) {
+  for (const mb of blobs.values()) {
+    const task = tasks.find((t) => t.id === mb.taskId);
+    if (task) drawBlob(mb, task);
+  }
   for (const mb of live.values()) {
     const task = tasks.find((t) => t.id === mb.taskId);
     if (!task) continue;

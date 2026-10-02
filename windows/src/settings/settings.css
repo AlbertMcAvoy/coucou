@@ -94,6 +94,21 @@ body.settings-window {
   display: none;
 }
 
+/* The blobatar a seed makes, beside the field it is typed in. */
+.character-preview {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+}
+
+.character-preview svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
 /* A section scrolled to stops below the sticky head, not under it. */
 .panel > section {
   scroll-margin-top: 104px;

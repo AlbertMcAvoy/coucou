@@ -106,6 +106,10 @@ export interface Settings {
   chatBackend: string;
   /** The compact island stays on screen instead of tucking away after a minute. */
   keepVisible: boolean;
+  /** Who lives in the island: Mochi, or blobatar's character (a prototype). */
+  character: "mochi" | "blobatar";
+  /** The string blobatar generates its character from; "" for the classic one. */
+  characterSeed: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -123,6 +127,8 @@ export const DEFAULT_SETTINGS: Settings = {
   model: "claude-opus-5",
   chatBackend: "api",
   keepVisible: true,
+  character: "mochi",
+  characterSeed: "",
 };
 
 type Listener = () => void;

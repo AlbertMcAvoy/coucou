@@ -377,8 +377,17 @@ export class BotEngine {
     this.miniNextBehavior = now() + 0.8 + Math.random() * 1.7;
   }
 
+  /** The emote playing now, a passing one first — for a face drawn elsewhere (blobatar). */
+  get activeEmote(): BotEmoteName | null {
+    return now() < this.emoteUntil ? this.emote : this.permanentEmote;
+  }
+  private emote: BotEmoteName | null = null;
+  private emoteUntil = 0;
+
   triggerEmote(emote: BotEmoteName, duration = 1.8) {
     const t = now();
+    this.emote = emote;
+    this.emoteUntil = t + duration;
     this.eyeOverride = EMOTE_EYE[emote];
     this.eyeOverrideUntil = t + duration;
 
