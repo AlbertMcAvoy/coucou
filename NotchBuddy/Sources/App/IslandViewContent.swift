@@ -1738,6 +1738,8 @@ struct IntegrationCardView: View {
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return "Hooks installed" }
+            // No key or poller behind this pill: it only reflects hook events.
+            if task.id == "agent_claude-desktop" { return "Ready · no setup needed" }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
                 if provider.isLocal {
