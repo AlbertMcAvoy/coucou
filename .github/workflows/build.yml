@@ -26,6 +26,12 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test chat parsing
+        run: bash scripts/test-chat-parsing.sh
+
+      - name: Test plan gauge
+        run: bash scripts/test-plan-gauge.sh
+
       - name: Build
         run: |
           xcodebuild \

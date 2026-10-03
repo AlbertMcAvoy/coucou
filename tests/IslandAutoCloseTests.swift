@@ -54,7 +54,32 @@ enum IslandAutoCloseTests {
         precondition(greeting.state == .coucou)
         try await waitForCompact(greeting, timeout: 1)
 
-        print("Island auto-close: 6 cases passed")
+        // An unanswered approval holds the island open even after a delay edit.
+        let heldOpen = openedMachine(delay: 0.05)
+        var approvalPending = true
+        heldOpen.isHeldOpen = { approvalPending }
+        heldOpen.mouseLeft()
+        heldOpen.homeToPetitDelay = 0.01
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(heldOpen.state == .home)
+        approvalPending = false
+        heldOpen.mouseLeft()
+        try await waitForCompact(heldOpen, timeout: 1)
+
+        // An approval arriving during a countdown also blocks its replacement timer.
+        let heldCountdown = openedMachine(delay: 0.2)
+        var newApprovalPending = false
+        heldCountdown.isHeldOpen = { newApprovalPending }
+        heldCountdown.mouseLeft()
+        newApprovalPending = true
+        heldCountdown.homeToPetitDelay = 0.01
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(heldCountdown.state == .home)
+        newApprovalPending = false
+        heldCountdown.mouseLeft()
+        try await waitForCompact(heldCountdown, timeout: 1)
+
+        print("Island auto-close: 8 cases passed")
     }
 
     @MainActor

@@ -59,7 +59,13 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .layoutPriority(1)
-                                Text(agent.source == .claudeCode ? "Claude Code" : "n8n")
+                                Text({ () -> String in
+                                    switch agent.source {
+                                    case .claudeCode: return "Claude Code"
+                                    case .agent:      return "Agent"
+                                    case .n8n:        return "n8n"
+                                    }
+                                }())
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
@@ -87,8 +93,22 @@ struct OverviewView: View {
                     }
                 }
 
+                // Plan detail overlays on top of normal content (GitHub build, home view only)
+                #if !APPSTORE
+                if state.showingPlanDetail {
+                    CardBackground(wash: nil)
+                    ClaudePlanCardView(usage: state.claudePlanUsage)
+                        .transition(.opacity)
+                }
+                #endif
+
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                if !showingN8nDetail {
+                #if !APPSTORE
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail
+                #else
+                let hideJumpButton = showingN8nDetail
+                #endif
+                if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .medium))
@@ -110,7 +130,20 @@ struct OverviewView: View {
                 AgentPillsView(state: state)
             }
         }
-        .onChange(of: state.focusId) { _, _ in showingN8nDetail = false }
+        .onChange(of: state.focusId) { _, _ in
+            showingN8nDetail = false
+            #if !APPSTORE
+            withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
+            #endif
+        }
+        #if !APPSTORE
+        .onChange(of: state.view) { _, v in
+            if v != .overview { state.showingPlanDetail = false }
+        }
+        .onChange(of: state.mode) { _, m in
+            if m != .expanded { state.showingPlanDetail = false }
+        }
+        #endif
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -139,6 +172,44 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "agent_cursor":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
+        case "agent_codex":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.openai.codex") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
+        case "agent_gemini", "agent_antigravity":
+            #if !APPSTORE
+            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
+                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
+            if let hit = terminalBundleIds.compactMap({ id in
+                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+            }).first {
+                hit.activate(options: .activateIgnoringOtherApps)
+            }
+            #endif
+        case "ai_anthropic":
+            switchChatProvider(.anthropic)
+        case "ai_google":
+            switchChatProvider(.google)
+        case "ai_openai":
+            switchChatProvider(.openai)
+        case "ai_ollama":
+            switchChatProvider(.ollama)
+        case "ai_lmstudio":
+            switchChatProvider(.lmstudio)
+        case "integration_music":
+            #if !APPSTORE
+            MusicController.shared.openMusic()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -207,8 +278,11 @@ struct ApprovalView: View {
                     PrimaryButton("Allow") {
                         HookServer.shared.sendApprovalDecision("allow")
                     }
-                    SecondaryButton("Always") {
-                        HookServer.shared.sendApprovalDecision("always")
+                    // Codex rejects updatedPermissions, so "Always" is not offered
+                    if approval?.pillId != "agent_codex" {
+                        SecondaryButton("Always") {
+                            HookServer.shared.sendApprovalDecision("always")
+                        }
                     }
                 }
             }
@@ -633,13 +707,10 @@ struct MailView: View {
         }
         guard let httpBody = try? JSONSerialization.data(withJSONObject: payload) else { return false }
         request.httpBody = httpBody
-        guard let (data, response) = try? await URLSession.shared.data(for: request) else { return false }
+        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         if code == 200 || code == 201 { return true }
-        // Surface Resend error body for debugging
-        if let body = String(data: data, encoding: .utf8) {
-            print("[Resend] HTTP \(code): \(body)")
-        }
+        print("[Resend] HTTP \(code)")
         return false
     }
 
@@ -714,6 +785,7 @@ struct PromptView: View {
     @ObservedObject var state: AppState
     @State private var text: String = ""
     @FocusState private var focused: Bool
+    @State private var showModelPicker = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -738,13 +810,17 @@ struct PromptView: View {
                             }
                             .padding(.vertical, 2)
                         }
-                        .onChange(of: state.chatHistory.count) { _, _ in
-                            if let last = state.chatHistory.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        .onChange(of: state.chatHistory) { _, _ in
+                            if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
                         .onChange(of: state.stateOverride) { _, v in
-                            if v != nil { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
+                            if v != nil {
+                                withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
+                            } else if let last = state.chatHistory.last(where: { !$0.content.isEmpty }) {
+                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            }
                         }
                         .onAppear {
                             if let last = state.chatHistory.last {
@@ -756,6 +832,37 @@ struct PromptView: View {
                 } else {
                     Spacer()
                 }
+
+                HStack(spacing: 0) {
+                    Spacer()
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            showModelPicker.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hex: state.chatProvider.accentHex))
+                                .frame(width: 6, height: 6)
+                            Text(state.activeChatModel)
+                                .font(.system(size: 10.5, weight: .medium))
+                                .foregroundColor(Color(hex: "#7B8089"))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 8))
+                                .foregroundColor(Color(hex: "#5C6370"))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
+                        ModelPickerView(state: state, isPresented: $showModelPicker)
+                            .frame(width: 300)
+                    }
+                }
+                .padding(.horizontal, 10)
 
                 HStack(spacing: 8) {
                     TextField(state.chatHistory.isEmpty ? "Ask me anything…" : "Continue…", text: $text)
@@ -784,6 +891,16 @@ struct PromptView: View {
         }
         .padding(.bottom, 10)
         .onAppear { focused = true }
+        .onChange(of: state.view) { _, view in
+            if view == .prompt {
+                state.fetchModelsIfNeeded(for: state.chatProvider)
+            }
+        }
+        .onChange(of: state.chatProvider) { _, provider in
+            if state.view == .prompt {
+                state.fetchModelsIfNeeded(for: provider)
+            }
+        }
     }
 
     private func sendMessage() {
@@ -801,28 +918,185 @@ struct PromptView: View {
 }
 
 
+// MARK: - Model / provider picker
+
+/// Wrapping horizontal flow layout for provider chips.
+private struct ProviderChipFlow: Layout {
+    var spacing: CGFloat = 6
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let r = rows(maxW: proposal.replacingUnspecifiedDimensions().width, subviews: subviews)
+        return r.size
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let r = rows(maxW: bounds.width, subviews: subviews)
+        for (idx, pt) in r.placements.enumerated() {
+            subviews[idx].place(at: CGPoint(x: bounds.minX + pt.x, y: bounds.minY + pt.y), proposal: .unspecified)
+        }
+    }
+    private func rows(maxW: CGFloat, subviews: Subviews) -> (size: CGSize, placements: [(x: CGFloat, y: CGFloat)]) {
+        var x: CGFloat = 0, y: CGFloat = 0, lineH: CGFloat = 0, maxX: CGFloat = 0
+        var pts: [(x: CGFloat, y: CGFloat)] = []
+        for sv in subviews {
+            let sz = sv.sizeThatFits(.unspecified)
+            if x + sz.width > maxW, x > 0 { x = 0; y += lineH + spacing; lineH = 0 }
+            pts.append((x: x, y: y))
+            x += sz.width + spacing
+            lineH = max(lineH, sz.height)
+            maxX = max(maxX, x - spacing)
+        }
+        return (CGSize(width: max(maxX, 0), height: y + lineH), pts)
+    }
+}
+
+struct ModelPickerView: View {
+    @ObservedObject var state: AppState
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Provider chips — wrap; hide local providers when not connected and not already active
+            let visibleProviders = ChatProvider.allCases.filter { p in
+                if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
+                if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                return true
+            }
+            ProviderChipFlow(spacing: 6) {
+                ForEach(visibleProviders, id: \.self) { provider in
+                    Button {
+                        guard provider != state.chatProvider else { return }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            state.chatProvider = provider
+                        }
+                        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+                        SoundEngine.shared.play("pop")
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hex: provider.accentHex))
+                                .frame(width: 7, height: 7)
+                            Text(provider.displayName)
+                                .font(.system(size: 12, weight: state.chatProvider == provider ? .semibold : .regular))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(state.chatProvider == provider
+                                    ? Color(hex: provider.accentHex).opacity(0.18)
+                                    : Color.white.opacity(0.06))
+                        .overlay(Capsule().stroke(
+                            state.chatProvider == provider
+                                ? Color(hex: provider.accentHex).opacity(0.5)
+                                : Color.white.opacity(0.1),
+                            lineWidth: 1))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Divider().opacity(0.2)
+
+            // Model list for current provider — fetched dynamically
+            modelListView
+                .frame(height: 260, alignment: .top)
+        }
+        .padding(14)
+        .background(Color(hex: "#16171B"))
+        .onAppear {
+            // Force-refresh local providers every time the picker opens
+            if state.chatProvider.isLocal {
+                state.fetchedProviderModels[state.chatProvider] = nil
+                state.providerModelFetchError[state.chatProvider] = nil
+            }
+            state.fetchModelsIfNeeded(for: state.chatProvider)
+        }
+        .onChange(of: state.chatProvider) { _, provider in
+            if provider.isLocal {
+                state.fetchedProviderModels[provider] = nil
+                state.providerModelFetchError[provider] = nil
+            }
+            state.fetchModelsIfNeeded(for: provider)
+        }
+    }
+
+    @ViewBuilder
+    private var modelListView: some View {
+        if state.loadingProviderModels.contains(state.chatProvider) {
+            HStack(spacing: 8) {
+                ProgressView().scaleEffect(0.7)
+                Text("Loading models…")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "#8A8F98"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        } else if let error = state.providerModelFetchError[state.chatProvider] {
+            Text(error)
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8A8F98"))
+                .padding(.vertical, 4)
+        } else if let models = state.fetchedProviderModels[state.chatProvider] {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(models, id: \.id) { model in
+                        Button {
+                            switch state.chatProvider {
+                            case .anthropic: state.claudeModel = model.id
+                            case .google:    state.googleChatModel = model.id
+                            case .openai:    state.openAIChatModel = model.id
+                            case .ollama:    state.ollamaChatModel = model.id
+                            case .lmstudio:  state.lmstudioChatModel = model.id
+                            }
+                            isPresented = false
+                            SoundEngine.shared.play("blip")
+                        } label: {
+                            HStack {
+                                Text(model.label)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(state.activeChatModel == model.id
+                                                     ? Color(hex: state.chatProvider.accentHex)
+                                                     : Color(hex: "#C8CDD4"))
+                                Spacer()
+                                if state.activeChatModel == model.id {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(Color(hex: state.chatProvider.accentHex))
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(state.activeChatModel == model.id
+                                        ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
+                                        : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct ChatBubble: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top) {
-            if message.role == .user {
-                Spacer(minLength: 32)
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#F1F2F4"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.13))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                Text(message.content)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(Color(hex: "#B0B5BE"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                Spacer(minLength: 8)
+        if !message.content.isEmpty {
+            HStack(alignment: .top) {
+                if message.role == .user {
+                    Spacer(minLength: 32)
+                    Text(message.content)
+                        .font(.system(size: 12.5))
+                        .foregroundColor(Color(hex: "#F1F2F4"))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color.white.opacity(0.13))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    ChatMarkdownView(markdown: message.content)
+                    Spacer(minLength: 8)
+                }
             }
         }
     }
@@ -975,6 +1249,31 @@ struct IntegrationCardView: View {
                 return cmd?.contains("NotchBuddy") == true || cmd?.contains("coucou") == true
             } ?? false }
             #endif
+        case "agent_gemini":
+            #if !APPSTORE
+            return HookServer.geminiHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_antigravity":
+            #if !APPSTORE
+            return HookServer.agyHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_cursor", "agent_codex":
+            return false  // coming soon
+        case "integration_music":
+            #if !APPSTORE
+            return true  // Apple Music is always installed on macOS
+            #else
+            return false
+            #endif
+        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
+        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
+        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
+        case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -1002,9 +1301,11 @@ struct IntegrationCardView: View {
         }
     }
 
-    // VS Code with active session: show ticker layout (same as overview)
-    private var vsCodeSessionActive: Bool {
-        task.id == "integration_claude" && (task.state != .idle || !task.steps.isEmpty)
+    // Workspace/agent pill with active session: show ticker layout
+    private var agentSessionActive: Bool {
+        guard let def = PillCatalog.definition(for: task.id) else { return false }
+        guard def.category == .workspace || def.category == .agent else { return false }
+        return task.state != .idle || !task.steps.isEmpty
     }
 
     // n8n with a finished execution: show result row instead of "Open n8n" button
@@ -1043,6 +1344,75 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
+    private var musicIsActive: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_music" else { return false }
+        if appState.musicAutomationDenied { return true }
+        return MusicController.shared.trackTitle != nil
+        #else
+        return false
+        #endif
+    }
+
+    private var statusDot: Color {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return Color(hex: "#F4505E") }
+            return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
+        }
+        #endif
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
+        let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_calcom"  ? appState.calcomError
+                   : nil
+        if svcErr != nil { return Color(hex: "#F4505E") }
+        return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
+    }
+
+    private var statusLabel: String {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            if appState.musicAutomationDenied { return "Automation not allowed" }
+            if appState.musicPlaying { return "Playing · \(MusicController.shared.trackTitle ?? "Unknown")" }
+            return "Not playing"
+        }
+        #endif
+        if PillCatalog.definition(for: task.id)?.comingSoon == true { return "Coming soon" }
+        let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_calcom"  ? appState.calcomError
+                   : nil
+        if let err = svcErr { return err }
+        let isHooks = task.id == "agent_gemini" || task.id == "agent_antigravity"
+        let isAI    = ChatProvider(pillID: task.id) != nil
+        if isConfigured {
+            if isHooks { return "Hooks installed" }
+            if isAI {
+                let provider = ChatProvider(pillID: task.id)!
+                if provider.isLocal {
+                    let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
+                    return "Connected · \(model)"
+                }
+                let model: String
+                switch task.id {
+                case "ai_anthropic": model = appState.claudeModel
+                case "ai_google":    model = appState.googleChatModel
+                case "ai_openai":    model = appState.openAIChatModel
+                default:             model = ""
+                }
+                return "Key configured · \(model)"
+            }
+            return "Connected · loading…"
+        } else {
+            if isHooks { return "Hooks not installed" }
+            if isAI {
+                let provider = ChatProvider(pillID: task.id)!
+                return provider.isLocal ? "Not connected" : "Key not configured"
+            }
+            return "Key not configured"
+        }
+    }
+
     var body: some View {
         if showingDetail && n8nHasActivity {
             N8nDetailView(task: task) {
@@ -1074,7 +1444,12 @@ struct IntegrationCardView: View {
         } else if notionHasData {
             NotionCardView()
                 .transition(.opacity)
-        } else if vsCodeSessionActive {
+        } else if musicIsActive {
+            #if !APPSTORE
+            MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
@@ -1086,7 +1461,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text("Claude Code")
+                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -1117,10 +1492,10 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? "VS Code" : task.name)
+                    Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                    Text("Integration")
+                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                     Spacer(minLength: 2)
@@ -1130,15 +1505,8 @@ struct IntegrationCardView: View {
                 .padding(.trailing, 36)
 
                 HStack(spacing: 5) {
-                    let stripeErr = task.id == "integration_stripe" ? appState.stripeError
-                                  : task.id == "integration_calcom"  ? appState.calcomError
-                                  : nil
-                    let dot = stripeErr != nil ? Color(hex: "#F4505E")
-                            : isConfigured    ? Color(hex: "#22C55E")
-                            :                   Color(hex: "#F4505E")
-                    let label = stripeErr ?? (isConfigured ? "Connected · loading…" : "Key not configured")
-                    Circle().fill(dot).frame(width: 5, height: 5)
-                    Text(label)
+                    Circle().fill(statusDot).frame(width: 5, height: 5)
+                    Text(statusLabel)
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#6B7079"))
                 }
@@ -1151,6 +1519,54 @@ struct IntegrationCardView: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
+                    } else if task.id == "agent_cursor" {
+                        #if !APPSTORE
+                        if let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                            Button("Open Cursor") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
+                                                                   completionHandler: nil)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
+                        #endif
+                    } else if task.id == "agent_codex" {
+                        #if !APPSTORE
+                        if let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.openai.codex") {
+                            Button("Open Codex") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: .init(),
+                                                                   completionHandler: nil)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
+                        #endif
+                    } else if let provider = ChatProvider(pillID: task.id) {
+                        if isConfigured {
+                            Button("Chat with \(task.name)") {
+                                switchChatProvider(provider)
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        }
+                    } else if task.id == "integration_music" {
+                        #if !APPSTORE
+                        Button("Open Music") { MusicController.shared.openMusic() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if appState.musicAutomationDenied {
+                            Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -1180,13 +1596,11 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    if task.id == "integration_stripe" {
-                        if isConfigured {
-                            Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
-                                .buttonStyle(.plain)
-                        }
+                    if task.id == "integration_stripe" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
+                            .buttonStyle(.plain)
                     }
                     if task.id == "integration_calcom" && isConfigured {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
@@ -1194,9 +1608,19 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    if !isConfigured {
+                    // Settings button: shown when not configured, except cursor/codex and music
+                    if !isConfigured
+                       && task.id != "agent_cursor"
+                       && task.id != "agent_codex"
+                       && task.id != "integration_music" {
                         Button("Settings…") {
-                            NotificationCenter.default.post(name: .openFullSettings, object: nil)
+                            let section: String
+                            switch PillCatalog.definition(for: task.id)?.category {
+                            case .workspace, .agent: section = "agents"
+                            case .ai:                section = "chat"
+                            default:                 section = "integrations"
+                            }
+                            NotificationCenter.default.post(name: .openFullSettings, object: section)
                         }
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
@@ -1238,6 +1662,7 @@ struct IntegrationCardView: View {
             NSWorkspace.shared.openApplication(at: appURL, configuration: .init(), completionHandler: nil)
         }
     }
+
 }
 
 // MARK: - Vercel Deployment List View
@@ -2258,12 +2683,30 @@ struct AgentPillsView: View {
             Spacer(minLength: 0)
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(displayTasks) { task in
+                    #if !APPSTORE
+                    if task.id == "integration_music" {
+                        MusicPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    } else {
+                        AgentPill(task: task, state: state, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    }
+                    #else
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
                         state.setFocus(task.id)
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
+                    #endif
                 }
             }
             .padding(.horizontal, 8)
@@ -2280,6 +2723,8 @@ struct AgentPill: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
+    private var effectiveColor: String { task.color }
+
     // VS Code pill always shows "VS Code" label regardless of active project name
     private var displayName: String {
         task.id == "integration_claude" ? "VS Code" : task.name
@@ -2291,10 +2736,10 @@ struct AgentPill: View {
                 ZStack {
                     Capsule()
                         .fill(isHovered
-                              ? Color(hex: task.color).opacity(0.18)
+                              ? Color(hex: effectiveColor).opacity(0.18)
                               : Color(hex: "#0E0F11"))
                     Capsule()
-                        .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                        .stroke(Color(hex: effectiveColor).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
                     HStack(spacing: 0) {
                         MiniBotCanvasView(task: task)
                             .frame(width: 22 / 0.6, height: 22 / 0.6)
@@ -2305,7 +2750,7 @@ struct AgentPill: View {
                     Text(displayName)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(isHovered
-                                         ? Color(hex: task.color).lighter(by: 0.3)
+                                         ? Color(hex: effectiveColor).lighter(by: 0.3)
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -2313,11 +2758,11 @@ struct AgentPill: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+                .shadow(color: Color(hex: effectiveColor).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
 
                 // Alert badge (approval / finished / error)
                 if let badge = task.pillBadge {
-                    PillBadgeView(badge: badge, taskColor: task.color)
+                    PillBadgeView(badge: badge, taskColor: effectiveColor)
                         .offset(x: 3, y: -3)
                 }
             }
@@ -2331,6 +2776,209 @@ struct AgentPill: View {
         }
     }
 }
+
+// MARK: - Music Pill (GitHub build only)
+
+#if !APPSTORE
+struct MusicPill: View {
+    let task: AgentTask
+    @ObservedObject var state: AppState
+    @Binding var swapping: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    private var isPlaying: Bool { AppState.shared.musicPlaying }
+    private var showControls: Bool { isHovered && MusicController.shared.trackTitle != nil }
+
+    var body: some View {
+        ZStack {
+            // Selection target — full pill area, receives taps where controls don't
+            Capsule()
+                .fill(Color.clear)
+                .contentShape(Capsule())
+                .onTapGesture { onTap() }
+
+            // Visual fills
+            Capsule()
+                .fill(isHovered ? Color(hex: task.color).opacity(0.18) : Color(hex: "#0E0F11"))
+                .allowsHitTesting(false)
+            Capsule()
+                .stroke(Color(hex: task.color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                .allowsHitTesting(false)
+
+            // Mini Mochi at leading edge
+            HStack(spacing: 0) {
+                MiniBotCanvasView(task: task, isDancing: isPlaying)
+                    .frame(width: 22 / 0.6, height: 22 / 0.6)
+                    .frame(width: 22, height: 22, alignment: .center)
+                    .padding(.leading, 8)
+                Spacer()
+            }
+            .allowsHitTesting(false)
+
+            // Title — trailing padding grows on hover to make room for buttons
+            Text(task.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isHovered ? Color(hex: task.color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 34)
+                .padding(.trailing, showControls ? 52 : 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: showControls)
+                .allowsHitTesting(false)
+
+            // Playback controls — appear on hover when a track is loaded
+            if showControls {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: 2) {
+                        MusicControlButton(icon: isPlaying ? "pause.fill" : "play.fill", color: task.color) {
+                            MusicController.shared.playPause()
+                        }
+                        MusicControlButton(icon: "forward.fill", color: task.color) {
+                            MusicController.shared.nextTrack()
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .brightness(isHovered ? 0.06 : 0)
+        .onHover { newHover in
+            guard !swapping else { return }
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+
+struct MusicControlButton: View {
+    let icon: String
+    let color: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(isHovered ? Color(hex: color).opacity(0.18) : Color(hex: "#0E0F11"))
+                Circle()
+                    .stroke(Color(hex: color).opacity(isHovered ? 0.55 : 0.14), lineWidth: 1)
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(isHovered ? Color(hex: color).lighter(by: 0.3) : Color(hex: "#6B7079"))
+            }
+            .frame(width: 20, height: 20)
+            .shadow(color: Color(hex: color).opacity(isHovered ? 0.35 : 0), radius: 6)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isHovered ? 1.1 : 1.0)
+        .onHover { newHover in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
+        }
+    }
+}
+#endif
+
+// MARK: - Music Card View (GitHub build only)
+
+#if !APPSTORE
+struct MusicCardView: View {
+    @ObservedObject private var controller = MusicController.shared
+    @ObservedObject private var appState = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if appState.musicAutomationDenied {
+                // Automation denied — prompt user to fix
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#F4505E"))
+                        .frame(width: 7, height: 7)
+                    Text("Apple Music")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                    Spacer(minLength: 2)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+                .padding(.trailing, 36)
+
+                Text("Allow Coucou to control Music")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .padding(.leading, 108)
+                    .padding(.trailing, 12)
+
+                Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "#FA2D48").opacity(0.85))
+                    .buttonStyle(.plain)
+                    .padding(.leading, 108)
+                    .padding(.top, 2)
+            } else {
+                // Line 1: dot + title
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#FA2D48"))
+                        .frame(width: 7, height: 7)
+                    if let title = controller.trackTitle {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1).truncationMode(.tail)
+                            .frame(maxWidth: 150, alignment: .leading)
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+
+                // Line 2: artist
+                if let artist = controller.artist {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .padding(.leading, 108)
+                }
+
+                // Line 3: controls
+                HStack(spacing: 8) {
+                    Button(action: { MusicController.shared.previousTrack() }) {
+                        Image(systemName: "backward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.playPause() }) {
+                        Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#FA2D48"))
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.nextTrack() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+}
+#endif
 
 struct PillBadgeView: View {
     let badge: PillBadge
@@ -2789,6 +3437,23 @@ struct StatusBadge: View {
 }
 
 // MARK: - Color extension (lighten)
+
+// MARK: - Chat-provider switch (used by AI pill buttons and ↗ action)
+
+/// Mirrors ModelPickerView provider-chip tap: animates, fires surprised emote + "pop" sound,
+/// then opens the chat view. No-op if provider is already selected (just opens chat).
+@MainActor
+func switchChatProvider(_ provider: ChatProvider) {
+    let state = AppState.shared
+    if provider != state.chatProvider {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            state.chatProvider = provider
+        }
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+        SoundEngine.shared.play("pop")
+    }
+    state.view = .prompt
+}
 
 extension Color {
     func lighter(by amount: Double) -> Color {
