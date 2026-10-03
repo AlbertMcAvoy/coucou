@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Claude chat and structured search keep all response text without adding line breaks between text blocks.
+
 ## 0.2.0 — October 6, 2026
 
 - GitHub Copilot CLI and Muse Code sessions show up in the notch: see every step live and approve or deny permissions right from the island. Install from Settings → Agents → Copilot CLI / Muse Code, which shows what will change in your config and backs it up before writing *(GitHub build)* (#263)
