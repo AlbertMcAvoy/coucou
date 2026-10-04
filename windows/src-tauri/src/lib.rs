@@ -216,6 +216,16 @@ fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
 }
 
+/// An option picked on the island for a question Claude Code asked.
+#[tauri::command]
+fn approval_answer(
+    app: AppHandle,
+    request_id: String,
+    answers: std::collections::HashMap<String, String>,
+) {
+    pipe::answer_question(&app, &request_id, &answers);
+}
+
 /// The island has the card on screen, so the long wait for a human may begin.
 /// Until this arrives the relay only waits a few hundred milliseconds, which is
 /// what stops a paused or unresponsive island from freezing Claude Code.
@@ -388,6 +398,7 @@ pub fn run() {
             hooks_preview,
             hooks_apply,
             approval_decision,
+            approval_answer,
             approval_ack,
             approval_decline,
             log_line,

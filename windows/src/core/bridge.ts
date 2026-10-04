@@ -77,6 +77,10 @@ export const Bridge = {
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
+  /** Answers a question Claude Code asked: question text → chosen label. */
+  approvalAnswer: (requestId: string, answers: Record<string, string>) =>
+    call<void>("approval_answer", { requestId, answers }),
+
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
 

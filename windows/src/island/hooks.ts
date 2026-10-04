@@ -5,7 +5,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type AskedQuestion } from "../core/state";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -118,6 +118,28 @@ function approvalTarget(tool: string, input: Record<string, unknown>): string {
     }
   }
   return tool;
+}
+
+/**
+ * The questions of an AskUserQuestion call, if the island can show all of them
+ * as options to pick from. Anything it cannot is left to the terminal.
+ */
+function askedQuestions(tool: string, input: Record<string, unknown>): AskedQuestion[] | null {
+  if (tool !== "AskUserQuestion" || !Array.isArray(input.questions)) return null;
+  const out: AskedQuestion[] = [];
+  for (const raw of input.questions as Record<string, unknown>[]) {
+    const question = typeof raw?.question === "string" ? raw.question : "";
+    const options = (Array.isArray(raw?.options) ? (raw.options as Record<string, unknown>[]) : [])
+      .filter((o) => typeof o?.label === "string" && o.label)
+      .map((o) => ({
+        label: o.label as string,
+        description: typeof o.description === "string" ? o.description : "",
+      }));
+    // A question cut short by the relay would be answered under the wrong text.
+    if (!question || question.endsWith("…") || options.length < 2) return null;
+    out.push({ question, options, multiSelect: raw.multiSelect === true });
+  }
+  return out.length > 0 ? out : null;
 }
 
 function upsert(projectName: string, cwd: string) {
@@ -291,20 +313,25 @@ function handleHook(island: Island, payload: HookPayload) {
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
+      // Claude Code asking a question is not a permission to grant: the island
+      // shows the options and sends back the one that was picked.
+      const questions = askedQuestions(tool, input);
+      const view = questions ? "question" : "approval";
       State.pendingApproval = {
         requestId,
         sessionId: payload.session_id ?? "",
         tool,
         command: approvalTarget(tool, input),
+        ...(questions ? { questions } : {}),
       };
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, "approval");
+      State.updateTask(CLAUDE_ID, view);
       State.isPinned = true;
-      Sound.play("approval");
+      Sound.play(view);
       if (focused) {
-        island.alert("approval");
+        island.alert(view);
       } else {
         // Another agent holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
@@ -322,7 +349,9 @@ function handleHook(island: Island, payload: HookPayload) {
         island.dropPin();
         State.updateTask(CLAUDE_ID, "working");
         State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval") island.setView(State.defaultView());
+        if (State.view === "approval" || State.view === "question") {
+          island.setView(State.defaultView());
+        }
         State.notify();
       }, 110_000);
       break;

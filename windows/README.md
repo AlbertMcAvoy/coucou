@@ -48,7 +48,8 @@ installs for the current user only — no admin prompt.
 | Tray icon | Open, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
-island with **Deny / Allow**, a finished session shows what it did, and
+island with **Deny / Allow**, a question from Claude Code shows its options to
+pick from, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
 
 ## Claude Code
