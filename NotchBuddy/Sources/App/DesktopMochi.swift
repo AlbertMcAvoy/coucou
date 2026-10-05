@@ -12,7 +12,7 @@ final class DesktopBotViewState: ObservableObject {
     @Published var isSleeping: Bool = false
     /// Pause entirely (screen sleep / lock).
     @Published var paused: Bool = false
-    /// Bot center in the same coord space as AppState.mousePosition (y-down from screen top).
+    /// Bot center in the same coord space as AppState.mousePosition (DesktopSpace, y-down).
     /// Updated every poll frame; Canvas reads it inside TimelineView — @Published not needed.
     var lookOrigin: CGPoint = .zero
 }
@@ -695,13 +695,11 @@ final class DesktopMochiController {
     // MARK: - Position helpers
 
     private func lookOriginFor(panel: NSPanel) -> CGPoint {
-        let screen = panel.screen ?? NSScreen.main!
-        return DesktopMochiLogic.lookOrigin(
-            panelMinX:    panel.frame.minX,
-            panelMinY:    panel.frame.minY,
-            screenMinX:   screen.frame.minX,
-            screenHeight: screen.frame.height,
-            panelSize:    DesktopMochiController.panelSize)
+        DesktopMochiLogic.lookOrigin(
+            panelMinX:  panel.frame.minX,
+            panelMinY:  panel.frame.minY,
+            desktopTop: IslandWindowController.desktopTop,
+            panelSize:  DesktopMochiController.panelSize)
     }
 
     private func clampToVisibleFrame(_ origin: NSPoint) -> NSPoint {

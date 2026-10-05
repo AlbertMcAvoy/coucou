@@ -303,9 +303,8 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Mouse in screen coords (Y flipped, origin top-left) for Bot look-at
-        let screenH = panel.screen?.frame.height ?? NSScreen.main!.frame.height
-        let newPos = CGPoint(x: mouse.x - (panel.screen?.frame.minX ?? 0), y: screenH - mouse.y)
+        // Mouse in desktop space (y-down from the menu-bar screen top) for Bot look-at
+        let newPos = DesktopSpace.topDown(mouse, desktopTop: Self.desktopTop)
         let cur = AppState.shared.mousePosition
         if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
             AppState.shared.mousePosition = newPos
@@ -1103,6 +1102,9 @@ final class IslandWindowController: NSWindowController {
     static func notchScreen() -> NSScreen? {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     }
+
+    /// Top of the menu-bar screen in AppKit coordinates: origin of `DesktopSpace`.
+    static var desktopTop: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
 
     /// Screen the island currently sits on (Settings window, desktop Mochi flights).
     private(set) static var currentScreen: NSScreen?

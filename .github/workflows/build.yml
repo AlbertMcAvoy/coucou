@@ -21,6 +21,12 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test display choice
+        run: bash scripts/test-display-choice.sh
+
+      - name: Desktop Mochi and gaze tests
+        run: bash scripts/test-desktop-mochi.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
