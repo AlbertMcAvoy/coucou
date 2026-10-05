@@ -126,11 +126,17 @@ body {
   cursor: pointer;
 }
 
-/* The ordinary views step aside while the sequence owns the body. */
+/* The ordinary views step aside while the sequence owns the body. The active
+   view sets pointer-events back to auto, which beats the parent's none: it has
+   to be switched off too, or its invisible card swallows the canvas buttons. */
 #views.hidden-by-upload {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease-in-out;
+}
+
+#views.hidden-by-upload .view.on {
+  pointer-events: none;
 }
 
 #bot-glow {

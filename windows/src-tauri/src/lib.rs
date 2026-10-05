@@ -11,6 +11,8 @@ mod platform;
 mod secrets;
 mod settings;
 mod tray;
+#[cfg(windows)]
+mod webview_drop;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -410,6 +412,8 @@ pub fn run() {
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
+                #[cfg(windows)]
+                webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);
                 let _ = win.show();
             }
