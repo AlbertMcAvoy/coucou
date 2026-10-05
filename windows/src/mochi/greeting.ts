@@ -383,14 +383,20 @@ function mochiPath(hw: number, hh: number): Path2D {
   return p;
 }
 
+/** Mochi's white; on the glass island the warm off-white the engine draws him in there. */
+function whiteStops(g: CanvasGradient) {
+  const glass = isGlass();
+  g.addColorStop(0, glass ? "rgb(232,229,223)" : "rgb(251,251,252)");
+  g.addColorStop(1, glass ? "rgb(184,180,172)" : "rgb(231,233,236)");
+}
+
 /** White body gradient. A canvas gradient pads past its ends, so the corners are never left unpainted. */
 function whiteFill(
   x: CanvasRenderingContext2D, path: Path2D,
   x0: number, y0: number, x1: number, y1: number,
 ) {
   const g = x.createLinearGradient(x0, y0, x1, y1);
-  g.addColorStop(0, "rgb(251,251,252)");
-  g.addColorStop(1, "rgb(231,233,236)");
+  whiteStops(g);
   x.fillStyle = g;
   x.fill(path);
 }
@@ -417,8 +423,7 @@ function drawHandR(x: CanvasRenderingContext2D, hw: number, hh: number, p: Pose)
   x.rotate(h.ang);
   rr(x, -h.L / 2, -h.T / 2, h.L, h.T, h.T / 2);
   const g = x.createLinearGradient(h.L / 2, -h.T / 2, -h.L / 2, h.T / 2);
-  g.addColorStop(0, "rgb(251,251,252)");
-  g.addColorStop(1, "rgb(231,233,236)");
+  whiteStops(g);
   x.fillStyle = g;
   x.fill();
   x.strokeStyle = "rgba(0,0,0,0.08)";
