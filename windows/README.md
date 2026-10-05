@@ -291,6 +291,11 @@ npm run tauri dev      # live-reloading development build
 npm run pack           # builds the installer and drops it in windows/release/
 ```
 
+With GNU Make (`winget install ezwinports.make`), `make` in `windows/` does all of
+it: checks the tools, builds, installs Coucou for the current user and starts it.
+`make prereqs` installs Rust, Node and the MSVC build tools with winget; the
+Makefile's header lists the other targets (`install-msi`, `uninstall`, `test`…).
+
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
 to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
