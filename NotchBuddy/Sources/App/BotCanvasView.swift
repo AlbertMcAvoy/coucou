@@ -153,7 +153,9 @@ struct BotCanvasView: View {
         if let origin = lookOriginOverride {
             return tanh((state.mousePosition.x - origin.x) / 260)
         }
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        // mousePosition is relative to the island's screen (see pollFrame), so its centre
+        // must be too: the island may sit on an external screen with a non-zero origin.
+        let screenMidX = IslandWindowController.islandScreen().frame.width / 2
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
                                              nw: state.notchWidth, nh: state.notchHeight)
@@ -161,7 +163,7 @@ struct BotCanvasView: View {
                                             islandW: islandW, islandH: islandH,
                                             uploadProgress: state.uploadProgress)
         // Island is centered on screen; bot is at botCx within island coords
-        let botScreenX = screen.frame.midX - islandW / 2 + botCx
+        let botScreenX = screenMidX - islandW / 2 + botCx
         return tanh((state.mousePosition.x - botScreenX) / 260)
     }
 

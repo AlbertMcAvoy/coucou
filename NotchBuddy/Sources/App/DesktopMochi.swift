@@ -257,7 +257,7 @@ final class DesktopMochiController {
 
         phase = .flyingOut
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let startOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         let target = loadSavedPosition()
 
@@ -329,7 +329,7 @@ final class DesktopMochiController {
         cancellables.removeAll()
         isSleeping = false
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let targetOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45
@@ -357,7 +357,7 @@ final class DesktopMochiController {
         isSleeping = false
 
         let s = DesktopMochiController.panelSize
-        let screen = IslandWindowController.notchScreen() ?? NSScreen.main!
+        let screen = IslandWindowController.islandScreen()
         let targetOrigin = NSPoint(x: screen.frame.midX - s/2, y: screen.frame.maxY - s)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.45

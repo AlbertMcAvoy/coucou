@@ -163,6 +163,14 @@ struct IslandContainer: View {
         .onReceive(NotificationCenter.default.publisher(for: .botGreet)) { _ in
             greetNotif.toggle()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .islandScreenChanged)) { _ in
+            // New screen, new resting size (notch ↔ bar): snap without animation.
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight)
+            islandWidth  = w
+            islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
+        }
     }
 
     private func modeOrder(_ m: IslandMode) -> Int {
