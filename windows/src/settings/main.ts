@@ -387,8 +387,14 @@ function generalSection(): HTMLElement {
     h("option", { value: "cursor", text: "Display under the cursor" }),
   );
   screen.value = settings.screen;
+  void Bridge.listMonitors().then((list) => {
+    for (const m of list ?? []) screen.append(h("option", { value: m.key, text: m.label }));
+    // Set again now the option exists; a display that is gone shows as the main one.
+    screen.value = settings.screen;
+    if (!screen.value) screen.value = "primary";
+  });
   screen.addEventListener("change", () => {
-    settings.screen = screen.value as Settings["screen"];
+    settings.screen = screen.value;
     void save();
   });
 
