@@ -233,3 +233,6 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+/// `set_position` already places a Win32 window on the right display.
+pub fn pin_to_monitor(_win: &WebviewWindow, _x: i32, _y: i32) {}

@@ -114,6 +114,13 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
+/// A display's logical origin: GDK monitor geometry is in logical pixels.
+fn logical_origin(m: &Monitor) -> (i32, i32) {
+    let scale = m.scale_factor();
+    let p = m.position();
+    ((p.x as f64 / scale).round() as i32, (p.y as f64 / scale).round() as i32)
+}
+
 /// The display the island lives on: the primary one, or the one under the cursor.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
@@ -172,6 +179,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    let (lx, ly) = logical_origin(&m);
+    platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
