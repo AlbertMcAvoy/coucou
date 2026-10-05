@@ -9,6 +9,7 @@ import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
 import type { Outfit } from "./wardrobe";
+import { isGlass } from "../core/state";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,11 @@ const EYE_SP = 0.37;
 const EYE_P = -0.12;
 const BASE_TOP: RGB = [0.929, 0.929, 0.937]; // #EDEDEF
 const BASE_BOTTOM: RGB = [0.769, 0.773, 0.792]; // #C4C5CA
+// The glass island is a cool white, the same as Mochi's: there he is a warm
+// off-white, a shade deeper, so he stands out from it.
+const GLASS_TOP: RGB = [0.91, 0.898, 0.875]; // #E8E5DF
+const GLASS_BOTTOM: RGB = [0.722, 0.706, 0.675]; // #B8B4AC
+const baseColors = (): [RGB, RGB] => (isGlass() ? [GLASS_TOP, GLASS_BOTTOM] : [BASE_TOP, BASE_BOTTOM]);
 const INK = "rgb(26,20,18)"; // #1A1412
 const MINI_INK = "rgb(16,19,26)"; // #10131A
 
@@ -884,8 +890,9 @@ export class BotEngine {
       if (pumpkin <= 0.001) return;
     } else {
       const g = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
-      g.addColorStop(0, rgba(BASE_TOP));
-      g.addColorStop(1, rgba(BASE_BOTTOM));
+      const [top, bottom] = baseColors();
+      g.addColorStop(0, rgba(top));
+      g.addColorStop(1, rgba(bottom));
       x.fillStyle = g;
       x.fill(body);
     }
@@ -1171,8 +1178,9 @@ export class BotEngine {
         g.addColorStop(0, rgba(mix3(this.bodyColor, [1, 1, 1], 0.35)));
         g.addColorStop(1, rgba(this.bodyColor));
       } else {
-        g.addColorStop(0, rgba(BASE_TOP));
-        g.addColorStop(1, rgba(BASE_BOTTOM));
+        const [top, bottom] = baseColors();
+        g.addColorStop(0, rgba(top));
+        g.addColorStop(1, rgba(bottom));
       }
       x.beginPath();
       x.ellipse(0, 0, hew, heh, 0, 0, Math.PI * 2);

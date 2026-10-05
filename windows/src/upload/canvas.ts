@@ -26,7 +26,8 @@ const CHIPS = [N_("PDF"), N_("Images"), N_("Code"), N_("Docs")];
 /**
  * What the scene is painted in, per theme (Settings → General → Island →
  * Theme). Glass leaves the island's background to its own frost (`island:
- * null`); Mochi, the bar and the greens are the same in both.
+ * null`) and draws Mochi in the warm off-white the engine uses there; the bar
+ * and the greens are the same in both.
  */
 const SCENE = {
   dark: {
@@ -43,6 +44,7 @@ const SCENE = {
     onInk: "#0B0C0E",
     second: "rgba(255,255,255,0.09)",
     secondText: "#F1F2F4",
+    mochi: ["#EDEDEF", "#C4C5CA"],
   },
   glass: {
     island: null as string | null,
@@ -58,6 +60,7 @@ const SCENE = {
     onInk: "#FFFFFF",
     second: "rgba(20,24,36,0.07)",
     secondText: "#23262D",
+    mochi: ["#E8E5DF", "#B8B4AC"],
   },
 };
 
@@ -416,8 +419,8 @@ export class UploadCanvas {
 
     // Body.
     const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
-    bg.addColorStop(0, "#EDEDEF");
-    bg.addColorStop(1, "#C4C5CA");
+    bg.addColorStop(0, this.pal.mochi[0]);
+    bg.addColorStop(1, this.pal.mochi[1]);
     ctx.fillStyle = bg;
     ctx.fill();
 
