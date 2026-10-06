@@ -136,6 +136,25 @@ windows/
 `%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
 problems. It stays on your machine.
 
+## Supported agents
+
+The relay (`coucou-hook.exe`) works with any tool that can run a command on hook events. Pass `--agent <name>` to create a named pill.
+
+| Agent | How to connect | Config file |
+|---|---|---|
+| Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
+| Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
+| Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
+| Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
+| Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
+| Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |
+| Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
+| OpenCode | JS plugin (`coucou.js`) | `%USERPROFILE%\.config\opencode\plugins\coucou.js` |
+| Amp | TypeScript plugin (`coucou.ts`) | `%USERPROFILE%\.config\amp\plugins\coucou.ts` |
+| Any other | `--agent <name>` positional arg | your tool's hook config |
+
+OpenCode and Amp use a plugin model. The plugin installer (**Settings → OpenCode Plugin** / **Settings → Amp Plugin**) is Mac-only: it installs a TypeScript/JavaScript file into `~/.config/opencode/plugins/` and `~/.config/amp/plugins/`, which are macOS paths. The Windows/Linux Tauri app does not ship a plugin installer for these two agents. To use them on Windows or Linux, generate the plugin file on a Mac (or write it by hand) and drop it into `%USERPROFILE%\.config\opencode\plugins\coucou.js` or `%USERPROFILE%\.config\amp\plugins\coucou.ts` as shown in the table above.
+
 ## What's different from the Mac version
 
 - No notch, so the island lives at the top centre of the screen and retracts into
