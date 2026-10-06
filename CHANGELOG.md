@@ -5,12 +5,26 @@
 - Apple Music (macOS, GitHub build): the card gets the album cover, the album, a progress bar you drag or click to seek, shuffle, repeat (all or one), volume and a heart to favorite the track, in the same layout as Spotify. The cover comes from Music itself, or from Apple's public catalog for a track that has none — thanks @JhoanG956
 - Spotify (macOS, GitHub build): a new pill with the album cover, title, artist and album, a progress bar you drag or click to seek, play/pause, previous/next, shuffle, repeat and volume. It follows Spotify's own notification, so nothing polls, and it never opens Spotify by itself. The cover shows even before you allow Automation, through Spotify's public oEmbed; Mochi dances while it plays — thanks @JhoanG956
 
+## 0.1.9 — October 6, 2026
+
+- Services up close on the iPhone: tap a service and your Mac fetches live data from its API — Vercel, GitHub, Stripe, Resend, Cal.com, n8n and Notion. The keys never leave the Mac; the detail is written to your iCloud encrypted (#251)
+- Act from the iPhone: Vercel (redeploy, promote to production, cancel a build), GitHub (re-run failed jobs, approve, squash and merge), n8n (activate, deactivate, retry a failed run). Each action runs only if it was offered on an item in the last detail the Mac published for that service, is used once, and must be less than 5 minutes old. Nothing that moves money or sends an email (#251)
+- The Live Activity starts 20 seconds after the Mac locks, not immediately, so a quick lock and unlock doesn't spend one of iOS's hourly starts. It starts right away when an agent is waiting for a permission or has a question (#251)
+- After unlocking, the Live Activity waits 30 seconds before ending, in case the Mac locks again — useful on a laptop that goes to sleep the moment you put it down (#251)
+- If the iPhone has no update token yet (iOS held back the start), and an approval or question is waiting, the Mac starts the activity again once for that specific request (#251)
+- Cal.com upcoming bookings work again: the API v2 expects `afterStart` / `beforeEnd`, not `start` / `end`, so the bookings page was empty (#251)
+
 ## 0.1.8 — October 5, 2026
 
 - Coucou on iPhone: turn on Settings → General → iPhone (off by default) and your agent sessions show up live in the Coucou iPhone app and its widgets, through your own private iCloud. Project names, commands and questions are encrypted with your iCloud keys; turning it off deletes them (#209, #211, #212, #213)
 - Allow or deny a permission from the iPhone: a notification with the command, Deny right from it, Allow behind Face ID. Your Mac only applies a decision meant for the exact request it is waiting on, and the request expires after 2 minutes. The iPhone keeps a history of your decisions (#220)
 - Lock your Mac while an agent works and Mochi moves to your iPhone's Lock Screen and Dynamic Island, then comes back to the notch when you unlock. Turn it on under Settings → General → iPhone. It goes through a small relay that only sees the agent's name and state (#221)
 - Mochi, the pills and the diff engine now live in a shared package used by both apps; nothing changes in the notch (#210)
+- The iPhone sees more of what your Mac sees: every service Mochi (GitHub, Stripe, Vercel, Resend, Cal.com, n8n, Notion) with its latest items, and the last turn of each session with its commands and diffs, all encrypted with your iCloud keys. No API key ever leaves the Mac (#224)
+- Send the next instruction to Claude Code from the iPhone (GitHub build, off by default): your Mac picks it up within 15 seconds and continues the session in its own folder (#224)
+- Answer Claude's questions from the iPhone: your Mac applies an answer only if it matches the question still waiting (#241)
+- The Live Activity counts the time since Mochi left, and shows Allow and Deny while a command waits for you (#232, #241)
+- A new coucou sound for Mochi's greeting (#241)
 
 ## 0.1.7 — October 4, 2026
 
