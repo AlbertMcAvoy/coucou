@@ -4048,7 +4048,7 @@ struct MusicCardView: View {
                     .frame(width: 20, height: 20)
                 }
                 .buttonStyle(NowPlayingPressStyle())
-                .help(appState.musicPlaying ? "Pause" : "Play")
+                .help(appState.musicPlaying ? String(localized: "Pause") : String(localized: "Play"))
                 NowPlayingIconButton(icon: "forward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Next") {
                     controller.nextTrack()
                 }
