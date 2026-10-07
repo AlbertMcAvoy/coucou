@@ -1,5 +1,6 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod agent_hooks;
 mod claude;
 mod files;
 mod hooks;
@@ -191,6 +192,12 @@ fn set_paused(paused: bool) {
 #[tauri::command]
 fn hooks_status() -> HookStatus {
     hooks::status()
+}
+
+/// Pill ID → whether that agent's hooks reach Coucou. Read-only.
+#[tauri::command]
+fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
+    agent_hooks::status()
 }
 
 /// Returns the diff the user has to look at before anything is written.
@@ -407,6 +414,7 @@ pub fn run() {
             open_in_vscode,
             quit_app,
             hooks_status,
+            agent_hooks_status,
             hooks_preview,
             hooks_apply,
             approval_decision,
