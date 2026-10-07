@@ -11,6 +11,8 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { buildWardrobe } from "./wardrobe";
+import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -26,6 +28,10 @@ export interface ViewActions {
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
   blip(): void;
+  /** Wardrobe click: keeps the outfit ("auto" and "none" included). */
+  chooseOutfit(selection: OutfitSelection): void;
+  /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
+  previewOutfit(outfit: Outfit | null): void;
 }
 
 export interface ViewHost {
@@ -501,6 +507,7 @@ export function buildViews(
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
+  map.set("wardrobe", buildWardrobe(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder("Sending by email isn't in this version.", ""));
   map.set("searching", buildPlaceholder("Claude is searching…", ""));

@@ -14,6 +14,7 @@ import { State } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
@@ -21,6 +22,10 @@ import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
 const BOT_OVERHANG = 40;
+/** Extra canvas on each side of Mochi, for the witch hat's brim and the Santa hat's tip. */
+const BOT_SIDE = 24;
+/** The pill whose Mochi wears the outfit; any other focused pill takes its own look. */
+const MAIN_PILL = "integration_claude";
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
 
@@ -60,6 +65,8 @@ export class Island {
 
   private engine = new BotEngine();
   private greeting = new Greeting();
+  private greetingShown = false;
+  private seasons = new SeasonCache();
 
   private running = false;
   private lastFrame = 0;
@@ -167,6 +174,18 @@ export class Island {
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
+      chooseOutfit: (selection) => {
+        if (parseOutfit(State.settings.mochiOutfit) === selection) return;
+        State.settings.mochiOutfit = selection;
+        void Bridge.saveSettings(State.settings);
+        Sound.play("pop");
+        this.engine.triggerEmote("proud");
+        State.notify();
+      },
+      previewOutfit: (outfit) => {
+        State.wardrobePreview = outfit;
+        State.notify();
+      },
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -332,6 +351,15 @@ export class Island {
 
   reveal() {
     this.fsm.reveal();
+  }
+
+  /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
+  toggleWardrobe() {
+    if (State.paused || State.mode === "hidden") return;
+    // The greeting and the drop sequence draw a Mochi of their own.
+    if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
+    if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
+    else this.setView("wardrobe");
   }
 
   /** An alert stopped waiting for an answer: let the island auto-close again. */
@@ -534,6 +562,12 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      // Right-click on Mochi opens the wardrobe, and closes it again.
+      if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
+        this.cancelBotHover();
+        this.toggleWardrobe();
+        return;
+      }
       if (State.mode !== "expanded") {
         this.fsm.click();
         return;
@@ -542,6 +576,12 @@ export class Island {
         this.cancelBotHover();
         this.engine.slap();
       }
+    });
+
+    // No browser menu over Mochi: his right-click is the wardrobe. Everywhere
+    // else (the chat field) the webview keeps its own menu.
+    this.islandEl.addEventListener("contextmenu", (e) => {
+      if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
     window.addEventListener("keydown", (e) => {
@@ -773,15 +813,16 @@ export class Island {
     const size = this.botSize.value;
     const w = Math.max(1, Math.round(size));
     const hCss = w + BOT_OVERHANG;
+    const wCss = w + BOT_SIDE * 2;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     if (this.canvasPx !== w) {
       this.canvasPx = w;
-      this.botCanvas.width = Math.round(w * dpr);
+      this.botCanvas.width = Math.round(wCss * dpr);
       this.botCanvas.height = Math.round(hCss * dpr);
-      this.botCanvas.style.width = `${w}px`;
+      this.botCanvas.style.width = `${wCss}px`;
       this.botCanvas.style.height = `${hCss}px`;
     }
-    this.botCanvas.style.left = `${this.botCx.value - w / 2}px`;
+    this.botCanvas.style.left = `${this.botCx.value - wCss / 2}px`;
     this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
 
     const ctx = this.botCanvas.getContext("2d");
@@ -801,9 +842,18 @@ export class Island {
         this.engine.slotHVel = 0;
       }
     }
+    // Only the main Mochi is dressed: a focused integration pill shows its own
+    // colours, unless the wardrobe is open (BotCanvasView.showOutfit, macOS).
+    // In the wardrobe the hovered outfit swaps in at once, without the drop-in.
+    const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
+    const mainFocused = State.focusId == null || State.focusId === MAIN_PILL;
+    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
+    const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
+    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+
     this.engine.update(dt);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, hCss);
+    ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
+    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
     this.engine.draw(ctx, w, hCss);
   }
 
@@ -839,6 +889,12 @@ export class Island {
     this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
     this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
+
+    // Leaving the greeting, however it ends, lets its sound fade out.
+    if (this.greetingShown && !greetingActive) this.greeting.leave();
+    this.greetingShown = greetingActive;
+    // A wardrobe try-on never outlives the wardrobe.
+    if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
 
     this.header.sync();
     for (const [name, view] of this.views) {
