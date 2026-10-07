@@ -540,6 +540,22 @@ fn open_gitlab(path: Option<String>) {
     }
 }
 
+/// Opens the configured YouTrack instance, or a page on it (`path` starts with
+/// `/`).
+#[tauri::command]
+fn open_youtrack(path: Option<String>) {
+    if let Ok(base) = integrations::youtrack_base() {
+        let path = path.filter(|p| p.starts_with('/')).unwrap_or_default();
+        open_url(format!("{base}{path}"));
+    }
+}
+
+/// The settings' saved-search picker for YouTrack.
+#[tauri::command]
+async fn youtrack_saved_searches() -> Result<integrations::YoutrackSearches, String> {
+    integrations::youtrack_saved_searches().await
+}
+
 /// Refresh buttons in the integration cards.
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
@@ -720,6 +736,8 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_gitlab,
+            open_youtrack,
+            youtrack_saved_searches,
             open_settings_window,
             set_paused,
             shortcuts_status,

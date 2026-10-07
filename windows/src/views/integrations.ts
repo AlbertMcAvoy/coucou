@@ -125,6 +125,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openGitlab(),
       }),
     );
+  } else if (task.id === "integration_youtrack") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open YouTrack",
+        onclick: () => void Bridge.openYoutrack(),
+      }),
+    );
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -438,6 +447,56 @@ function gitlabCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", t("Inbox"), extra), rows);
 }
 
+// ── YouTrack ──────────────────────────────────────────────────────────────────
+
+/**
+ * The followed saved search, five rows on screen and the rest a scroll away: the
+ * last ten pieces of news (highlighted for half an hour), then the search's
+ * issues, most recently updated first, without those already told.
+ */
+function youtrackCard(): HTMLElement {
+  const d = get("integration_youtrack");
+  const count = Number(d.count ?? 0);
+  const query = String(d.query ?? "");
+  const extra = h(
+    "button",
+    {
+      class: "int-total int-review",
+      title: "Open the search in YouTrack",
+      onclick: () => void Bridge.openYoutrack(`/issues?q=${encodeURIComponent(query)}`),
+    },
+    h("span", {
+      style: count > 0 ? "color:#FF318C" : "color:var(--dim-3)",
+      text: `${count}${d.capped ? "+" : ""} ${count === 1 ? "issue" : "issues"}`,
+    }),
+  );
+
+  const rows = h("div", { class: "int-rows scroll" });
+  let shown = 0;
+  const told = new Set<string>();
+
+  for (const n of arr("integration_youtrack", "news")) {
+    told.add(String(n.issue ?? ""));
+    rows.append(...newsRow(n, "#22C55E"));
+    shown++;
+  }
+  for (const i of arr("integration_youtrack", "issues")) {
+    if (told.has(String(i.id))) continue;
+    const tip = [i.id, i.by ? `updated by ${String(i.by)}` : ""].filter(Boolean).join(" · ");
+    rows.append(linkRow(i.resolved ? "#6B7079" : "#FF318C", false, i.url, tip,
+      h("span", { class: "int-name", style: "flex:0 1 auto", text: String(i.summary ?? "") }),
+      // An id is short and useless cut: the summary gives way instead.
+      h("span", { class: "int-sub", style: "flex:0 0 auto", text: String(i.id ?? "") }),
+      h("span", { class: "int-ago", text: timeAgo(i.updated) }),
+    ));
+    shown++;
+  }
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing in this search" }));
+  keepScroll(rows, "integration_youtrack");
+  const kind = String(d.queryName ?? "") || "Saved search";
+  return h("div", { class: "int-card youtrack" }, header("#FF318C", "YouTrack", kind, extra), rows);
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -591,7 +650,7 @@ export interface IntegrationCardHooks {
 }
 
 /** The pills whose card lists five rows, for which the overview grows. */
-const TALL_CARDS = new Set(["integration_gitlab"]);
+const TALL_CARDS = new Set(["integration_gitlab", "integration_youtrack"]);
 
 /** True when this pill's card lists five rows, for which the overview grows. */
 export function wantsTallOverview(task: AgentTask | null): boolean {
@@ -616,6 +675,7 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_calcom":
       return info.loaded;
     case "integration_gitlab":
+    case "integration_youtrack":
       return info.loaded;
     default:
       return false;
@@ -658,6 +718,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return calcomCard();
     case "integration_gitlab":
       return gitlabCard();
+    case "integration_youtrack":
+      return youtrackCard();
     default:
       return idleCard(task, hooks.openSettings);
   }
