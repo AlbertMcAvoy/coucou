@@ -23,7 +23,49 @@ pub fn inbox_dir() -> PathBuf {
     settings::local_dir().join("inbox")
 }
 
+// ── Paths a real drop delivered ─────────────────────────────────────────────
+//
+// `ingest_file` is callable from the page, so on its own it would copy any file
+// the user can read (a script injected into the page could pull in ~/.ssh).
+// Only paths the OS just delivered through a real drop are accepted: WebView2's
+// drop objects on Windows (webview_drop.rs), Tauri's drag-drop window event
+// elsewhere (lib.rs). Each is good once, for a couple of minutes.
+
+const DROP_VALID_FOR: Duration = Duration::from_secs(120);
+const DROP_MAX_PENDING: usize = 64;
+
+static DROPPED: std::sync::Mutex<Vec<(String, std::time::Instant)>> = std::sync::Mutex::new(Vec::new());
+
+/// Records paths that came from a real drop.
+pub fn allow_dropped<I: IntoIterator<Item = String>>(paths: I) {
+    let mut list = DROPPED.lock().unwrap_or_else(|e| e.into_inner());
+    let now = std::time::Instant::now();
+    list.retain(|(_, at)| now.duration_since(*at) < DROP_VALID_FOR);
+    for p in paths {
+        list.push((p, now));
+    }
+    let excess = list.len().saturating_sub(DROP_MAX_PENDING);
+    list.drain(..excess);
+}
+
+/// True (once) when `path` was delivered by a drop in the last couple of minutes.
+fn take_dropped(path: &str) -> bool {
+    let mut list = DROPPED.lock().unwrap_or_else(|e| e.into_inner());
+    let now = std::time::Instant::now();
+    list.retain(|(_, at)| now.duration_since(*at) < DROP_VALID_FOR);
+    match list.iter().position(|(p, _)| p == path) {
+        Some(i) => {
+            list.remove(i);
+            true
+        }
+        None => false,
+    }
+}
+
 pub fn ingest(source: &str) -> Result<DroppedFile, String> {
+    if !take_dropped(source) {
+        return Err("Only files dropped on the island can be added.".into());
+    }
     let src = Path::new(source);
     let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
     if meta.is_dir() {
@@ -94,18 +136,22 @@ mod tests {
         let source = tmp.join("note.txt");
         std::fs::write(&source, b"hello").unwrap();
 
+        let drop = |p: &Path| allow_dropped([p.to_string_lossy().to_string()]);
+        drop(&source);
         let first = ingest(source.to_str().unwrap()).unwrap();
         assert_eq!(first.name, "note.txt");
         assert_eq!(std::fs::read(&first.path).unwrap(), b"hello");
 
         // A second drop of the same name must not clobber the first copy.
         std::fs::write(&source, b"second").unwrap();
+        drop(&source);
         let second = ingest(source.to_str().unwrap()).unwrap();
         assert_ne!(first.path, second.path);
         assert_eq!(std::fs::read(&first.path).unwrap(), b"hello");
         assert_eq!(std::fs::read(&second.path).unwrap(), b"second");
 
         // Folders are refused rather than silently ignored.
+        drop(&tmp);
         assert!(ingest(tmp.to_str().unwrap()).is_err());
 
         // An ancient source must not arrive already older than the sweep window.
@@ -118,6 +164,7 @@ mod tests {
             .unwrap()
             .set_modified(long_ago)
             .unwrap();
+        drop(&old_source);
         let aged = ingest(old_source.to_str().unwrap()).unwrap();
         assert!(
             Path::new(&aged.path).exists(),
@@ -128,5 +175,25 @@ mod tests {
         let _ = std::fs::remove_file(&first.path);
         let _ = std::fs::remove_file(&second.path);
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+}
+
+#[cfg(test)]
+mod drop_tests {
+    use super::*;
+
+    // One test: the list is process-wide and tests run in parallel.
+    #[test]
+    fn only_a_dropped_path_is_ingested_once_and_the_list_stays_bounded() {
+        let p = "/tmp/coucou-test-not-dropped.txt".to_string();
+        assert!(ingest(&p).is_err(), "never dropped");
+        allow_dropped([p.clone()]);
+        assert!(take_dropped(&p));
+        assert!(!take_dropped(&p), "good once");
+
+        allow_dropped((0..200).map(|i| format!("/tmp/bounded-{i}")));
+        assert!(DROPPED.lock().unwrap().len() <= DROP_MAX_PENDING);
+        assert!(take_dropped("/tmp/bounded-199"));
+        assert!(!take_dropped("/tmp/bounded-0"));
     }
 }

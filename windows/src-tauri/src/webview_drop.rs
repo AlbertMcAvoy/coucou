@@ -55,6 +55,7 @@ pub fn install(app: &AppHandle) {
                 file.Path(&mut path)?;
                 paths.push(take_pwstr(path));
             }
+            crate::files::allow_dropped(paths.iter().cloned());
             let _ = handle.emit_to(WINDOW_LABEL, "file-drag", FileDrop { kind: "drop", paths });
             Ok(())
         }));

@@ -421,6 +421,13 @@ pub fn run() {
             create_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
+                // Where Tauri takes the drop itself (Linux), its paths are the
+                // ones ingest_file may copy (files.rs).
+                win.on_window_event(|event| {
+                    if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                        files::allow_dropped(paths.iter().map(|p| p.to_string_lossy().to_string()));
+                    }
+                });
                 platform::make_non_activating(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
