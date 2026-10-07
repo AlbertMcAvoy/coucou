@@ -710,7 +710,7 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title news-title" });
   const more = h("div", { class: "news-more" });
   let url = "";
-  // Only news that carries what changed has details to unfold.
+  // Only the latest news, when it carries what changed, has details to unfold.
   const details = btn(tl("Details"), "secondary", () => {
     detailsFor = "integration_gitlab";
     actions.setView("news-details");
@@ -728,7 +728,7 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
       const fresh = freshNews("integration_gitlab");
       const bad = fresh.some((n) => n.success === false);
       box.style.setProperty("--wash", washRGBA(bad ? "red" : "green"));
-      details.style.display = fresh.some((n) => (n.changes?.length ?? 0) > 0) ? "" : "none";
+      details.style.display = (fresh[0]?.changes?.length ?? 0) > 0 ? "" : "none";
       const task = State.tasks.find((t) => t.id === "integration_gitlab") ?? null;
       clear(who);
       who.append(agentWho(task, fresh.length > 1 ? `${fresh.length} updates` : "GitLab update"));
@@ -763,9 +763,10 @@ let detailsFor = "";
 export const newsDetailsFor = () => detailsFor;
 
 /**
- * The news card unfolded, taller: every piece of news, and under each what
- * changed — what someone said or did on an MR, the jobs a pipeline failed on.
- * A title opens its page; Back returns to the card.
+ * The news card unfolded, taller: the latest piece of news — the card's title —
+ * and under it what changed: what someone said or did on an MR, the jobs a
+ * pipeline failed on. The earlier ones stay on the pill. The title opens its
+ * page; Back returns to the card.
  */
 function buildNewsDetails(actions: ViewActions): ViewHost {
   const who = h("div");
@@ -779,14 +780,14 @@ function buildNewsDetails(actions: ViewActions): ViewHost {
   return {
     el: h("div", { class: "view" }, box),
     sync() {
-      const fresh = freshNews(detailsFor);
+      const fresh = freshNews(detailsFor).slice(0, 1);
       // Rebuilt only when the news changes, so a scrolled list stays put.
       const key = detailsFor + JSON.stringify(fresh);
       if (key === drawn) return;
       drawn = key;
       const task = State.tasks.find((t) => t.id === detailsFor) ?? null;
       clear(who);
-      who.append(agentWho(task, fresh.length === 1 ? "1 update" : `${fresh.length} updates`));
+      who.append(agentWho(task, "Latest update"));
       clear(list);
       for (const n of fresh) {
         list.append(h("div", { class: "news-item" },
