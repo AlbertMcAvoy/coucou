@@ -9,6 +9,7 @@ mod integrations;
 mod island;
 mod log;
 mod net;
+mod openai_compat;
 mod pipe;
 mod platform;
 mod secrets;
@@ -238,7 +239,8 @@ fn approval_decline(app: AppHandle, request_id: String) {
 
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
-/// One chat turn. The API key and any file bytes stay on the Rust side.
+/// One chat turn with the provider picked in the chat view. API keys and any
+/// file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
     app: AppHandle,
@@ -251,7 +253,8 @@ async fn chat_send(
     chat::send(&app, &chat, &settings, query, context).await
 }
 
-/// The models a provider offers. Only asked with the provider's key.
+/// The models a provider offers, for the picker in the chat view. Only asked
+/// once the user picked that provider, and only with its key.
 #[tauri::command]
 async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
     let settings = shared.settings.lock().unwrap().clone();

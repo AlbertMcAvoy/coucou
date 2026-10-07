@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
@@ -23,6 +24,12 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// Who the chat talks to: "anthropic", or a cloud provider of
+    /// openai_compat.rs ("openai", "google", "openrouter"). Picked in the chat view.
+    pub chat_provider: String,
+    /// The model picked for each provider other than Anthropic (whose model is
+    /// `model`), by provider id.
+    pub chat_models: BTreeMap<String, String>,
 }
 
 fn default_model() -> String {
@@ -46,6 +53,8 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            chat_provider: crate::chat::ANTHROPIC.into(),
+            chat_models: BTreeMap::new(),
         }
     }
 }
@@ -306,7 +315,9 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
-  "model": "some-model"
+  "model": "some-model",
+  "chatProvider": "openai",
+  "chatModels": { "openai": "gpt-x" }
 }"#;
 
     fn custom() -> Value {
@@ -632,6 +643,8 @@ mod tests {
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "chatProvider",
+                "chatModels",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

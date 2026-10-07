@@ -1,6 +1,6 @@
 // The chat, whoever answers it: the conversation, the system prompt, and which
-// provider a turn goes to. Each provider's own wire format lives in its module
-// (claude.rs for Anthropic).
+// provider a turn goes to. Each provider's own wire format lives in its module:
+// claude.rs (Anthropic) and openai_compat.rs (OpenAI, Google AI, OpenRouter).
 //
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, secrets};
+use crate::{claude, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -157,9 +157,18 @@ pub fn plain_question(first: bool, context: Option<&ChatContext>, query: &str) -
 // ── Which provider ────────────────────────────────────────────────────────────
 
 /// The model chosen for `provider`, or its default.
-pub fn model_for(settings: &Settings, _provider: &str) -> String {
-    let m = settings.model.trim();
-    if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() }
+pub fn model_for(settings: &Settings, provider: &str) -> String {
+    if provider == ANTHROPIC {
+        let m = settings.model.trim();
+        return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
+    }
+    settings
+        .chat_models
+        .get(provider)
+        .map(|m| m.trim().to_string())
+        .filter(|m| !m.is_empty())
+        .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
+        .unwrap_or_default()
 }
 
 /// One chat turn with the provider chosen in the settings.
@@ -170,21 +179,31 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
+    let provider = settings.chat_provider.as_str();
+    let model = model_for(settings, provider);
+    if provider == ANTHROPIC || provider.is_empty() {
+        return claude::send(chat, &model, query, context).await;
+    }
+    if let Some(p) = openai_compat::provider(provider) {
+        return openai_compat::send(chat, p, &model, query, context).await;
+    }
     let _ = app;
-    let model = model_for(settings, ANTHROPIC);
-    claude::send(chat, &model, query, context).await
+    Err(format!("Unknown chat provider: {provider}"))
 }
 
 /// The models `provider` offers. Asked only when the user opens the picker on
-/// that provider, and only once it has a key (or, for a local server, an
-/// address): nothing is sent anywhere before that.
+/// that provider, and only once it has a key: nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     const NO_KEY: &str = "No API key — add it in Settings.";
-    let _ = settings;
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or(NO_KEY)?;
         return claude::models(&key).await;
     }
+    if let Some(p) = openai_compat::provider(provider) {
+        let key = secrets::get(p.key).ok_or(NO_KEY)?;
+        return openai_compat::models(p, &key).await;
+    }
+    let _ = settings;
     Err(format!("Unknown chat provider: {provider}"))
 }
 
@@ -280,10 +299,13 @@ mod tests {
     }
 
     #[test]
-    fn the_model_comes_from_the_settings_or_the_default() {
+    fn the_model_comes_from_the_settings_or_the_provider_default() {
         let mut s = Settings::default();
         assert_eq!(model_for(&s, "anthropic"), claude::DEFAULT_MODEL);
+        assert_eq!(model_for(&s, "openai"), openai_compat::provider("openai").unwrap().default_model);
+        s.chat_models.insert("openai".into(), " gpt-x ".into());
         s.model = "claude-haiku-4-5".into();
+        assert_eq!(model_for(&s, "openai"), "gpt-x");
         assert_eq!(model_for(&s, "anthropic"), "claude-haiku-4-5");
     }
 }
