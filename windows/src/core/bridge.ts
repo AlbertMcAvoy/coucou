@@ -85,6 +85,14 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /**
+   * The models a provider offers, for the picker in the chat view. Rust asks
+   * the provider only when it has a key (or a server address).
+   */
+  chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  /** Settings → Local models → Connect: does the server answer, and with which models? */
+  localConnect: (provider: "ollama" | "lmstudio" | "custom", url: string) =>
+    callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
@@ -111,6 +119,19 @@ export interface IntegrationUpdate {
 export type ChatContext =
   | { kind: "file"; name: string; path: string }
   | { kind: "window"; appName: string; title: string; url?: string };
+
+export interface ModelInfo {
+  id: string;
+  label: string;
+}
+
+export interface LocalServer {
+  /** The address as it is stored. */
+  url: string;
+  models: string[];
+  /** The address is this machine. */
+  loopback: boolean;
+}
 
 export interface DroppedFile {
   name: string;

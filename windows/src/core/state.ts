@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { ProviderId } from "./providers";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -92,6 +93,14 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Who the chat talks to (see core/providers.ts); picked in the chat view. */
+  chatProvider: ProviderId;
+  /** The model picked for each provider other than Anthropic, by provider id. */
+  chatModels: Record<string, string>;
+  /** Model server addresses once connected; empty means not connected. */
+  ollamaUrl: string;
+  lmstudioUrl: string;
+  customUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +115,11 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  chatProvider: "anthropic",
+  chatModels: {},
+  ollamaUrl: "",
+  lmstudioUrl: "",
+  customUrl: "",
 };
 
 type Listener = () => void;
