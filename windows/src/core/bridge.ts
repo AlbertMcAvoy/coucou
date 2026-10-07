@@ -55,6 +55,9 @@ export const Bridge = {
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
+  /** The diff card's ↗: an existing file, in VS Code; never launched by its type. */
+  openFileInVSCode: (path: string) => call<boolean>("open_file_in_vscode", { path }),
+
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),

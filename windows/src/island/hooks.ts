@@ -4,6 +4,7 @@
 // terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
 
 import { Bridge, onEvent } from "../core/bridge";
+import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
@@ -32,8 +33,12 @@ interface HookPayload {
   message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
+  /** Stop: Claude's final answer of the turn (Markdown). */
+  last_assistant_message?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
+  /** Set by the relay when an edit was too big to forward whole (> 256 KB). */
+  coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
 }
@@ -145,6 +150,28 @@ function clearSession() {
   t.stepIndex = 0;
   t.name = "VS Code";
   t.pillBadge = null;
+  t.finalLine = null;
+}
+
+/** The final message stays on the card until the next turn starts. */
+function clearFinalLine(id: string) {
+  const t = State.tasks.find((x) => x.id === id);
+  if (t) t.finalLine = null;
+}
+
+/**
+ * PostToolUse of Edit / MultiEdit / Write → a diff stored for the pill and a
+ * ticker step with its +N −M counts. Nothing is kept for a pill that does not
+ * exist, so a stray event cannot grow memory. An edit the relay had to cut
+ * would give wrong counts: the PreToolUse step ("Modifie · file") stands alone.
+ */
+function recordDiff(agentId: string, payload: HookPayload) {
+  if (payload.coucou_diff_truncated) return;
+  if (!State.tasks.some((t) => t.id === agentId)) return;
+  const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
+  if (!diff) return;
+  const id = State.appendSessionDiff(agentId, diff);
+  State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
 }
 
 export function registerHookHandlers(island: Island) {
@@ -205,6 +232,7 @@ function handleHook(island: Island, payload: HookPayload) {
   switch (name) {
     case "SessionStart":
       ensurePill();
+      clearFinalLine(agentId);
       surface("overview", false);
       Sound.play("work");
       break;
@@ -212,6 +240,7 @@ function handleHook(island: Island, payload: HookPayload) {
     case "UserPromptSubmit": {
       ensurePill();
       supersedeStop();
+      clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
@@ -223,6 +252,7 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PreToolUse": {
       ensurePill();
       supersedeStop();
+      clearFinalLine(agentId);
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
@@ -233,6 +263,7 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PostToolUse":
       supersedeStop();
       State.updateTask(agentId, "working");
+      recordDiff(agentId, payload);
       break;
 
     case "PostToolUseFailure":
@@ -256,9 +287,16 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
     }
 
-    case "Stop":
+    case "Stop": {
       State.updateTask(agentId, "finished");
-      if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
+      // Claude Code puts the turn's answer in the Stop payload itself, so there is
+      // no transcript to read (the relay does not even forward its path).
+      const finalText = toOneLine(payload.last_assistant_message ?? payload.message ?? "");
+      if (finalText) {
+        State.appendStep(agentId, finalText);
+        const t = State.tasks.find((x) => x.id === agentId);
+        if (t) t.finalLine = finalText;
+      }
       Sound.play("finish");
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
@@ -276,6 +314,7 @@ function handleHook(island: Island, payload: HookPayload) {
         }, 5200),
       );
       break;
+    }
 
     case "StopFailure":
       supersedeStop();
@@ -289,6 +328,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Nothing left for the timer to do, and it must not outlive the session: a
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
+      State.clearSessionDiffs(agentId);
       if (isExternalAgent) {
         State.removeTask(agentId);
       } else {

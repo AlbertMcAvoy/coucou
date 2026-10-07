@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { FileDiff } from "./diff";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -19,6 +20,8 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** Claude's final message after Stop, one line; cleared when a new turn starts. */
+  finalLine?: string | null;
 }
 
 export interface ApprovalInfo {
@@ -110,6 +113,11 @@ export const DEFAULT_SETTINGS: Settings = {
 
 type Listener = () => void;
 
+/** Live diffs kept per pill (oldest dropped first) — same cap as macOS. */
+export const MAX_DIFFS_PER_PILL = 50;
+/** A pill's diffs are forgotten after an hour without a new one, as on macOS. */
+export const DIFF_TTL_MS = 3_600_000;
+
 class AppState {
   mode: IslandMode = "hidden";
   view: IslandViewName = "overview";
@@ -139,6 +147,12 @@ class AppState {
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
+
+  /** Per-pill file diffs, in order of reception. Steps carry their ids. */
+  sessionDiffs = new Map<string, FileDiff[]>();
+  private sessionDiffTimers = new Map<string, number>();
+  /** Never reset, so an id can never point at a newer diff than the one tapped. */
+  private nextDiffId = 0;
 
   lastActivity = performance.now();
 
@@ -199,6 +213,34 @@ class AppState {
     this.notify();
   }
 
+  /** Stores a diff for a pill and returns its id (for the ticker step). */
+  appendSessionDiff(pillId: string, diff: FileDiff): number {
+    const id = this.nextDiffId++;
+    const list = this.sessionDiffs.get(pillId) ?? [];
+    list.push({ ...diff, id });
+    while (list.length > MAX_DIFFS_PER_PILL) list.shift();
+    this.sessionDiffs.set(pillId, list);
+    // One timer per pill, re-armed on every diff — nothing polls.
+    const prev = this.sessionDiffTimers.get(pillId);
+    if (prev != null) window.clearTimeout(prev);
+    this.sessionDiffTimers.set(
+      pillId,
+      window.setTimeout(() => this.clearSessionDiffs(pillId), DIFF_TTL_MS),
+    );
+    return id;
+  }
+
+  findDiff(pillId: string, id: number): FileDiff | null {
+    return this.sessionDiffs.get(pillId)?.find((d) => d.id === id) ?? null;
+  }
+
+  clearSessionDiffs(pillId: string) {
+    const timer = this.sessionDiffTimers.get(pillId);
+    if (timer != null) window.clearTimeout(timer);
+    this.sessionDiffTimers.delete(pillId);
+    this.sessionDiffs.delete(pillId);
+  }
+
   /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
   loadIntegrationTasks() {
     for (const proto of INTEGRATION_AGENTS) {
@@ -232,6 +274,7 @@ class AppState {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
     this.tasks.splice(idx, 1);
+    this.clearSessionDiffs(id);
     if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
     this.notify();
   }

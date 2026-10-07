@@ -11,6 +11,9 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { buildDiffCard } from "./diff";
+import { lastTextStep } from "../core/diff";
+import { Bridge } from "../core/bridge";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -117,7 +120,18 @@ export function buildHeader(actions: ViewActions): ViewHost {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
+  /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
+  let activeDiffId: number | null = null;
+  const closeDiff = () => {
+    if (activeDiffId == null) return;
+    activeDiffId = null;
+    State.notify();
+  };
+  const ticker = new Ticker((diffId) => {
+    actions.blip();
+    activeDiffId = diffId;
+    State.notify();
+  });
   const who = h("div", { class: "who" });
   const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
   const leftBody = h("div", { class: "left-body" });
@@ -138,8 +152,25 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
+  let mode: "ticker" | "card" | "diff" | null = null;
   let cardKey = "";
+
+  // Leaving the overview or folding the island closes the diff, as on macOS.
+  State.subscribe(() => {
+    if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
+      activeDiffId = null;
+    }
+  });
+  // Escape steps back out of the diff before it closes the island.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Escape" || activeDiffId == null || State.view !== "overview") return;
+      e.stopImmediatePropagation();
+      closeDiff();
+    },
+    true,
+  );
 
   const hooks: IntegrationCardHooks = {
     get detailOpen() {
@@ -168,6 +199,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (task?.id !== lastFocus) {
         lastFocus = task?.id ?? null;
         detailOpen = false;
+        activeDiffId = null;
         cardKey = "";
         mode = null;
       }
@@ -177,7 +209,25 @@ function buildOverview(actions: ViewActions): ViewHost {
       const sessionActive =
         task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
 
-      if (task && sessionActive) {
+      // A diff that has since been dropped (cap, expiry, session end) just closes.
+      const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
+      if (!diff) activeDiffId = null;
+
+      if (task && diff) {
+        const key = `diff~${task.id}~${diff.id}`;
+        if (key !== cardKey) {
+          cardKey = key;
+          mode = "diff";
+          clear(leftBody);
+          leftBody.append(buildDiffCard(diff, {
+            dismiss: () => {
+              actions.blip();
+              closeDiff();
+            },
+            open: (path) => void Bridge.openFileInVSCode(path),
+          }));
+        }
+      } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
           leftBody.append(tickerBody);
@@ -212,7 +262,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen ? "none" : "";
+      jump.style.display = detailOpen || mode === "diff" ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
@@ -330,7 +380,7 @@ function buildQuestion(): ViewHost {
       clear(who);
       who.append(agentWho(State.focusTask, "Claude Code is asking a question"));
       const task = State.focusTask;
-      title.textContent = task?.steps.at(-1) ?? "Claude needs an answer.";
+      title.textContent = (task && lastTextStep(task.steps)) ?? "Claude needs an answer.";
       clear(row);
       row.append(h("div", { class: "sub", text: "Answer in your terminal — Coucou can't reply for you yet." }));
     },
@@ -355,7 +405,7 @@ function buildError(actions: ViewActions): ViewHost {
       clear(who);
       who.append(agentWho(task, task?.source === "n8n" ? "n8n" : "Claude Code"));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
-      detail.textContent = task?.steps.at(-1) ?? "No detail available.";
+      detail.textContent = (task && lastTextStep(task.steps)) ?? "No detail available.";
     },
   };
 }
@@ -364,7 +414,7 @@ function buildError(actions: ViewActions): ViewHost {
 
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
+  const title = h("div", { class: "title one-line" });
   const row = h("div", { class: "actions" },
     btn("Open terminal", "primary", () => actions.openTerminal()),
     btn("OK", "secondary", () => actions.collapse()),
@@ -375,7 +425,9 @@ function buildFinished(actions: ViewActions): ViewHost {
     sync() {
       clear(who);
       who.append(agentWho(State.focusTask, "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      // Claude's final message, else the last step that is not a diff (FinishedView).
+      const task = State.focusTask;
+      title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || "Session finished";
     },
   };
 }
