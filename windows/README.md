@@ -44,6 +44,7 @@ installs for the current user only — no admin prompt.
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
@@ -59,6 +60,13 @@ it for later, fold it with the **⌃** in its corner (or `Esc` in the island): t
 island shrinks to its compact size and stays on screen, nothing is answered, and
 opening it again shows the card. **Open terminal** brings the window the session
 runs in to the front.
+
+**Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
+session ticker with its **+N −M** lines; click it for the diff. Same limits as the
+Mac: past 200 KB or 4 000 lines only the counts are kept, at most 50 diffs per
+session, and they are forgotten an hour after the last edit or when the session
+ends. When Claude finishes, the card keeps the first paragraph of its final
+answer on one line, still, until the next prompt.
 
 ## Your pills
 
@@ -296,6 +304,14 @@ own window.
   it also offers OpenRouter and any OpenAI-compatible server, which the Mac
   does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
   inline), where the Mac sends its name only.
+- Live diff: the relay forwards an edit's text whole only once the edit is done
+  (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
+  shows its "Modifie · file" step without counts rather than wrong ones. The
+  diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
+  never the file itself. Counts and diffs come from Claude Code's Edit,
+  MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
+  Claude Desktop); other agents' edits show as plain steps. There is no
+  ⌘E-style shortcut.
 
 ## Linux
 

@@ -15,6 +15,9 @@ import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
+import { buildDiffCard } from "./diff";
+import { lastTextStep } from "../core/diff";
+import { Bridge } from "../core/bridge";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -152,7 +155,18 @@ export function buildHeader(actions: ViewActions): ViewHost {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 function buildOverview(actions: ViewActions): ViewHost {
-  const ticker = new Ticker();
+  /** The diff open in the left card (a FileDiff id), as activeDiffId on macOS. */
+  let activeDiffId: number | null = null;
+  const closeDiff = () => {
+    if (activeDiffId == null) return;
+    activeDiffId = null;
+    State.notify();
+  };
+  const ticker = new Ticker((diffId) => {
+    actions.blip();
+    activeDiffId = diffId;
+    State.notify();
+  });
   const who = h("div", { class: "who" });
   const tickerBody = h("div", { class: "card-body" }, who, ticker.el);
   const leftBody = h("div", { class: "left-body" });
@@ -176,8 +190,25 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | null = null;
   let cardKey = "";
+
+  // Leaving the overview or folding the island closes the diff, as on macOS.
+  State.subscribe(() => {
+    if (activeDiffId != null && (State.view !== "overview" || State.mode !== "expanded")) {
+      activeDiffId = null;
+    }
+  });
+  // Escape steps back out of the diff before it closes the island.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Escape" || activeDiffId == null || State.view !== "overview") return;
+      e.stopImmediatePropagation();
+      closeDiff();
+    },
+    true,
+  );
 
   const hooks: IntegrationCardHooks = {
     get detailOpen() {
@@ -222,6 +253,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       if (task?.id !== lastFocus) {
         lastFocus = task?.id ?? null;
         detailOpen = false;
+        activeDiffId = null;
         cardKey = "";
         mode = null;
       }
@@ -237,6 +269,10 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
       syncPlanTimer(planOpen);
 
+      // A diff that has since been dropped (cap, expiry, session end) just closes.
+      const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
+      if (!diff) activeDiffId = null;
+
       if (planOpen) {
         if (mode !== "plan") {
           clear(leftBody);
@@ -244,6 +280,20 @@ function buildOverview(actions: ViewActions): ViewHost {
           mode = "plan";
         }
         plan.sync();
+      } else if (task && diff) {
+        const key = `diff~${task.id}~${diff.id}`;
+        if (key !== cardKey) {
+          cardKey = key;
+          mode = "diff";
+          clear(leftBody);
+          leftBody.append(buildDiffCard(diff, {
+            dismiss: () => {
+              actions.blip();
+              closeDiff();
+            },
+            open: (path) => void Bridge.openFileInVSCode(path),
+          }));
+        }
       } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
@@ -281,7 +331,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen || mode === "plan" ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");
@@ -469,7 +519,8 @@ function buildQuestion(actions: ViewActions): ViewHost {
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {
         who.append(agentWho(State.focusTask, "is asking a question"));
-        title.textContent = State.focusTask?.steps.at(-1) ?? "Claude needs an answer.";
+        const task = State.focusTask;
+        title.textContent = (task && lastTextStep(task.steps)) ?? "Claude needs an answer.";
         if (rowKey !== "terminal") {
           rowKey = "terminal";
           clear(row);
@@ -547,7 +598,7 @@ function buildError(actions: ViewActions): ViewHost {
       const whoLabel = task?.source === "n8n" ? "n8n" : task?.source === "agent" ? "Agent" : "Claude Code";
       who.append(agentWho(task, whoLabel));
       title.textContent = task?.source === "n8n" ? "Workflow stopped." : "Session stopped on an error.";
-      detail.textContent = task?.steps.at(-1) ?? "No detail available.";
+      detail.textContent = (task && lastTextStep(task.steps)) ?? "No detail available.";
     },
   };
 }
@@ -556,7 +607,7 @@ function buildError(actions: ViewActions): ViewHost {
 
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
-  const title = h("div", { class: "title" });
+  const title = h("div", { class: "title one-line" });
   const open = btn("Open terminal", "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
     open,
@@ -569,9 +620,11 @@ function buildFinished(actions: ViewActions): ViewHost {
       clear(who);
       const agent = State.focusTask?.source === "agent";
       who.append(agentWho(State.focusTask, agent ? "finished" : "Claude Code finished"));
-      title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      // The final message, else the last step that is not a diff (FinishedView).
+      const task = State.focusTask;
+      title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || "Session finished";
       // Sessions from the Claude desktop app live there, not in a terminal.
-      const label = State.focusTask?.id === "agent_claude-desktop" ? "Open Claude" : "Open terminal";
+      const label = task?.id === "agent_claude-desktop" ? "Open Claude" : "Open terminal";
       const span = open.firstElementChild as HTMLElement;
       if (span.textContent !== label) span.textContent = label;
     },
