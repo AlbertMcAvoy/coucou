@@ -14,7 +14,10 @@
 //!   island is the whole point. No answer means empty stdout, and Claude Code
 //!   asks in the terminal exactly as if Coucou were not installed.
 //!
-//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON).
+//! Usage: `coucou-hook <EventName>` (the name is also read from the JSON), or
+//! `coucou-hook --statusline` as Claude Code's status line command (plan usage,
+//! see statusline.rs): it passes the plan limits on and runs the status line the
+//! user had before, so that keeps working.
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -34,6 +37,8 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
 
+mod statusline;
+
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
@@ -45,6 +50,9 @@ mod unix;
 use unix::connect;
 
 fn main() {
+    if std::env::args().skip(1).any(|a| a == "--statusline") {
+        statusline::run();
+    }
     let Some((payload, event, question)) = read_event() else { std::process::exit(0) };
 
     let waits_for_answer = event == "PermissionRequest";
