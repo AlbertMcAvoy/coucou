@@ -61,12 +61,33 @@ function validateAgent(raw: string | undefined): string | null {
 
 const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
 
+const KNOWN_AGENT_COLORS: Record<string, string> = {
+  gemini: "#8AB4F8",
+  antigravity: "#E879F9",
+  cursor: "#C0C4CC",
+  codex: "#2DD4BF",
+  opencode: "#38BDF8",
+};
+
+const KNOWN_AGENT_NAMES: Record<string, string> = {
+  gemini: "Gemini CLI",
+  antigravity: "Antigravity",
+  cursor: "Cursor",
+  codex: "Codex",
+  opencode: "OpenCode",
+};
+
 function agentColor(name: string): string {
+  if (KNOWN_AGENT_COLORS[name]) return KNOWN_AGENT_COLORS[name];
   let h = 0;
   for (let i = 0; i < name.length; i++) {
     h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
   }
   return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
+}
+
+function agentDisplayName(name: string): string {
+  return KNOWN_AGENT_NAMES[name] ?? name;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -224,7 +245,7 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
+      State.upsertExternalAgent(agentId, agentDisplayName(validAgent!), agentColor(validAgent!));
     } else {
       upsert(projectName, cwd);
     }

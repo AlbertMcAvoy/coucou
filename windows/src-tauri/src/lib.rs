@@ -49,8 +49,9 @@ pub struct BootInfo {
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
+    // The real state of ~/.claude/settings.json and ~/.gemini/settings.json wins over whatever we stored.
     settings.hooks_installed = hooks::status().installed;
+    settings.gemini_hooks_installed = hooks::gemini_status().installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -216,6 +217,36 @@ fn hooks_apply(
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));
         }
+        current.clone()
+    };
+    let _ = app.emit("settings-changed", updated);
+    Ok(backup)
+}
+
+// ── Gemini CLI hooks ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn gemini_hooks_status() -> HookStatus {
+    hooks::gemini_status()
+}
+
+#[tauri::command]
+fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::gemini_preview(install)
+}
+
+#[tauri::command]
+fn gemini_hooks_apply(
+    app: AppHandle,
+    shared: State<Shared>,
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    let backup = hooks::gemini_write(install, &fingerprint)?;
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.gemini_hooks_installed = install;
+        let _ = settings::save(&current);
         current.clone()
     };
     let _ = app.emit("settings-changed", updated);
@@ -409,6 +440,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            gemini_hooks_status,
+            gemini_hooks_preview,
+            gemini_hooks_apply,
             approval_decision,
             approval_answer,
             approval_ack,
