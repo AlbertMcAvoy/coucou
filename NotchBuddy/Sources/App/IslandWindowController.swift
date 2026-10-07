@@ -583,9 +583,10 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor in
                 guard let self = self else { return }
                 if event.keyCode == 53 { // Escape
-                    let canCollapse = !self.state.isPinned || self.state.pendingApproval != nil
-                    if self.state.mode == .expanded && canCollapse {
-                        self.collapse(allowPendingApproval: true)
+                    // Escape typed in another app (Claude Code's own interrupt, an editor…)
+                    // never folds a pending approval away: only Escape in the notch does.
+                    if self.state.mode == .expanded && !self.state.isPinned {
+                        self.collapse()
                     }
                 }
             }
