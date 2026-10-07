@@ -3,7 +3,11 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import {
+  ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
+  recordPress, type Binding,
+} from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -417,6 +421,189 @@ function generalSection(): HTMLElement {
   );
 }
 
+// ── Shortcuts section ─────────────────────────────────────────────────────────
+
+const SHORTCUTS_UI = {
+  title: "Shortcuts",
+  hint: "Work from any app. Click a shortcut to change it, then press the new keys — Esc cancels, Backspace removes it.",
+  global: "From anywhere",
+  island: "In the open island",
+  recording: "Press keys…",
+  none: "None",
+  reset: "Reset to defaults",
+  inUse: "In use by another app",
+  duplicate: "Used twice",
+  invalid: "Not a valid shortcut",
+  unavailable: "Not available",
+  types: (ch: string) => `Types “${ch}”`,
+  typesNote: (keys: string, ch: string) =>
+    `${keys} types “${ch}” on your keyboard, so it can't be a shortcut. Pick another key.`,
+  needsModifier: "Hold Ctrl, Alt or the Windows key with it.",
+  unsupportedKey: "That key can't be used in a shortcut.",
+  wayland:
+    "Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:",
+  noDisplay: "No display server was found, so global shortcuts are off.",
+} as const;
+
+function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
+  let report = initial;
+  const list = h("div", { class: "shortcut-list" });
+  const feedback = h("div", {});
+  const blockedNote = h("div", {});
+
+  let stopRecording: (() => void) | null = null;
+
+  function store(id: string, binding: Binding) {
+    settings.shortcuts = { ...settings.shortcuts, [id]: binding };
+    void save();
+  }
+
+  function tagFor(id: string, dups: Set<string>): HTMLElement | null {
+    if (dups.has(id)) return h("span", { class: "tag err", text: SHORTCUTS_UI.duplicate });
+    const st = report?.actions.find((a) => a.id === id);
+    switch (st?.status) {
+      case "inUse": return h("span", { class: "tag warn", text: SHORTCUTS_UI.inUse });
+      case "duplicate": return h("span", { class: "tag err", text: SHORTCUTS_UI.duplicate });
+      case "invalid": return h("span", { class: "tag err", text: SHORTCUTS_UI.invalid });
+      case "typesCharacter": return h("span", { class: "tag warn", text: SHORTCUTS_UI.types(st.typed ?? "?") });
+      case "unsupported": return h("span", { class: "tag", text: SHORTCUTS_UI.unavailable });
+      default: return null;
+    }
+  }
+
+  function record(id: string, binding: Binding, button: HTMLButtonElement) {
+    stopRecording?.();
+    clear(feedback);
+    button.classList.add("recording");
+    button.textContent = SHORTCUTS_UI.recording;
+    void Bridge.shortcutsSuspend(true);
+
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const result = recordPress(e);
+      switch (result.kind) {
+        case "pending":
+          return;
+        case "keys":
+          finish();
+          store(id, { keys: result.keys, enabled: true });
+          return;
+        case "clear":
+          finish();
+          store(id, { keys: "", enabled: binding.enabled });
+          return;
+        case "typesCharacter":
+          finish();
+          feedback.append(h("div", {
+            class: "notice warn",
+            text: SHORTCUTS_UI.typesNote(displayKeys(result.keys), result.typed),
+          }));
+          return;
+        case "needsModifier":
+          feedback.replaceChildren(h("div", { class: "notice warn", text: SHORTCUTS_UI.needsModifier }));
+          return;
+        case "unsupported":
+          feedback.replaceChildren(h("div", { class: "notice warn", text: SHORTCUTS_UI.unsupportedKey }));
+          return;
+        case "cancel":
+          finish();
+          return;
+      }
+    };
+    const onBlur = () => finish();
+
+    function finish() {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("blur", onBlur);
+      stopRecording = null;
+      // Takes the global shortcuts back, from what is saved by now.
+      void Bridge.shortcutsSuspend(false);
+      draw();
+    }
+    stopRecording = finish;
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("blur", onBlur);
+  }
+
+  function draw() {
+    clear(list);
+    const dups = duplicates(activeKeys(settings.shortcuts));
+    for (const d of SHORTCUTS) {
+      if (!d.ported) continue;
+      const binding = effective(d, settings.shortcuts);
+      const keycap = h("button", {
+        class: "keycap",
+        text: binding.keys ? displayKeys(binding.keys) : SHORTCUTS_UI.none,
+      }) as HTMLButtonElement;
+      keycap.disabled = !binding.enabled;
+      keycap.addEventListener("click", () => record(d.id, binding, keycap));
+      const sw = toggle(binding.enabled, (on) => store(d.id, { keys: binding.keys, enabled: on }));
+      const tag = binding.enabled ? tagFor(d.id, dups) : null;
+      list.append(h("div", { class: binding.enabled ? "row shortcut" : "row shortcut off" },
+        sw,
+        h("span", { class: "shortcut-name", text: SHORTCUT_TEXT[d.id] }),
+        ...(tag ? [tag] : []),
+        keycap,
+      ));
+    }
+
+    clear(blockedNote);
+    if (report?.blocked === "wayland") {
+      const commands = h("div", { class: "diff" });
+      for (const d of SHORTCUTS) {
+        if (d.ported) commands.append(h("div", { class: "ctx", text: `${report.command} ${d.id}` }));
+      }
+      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.wayland }), commands);
+    } else if (report?.blocked) {
+      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.noDisplay }));
+    }
+  }
+
+  const islandList = h("div", { class: "shortcut-list" });
+  for (const row of ISLAND_SHORTCUTS) {
+    islandList.append(h("div", { class: "row shortcut" },
+      h("span", { class: "shortcut-name", text: row.description }),
+      h("span", { class: "keycap static", text: row.keys }),
+    ));
+  }
+
+  const reset = h("button", {
+    text: SHORTCUTS_UI.reset,
+    onclick: () => {
+      stopRecording?.();
+      settings.shortcuts = {};
+      clear(feedback);
+      void save();
+      draw();
+    },
+  });
+
+  void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => {
+    report = fresh;
+    if (!stopRecording) draw();
+  });
+  void onEvent<Settings>("settings-changed", (s) => {
+    settings = { ...settings, ...s };
+    if (!stopRecording) draw();
+  });
+
+  draw();
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: SHORTCUTS_UI.title })),
+    h("div", { class: "hint", text: SHORTCUTS_UI.hint }),
+    h("div", { class: "subhead", text: SHORTCUTS_UI.global }),
+    list,
+    blockedNote,
+    feedback,
+    h("div", { class: "row" }, reset),
+    h("div", { class: "subhead", text: SHORTCUTS_UI.island }),
+    islandList,
+  );
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -430,6 +617,7 @@ async function main() {
   };
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const shortcutReport = await Bridge.shortcutsStatus();
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -445,6 +633,7 @@ async function main() {
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
+    shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",
       text: "No telemetry. Network requests only go to the services you configure yourself.",
