@@ -139,20 +139,46 @@ problems. It stays on your machine.
 
 ## Supported agents
 
-The relay (`coucou-hook.exe`) works with any tool that can run a command on hook events. Pass `--agent <name>` to create a named pill.
+Every agent below is installed from **Settings → Agents** with the same steps as
+Claude Code: the exact diff, the path of the dated backup, nothing written until
+you click, and uninstalling removes only Coucou's entries. A config Coucou cannot
+read, or where it finds something it does not expect, is left alone and the
+reason is shown. Each agent gets its own pill (`agent_<name>`, the Mac's ids and
+colours). The files are the Mac's, under `%USERPROFILE%` on Windows and `~` on
+Linux.
 
-| Agent | How to connect | Config file |
+| Agent | Installs | Permissions |
 |---|---|---|
-| Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
-| Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
-| Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
-| Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
-| Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
-| Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |
-| Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
-| Any other | `--agent <name>` positional arg | your tool's hook config |
+| Claude Code | `.claude\settings.json` (**Settings → Claude Code**) | Allow / Deny and questions in the island |
+| Codex | `.codex\hooks.json` — then trust the hooks once with `/hooks` in Codex | Allow / Deny in the island |
+| GitHub Copilot CLI | `.copilot\hooks\coucou.json` | Allow / Deny in the island |
+| Muse Code | `.config\muse\settings.json` | Allow / Deny in the island |
+| Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
+| Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
+| Cursor Agent | `.cursor\hooks.json` | asked in Cursor |
+| OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
+| Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
+| Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
+| Any other | run `coucou-hook --agent <name> [<Event>]` from your tool's hooks | asked in the tool |
 
-OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
+The relay maps every agent's event and field names onto Claude Code's (Gemini
+CLI's `BeforeTool`, Copilot's `preToolUse`, Cursor's `beforeSubmitPrompt`…), and
+answers each agent the way it expects. It never lets anything through on its
+own: with no click it prints no decision at all (`{}` for the agents that need
+JSON, `"ask"` for Copilot, which is fail-closed), so the agent asks in its own
+terminal exactly as without Coucou — including when Coucou is closed.
+
+The plugins start the relay directly, with no shell in between, and never wait
+for it. Amp's steps appear as each tool finishes: its "before" hook must return
+a verdict, and Coucou never gives one.
+
+**How each agent runs the relay on Windows.** Hook commands are written for the
+shell that runs them: Git Bash for Claude Code (quoted, forward slashes),
+PowerShell for Gemini CLI and Copilot CLI (`& '…\coucou-hook.exe'`), `cmd /C`
+for Codex. Cursor, Antigravity and Muse Code do not document theirs: the relay
+path is written bare when it has no space or special character — which works in
+cmd, PowerShell and when started directly — and in double quotes otherwise.
+These three are untested on Windows.
 
 ## What's different from the Mac version
 
@@ -164,6 +190,16 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- An agent's permission request that arrives while another pill is in view
+  badges its pill instead of taking the view; clicking the pill opens the card.
+  The Mac moves the focus to it.
+- Agent pills come with a session and go when it ends: there is no "declared
+  pills" list in Settings yet, and no main-pill choice.
+- The Cursor pill follows Cursor Agent's own hooks. On the Mac it follows
+  Claude Code running in Cursor's terminal.
+- Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
+  turned on once by hand. Hermes runs natively on Linux; on Windows it is
+  untested. Claude Desktop's own pill is not here yet.
 
 ## Linux
 
@@ -207,7 +243,10 @@ What changes on Linux:
   gives no app the cursor position anywhere else.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
-  runs as the same user.
+  runs as the same user. Every other agent uses the same relay, single-quoted
+  for `sh`, and its config under `~` (see Supported agents). A config that is a
+  symlink (dotfiles) is written through to its target, with its permissions
+  kept.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
