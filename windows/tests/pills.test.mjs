@@ -4,7 +4,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DEFAULT_MAIN_PILL, MAX_DECLARED, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
-  isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
+  isComingSoon, isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
   toggleDeclared,
 } from "../src/core/pills.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
@@ -75,18 +75,29 @@ test("IDs are unique", () => {
 test("this build leaves out what only macOS has, and Claude Desktop on Linux", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
-  for (const id of ["ai_ollama", "ai_lmstudio", "integration_music"]) {
+  for (const id of ["integration_music"]) {
     assert.ok(!windows.includes(id), id);
     assert.ok(!linux.includes(id), id);
   }
-  // Their plugins are written from Settings → Agents on both systems.
-  for (const id of ["agent_opencode", "agent_amp", "agent_hermes"]) {
+  // Their plugins are written from Settings → Agents, and the chat talks to
+  // every provider (port/chat-providers), on both systems.
+  for (const id of ["agent_opencode", "agent_amp", "agent_hermes", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
     assert.ok(windows.includes(id), id);
     assert.ok(linux.includes(id), id);
   }
   assert.ok(windows.includes("agent_claude-desktop"));
   assert.ok(!linux.includes("agent_claude-desktop"));
   assert.deepEqual(linux, windows.filter((id) => id !== "agent_claude-desktop"));
+});
+
+test("no chat provider that works here says Coming soon", () => {
+  for (const id of ["ai_anthropic", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
+    assert.ok(!isComingSoon(id), id);
+  }
+  // The local servers are connected through Settings → Local models, not a key.
+  assert.deepEqual(pillDefinition("ai_ollama").connect, { kind: "server", field: "ollamaUrl" });
+  assert.deepEqual(pillDefinition("ai_lmstudio").connect, { kind: "server", field: "lmstudioUrl" });
+  assert.equal(pillDefinition("ai_google").connect.key, "google-api-key");
 });
 
 test("the main pill is a workspace tool that works here", () => {
@@ -121,7 +132,7 @@ test("a declaration from an older or edited settings file is made usable", () =>
     { mainPill: "integration_claude", activeIntegrations: [] },
   );
   assert.deepEqual(
-    sanitizeDeclared({ mainPill: "agent_cursor", activeIntegrations: ["agent_cursor", "integration_n8n", "integration_n8n", "ai_ollama"] }, "linux"),
+    sanitizeDeclared({ mainPill: "agent_cursor", activeIntegrations: ["agent_cursor", "integration_n8n", "integration_n8n", "integration_music"] }, "linux"),
     { mainPill: "agent_cursor", activeIntegrations: ["integration_n8n"] },
   );
   // No mainPill at all: a settings.json from before this version.
@@ -146,8 +157,9 @@ test("up to four pills next to the main one, never the main one itself", () => {
   assert.equal(toggleDeclared(d, "agent_claude-desktop", "linux"), null);
   assert.ok(toggleDeclared(d, "agent_claude-desktop", "windows").includes("agent_claude-desktop"));
   assert.deepEqual(toggleDeclared(d, "integration_github", "linux"), ["integration_n8n", "integration_stripe"]);
-  // Coming soon can still be declared, as on macOS.
+  // Every chat provider can be declared now that the chat talks to it.
   assert.ok(toggleDeclared(d, "ai_google", "linux").includes("ai_google"));
+  assert.ok(toggleDeclared(d, "ai_ollama", "linux").includes("ai_ollama"));
 });
 
 test("picking a main pill takes it out of the declared ones, and only workspace tools qualify", () => {

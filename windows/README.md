@@ -66,9 +66,10 @@ runs in to the front.
 the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
 which is always there and doesn't take a slot, then declare up to four more:
 agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
-Desktop), the Anthropic chat,
+Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
 and the services under **Integrations**. A pill fed by hooks says whether its
-hooks are installed, never asks for a key. A session on a pill you didn't
+hooks are installed, never asks for a key; a local model server's pill says
+whether the chat is connected to it. A session on a pill you didn't
 declare still shows up, for as long as it runs.
 
 ## Claude Code
@@ -116,6 +117,37 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
+
+The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
+add their keys in **Settings… → Chat providers**, then click the model name
+above the chat box to switch provider and model, as on the Mac. The model list
+is fetched from the provider only once you pick it and it has a key. Switching
+mid-conversation carries the conversation over as plain text, so nothing in one
+provider's format is ever sent to another. These providers get no web search
+and no tools — they answer, they never act on your PC.
+
+**Local models**: **Settings… → Local models** connects **Ollama** or **LM
+Studio** (leave the address empty for the usual one on this PC; Ollama's
+`OLLAMA_HOST` is honoured) or any server that speaks the OpenAI API (vLLM,
+llama.cpp…), with an optional key kept in the credential store. Answers stream
+in as they are written, and the `<think>` blocks of reasoning models stay
+hidden. A text file you dropped goes along inline (24 000 characters at most);
+images and PDFs by name only. Settings tells you whether the address is this
+PC — nothing leaves it then — and warns before a key would travel over plain
+`http://` to another machine.
+
+Answers from every provider are shown as **Markdown**: headings, lists, bold,
+inline code, quotes, and code blocks with a copy button. It is built from text
+nodes, never parsed as HTML, and only `http`/`https` links open. Mochi greets
+you by your first name when your account has one (the Windows display name or
+the Linux GECOS full name; a bare login name is not used).
+
+To send the Claude chat through an Anthropic-compatible gateway, set
+`COUCOU_ANTHROPIC_BASE_URL` (for example `https://gateway.example.com`;
+`/v1/messages` is added). It must be `https://`, or `http://` to this PC only.
+Claude Code's own `ANTHROPIC_BASE_URL` is deliberately ignored: your key only
+goes where you told Coucou to send it. The gateway's host is written to the log
+once; the key never is.
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
@@ -244,9 +276,8 @@ own window.
   as it does when `code` is on your `PATH` and nothing was found.
 - No global keyboard shortcuts yet: a waiting card is folded with its **⌃** or
   `Esc` in the island, and reopened by clicking the island or Open in the tray.
-- Pills from the Mac catalog that have nothing behind them here are left out:
-  Apple Music, Ollama and LM Studio. Google AI and OpenAI can be declared but
-  show "Coming soon": the chat here only talks to Anthropic.
+- Apple Music, the one pill from the Mac catalog with nothing behind it here,
+  is left out.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -261,6 +292,10 @@ own window.
   (`/bin/sh` on Linux and Mac); without Git Bash it is not run, rather than
   guessed at with `cmd`. The Codex CLI is looked for on `PATH` and in npm's,
   Volta's, Bun's and pnpm's folders (and nvm's on Linux).
+- The chat's model picker opens inside the chat card instead of a popover, and
+  it also offers OpenRouter and any OpenAI-compatible server, which the Mac
+  does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
+  inline), where the Mac sends its name only.
 
 ## Linux
 
@@ -314,6 +349,8 @@ What changes on Linux:
   Code. Codex is found on `$PATH`, in `~/.local/bin`, npm's global prefix, Volta,
   Bun, pnpm, or nvm (newest Node first), since a desktop launch often has a
   shorter `$PATH` than your shell.
+- **Mochi's greeting** uses the full name in your account's GECOS field
+  (`chfn` sets it); without one the chat stays neutral.
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
 - What the Windows build leaves out, this one does too: sending a file by

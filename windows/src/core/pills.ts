@@ -35,6 +35,8 @@ export type PillConnect =
   | { kind: "hooks" }
   /** A key in the credential store. */
   | { kind: "key"; key: string }
+  /** A model server the chat is connected to (Settings → Local models). */
+  | { kind: "server"; field: "ollamaUrl" | "lmstudioUrl" }
   /** Nothing to set up. */
   | { kind: "none" };
 
@@ -55,6 +57,7 @@ export type HostOs = "windows" | "linux";
 const hooks: PillConnect = { kind: "hooks" };
 const key = (k: string): PillConnect => ({ kind: "key", key: k });
 const none: PillConnect = { kind: "none" };
+const server = (field: "ollamaUrl" | "lmstudioUrl"): PillConnect => ({ kind: "server", field });
 
 /** ChatProvider.accentHex on macOS. */
 const ACCENT = {
@@ -98,15 +101,16 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // ── AI for the chat ────────────────────────────────────────────────────────
   { id: "ai_anthropic", name: "Anthropic", color: ACCENT.anthropic, category: "ai",
     subtitle: "Chat", source: "n8n", support: "yes", connect: key("anthropic-api-key") },
-  // The chat here only talks to Anthropic so far.
+  // The chat talks to each of them (src-tauri/src/chat.rs): a key for the
+  // cloud ones, a connected server for the local ones.
   { id: "ai_google", name: "Google AI", color: ACCENT.google, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "soon", connect: key("google-api-key") },
+    subtitle: "Chat", source: "n8n", support: "yes", connect: key("google-api-key") },
   { id: "ai_openai", name: "OpenAI", color: ACCENT.openai, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "soon", connect: key("openai-api-key") },
+    subtitle: "Chat", source: "n8n", support: "yes", connect: key("openai-api-key") },
   { id: "ai_ollama", name: "Ollama", color: ACCENT.ollama, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "no", connect: none },
+    subtitle: "Chat", source: "n8n", support: "yes", connect: server("ollamaUrl") },
   { id: "ai_lmstudio", name: "LM Studio", color: ACCENT.lmstudio, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "no", connect: none },
+    subtitle: "Chat", source: "n8n", support: "yes", connect: server("lmstudioUrl") },
   // ── Services ───────────────────────────────────────────────────────────────
   { id: "integration_resend", name: "Resend", color: "#22C55E", category: "service",
     subtitle: "Integration", source: "n8n", support: "yes", connect: key("resend-api-key") },

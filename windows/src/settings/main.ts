@@ -4,6 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
+import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -408,6 +409,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     if (isComingSoon(def.id)) return "Coming soon";
     if (def.connect.kind === "hooks" && !connected[def.id]) return "Hooks not installed";
     if (def.connect.kind === "key" && !connected[def.id]) return "Key not configured";
+    if (def.connect.kind === "server" && !settings[def.connect.field]) return "Not connected";
     return null;
   }
 
@@ -462,6 +464,266 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     h("div", { class: "row" }, h("label", { text: "Main tool" }), main),
     groups,
   );
+}
+
+// ── Chat providers section ────────────────────────────────────────────────────
+
+const CHAT_STRINGS = {
+  providersTitle: "Chat providers",
+  providersHint: "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.",
+  stored: "••••••••  (stored)",
+  save: "Save",
+  remove: "Remove",
+  localTitle: "Local models",
+  localHint: "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.",
+  connect: "Connect",
+  connecting: "Connecting…",
+  disconnect: "Disconnect",
+  useInChat: "Use in chat",
+  inUse: "In use",
+  keyOptional: "API key (optional)",
+  localOnly: "Nothing leaves your PC: the server runs on this computer.",
+  remote: "This address is another machine: what you ask is sent to it.",
+  remoteHttp: "This address is another machine, over plain http: what you ask travels unencrypted.",
+  keyOverHttp: "Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer.",
+  invalid: "Not a valid http:// or https:// address.",
+  noModels: (name: string) => `No models yet. Download one in ${name} first.`,
+  models: (n: number) => (n === 1 ? "1 model" : `${n} models`),
+};
+
+interface CloudDef {
+  id: "google" | "openai" | "openrouter";
+  name: string;
+  placeholder: string;
+  where: string;
+}
+
+const CLOUD: CloudDef[] = [
+  { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
+  { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
+  { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
+];
+
+function chatProvidersSection(
+  present: Record<string, boolean>,
+  keyChanged: (key: string, on: boolean) => void,
+): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
+  for (const def of CLOUD) {
+    const p = providerDef(def.id);
+    const key = p.key!;
+    const input = h("input", {
+      type: "password",
+      placeholder: present[key] ? CHAT_STRINGS.stored : def.placeholder,
+      autocomplete: "off",
+      spellcheck: "false",
+      style: "flex:1 1 auto;min-width:0",
+    }) as HTMLInputElement;
+    const dotEl = statusDot(present[key] ?? false);
+    const saveBtn = h("button", { text: CHAT_STRINGS.save });
+    const removeBtn = h("button", { class: "danger", text: CHAT_STRINGS.remove });
+    const refresh = () => {
+      input.placeholder = present[key] ? CHAT_STRINGS.stored : def.placeholder;
+      dotEl.style.background = present[key] ? "#22c55e" : "#f4505e";
+      removeBtn.style.display = present[key] ? "" : "none";
+    };
+    saveBtn.addEventListener("click", async () => {
+      const value = input.value.trim();
+      if (!value) return;
+      try {
+        await Bridge.secretSet(key, value);
+        present[key] = true;
+        input.value = "";
+        keyChanged(key, true);
+      } catch {
+        dotEl.style.background = "#f5a524";
+        return;
+      }
+      refresh();
+    });
+    removeBtn.addEventListener("click", async () => {
+      try {
+        await Bridge.secretClear(key);
+        present[key] = false;
+        keyChanged(key, false);
+      } catch {
+        dotEl.style.background = "#f5a524";
+        return;
+      }
+      refresh();
+    });
+    refresh();
+    list.append(
+      h("div", { class: "row" },
+        h("label", {},
+          h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+          h("span", { text: def.name }),
+        ),
+        input, saveBtn, removeBtn, dotEl,
+      ),
+      h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: `Key from ${def.where}` }),
+    );
+  }
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: CHAT_STRINGS.providersTitle })),
+    h("div", { class: "hint", text: CHAT_STRINGS.providersHint }),
+    list,
+  );
+}
+
+// ── Local models section ──────────────────────────────────────────────────────
+
+type LocalId = "ollama" | "lmstudio" | "custom";
+
+/** Redraws the local models section after a change made elsewhere (the island). */
+let localRedraw: (() => void) | null = null;
+
+const LOCAL: Record<LocalId, { name: string; usual: string }> = {
+  ollama: { name: "Ollama", usual: "http://127.0.0.1:11434" },
+  lmstudio: { name: "LM Studio", usual: "http://127.0.0.1:1234" },
+  // No usual address: any server that speaks the OpenAI API.
+  custom: { name: "OpenAI-compatible", usual: "" },
+};
+
+/** What an address means for the user's data, as a hint line. */
+function exposureNotice(url: string, withKey: boolean): HTMLElement | null {
+  switch (urlExposure(url)) {
+    case "local":
+      return h("div", { class: "hint", text: CHAT_STRINGS.localOnly });
+    case "remote":
+      return h("div", { class: "hint", text: CHAT_STRINGS.remote });
+    case "remote-http":
+      return withKey
+        ? h("div", { class: "notice warn", text: CHAT_STRINGS.keyOverHttp })
+        : h("div", { class: "hint", text: CHAT_STRINGS.remoteHttp });
+    case "invalid":
+      return url.trim() ? h("div", { class: "notice err", text: CHAT_STRINGS.invalid }) : null;
+  }
+}
+
+function localSection(customKey: boolean): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: CHAT_STRINGS.localTitle })),
+    h("div", { class: "hint", text: CHAT_STRINGS.localHint }),
+    body,
+  );
+  const redraw = () => {
+    clear(body);
+    for (const id of Object.keys(LOCAL) as LocalId[]) body.append(serverBlock(id));
+  };
+
+  function serverBlock(id: LocalId): HTMLElement {
+    const def = LOCAL[id];
+    const p = providerDef(id);
+    const field = p.urlField!;
+    const connected = settings[field] !== "";
+    const status = h("div", {});
+    const exposure = h("div", {});
+    const label = h("label", {},
+      h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+      h("span", { text: def.name }),
+    );
+    const block = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+
+    if (connected) {
+      const inUse = settings.chatProvider === id;
+      const use = h("button", { class: inUse ? "" : "primary", text: inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat });
+      use.disabled = inUse;
+      use.addEventListener("click", () => {
+        settings.chatProvider = id;
+        void save().then(redraw);
+      });
+      const disconnect = h("button", { class: "danger", text: CHAT_STRINGS.disconnect });
+      disconnect.addEventListener("click", async () => {
+        settings[field] = "";
+        if (settings.chatProvider === id) settings.chatProvider = "anthropic";
+        if (id === "custom") {
+          await Bridge.secretClear(CUSTOM_SERVER_KEY).catch(() => {});
+          customKey = false;
+        }
+        await save();
+        redraw();
+      });
+      block.append(
+        h("div", { class: "row" }, label, h("span", { class: "path", text: settings[field] }), statusDot(true), use, disconnect),
+        status,
+      );
+      exposure.append(exposureNotice(settings[field], id === "custom" && customKey) ?? "");
+      block.append(exposure);
+      return block;
+    }
+
+    const input = h("input", {
+      type: "text",
+      placeholder: def.usual || "https://llm.example.com",
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+      autocomplete: "off",
+    }) as HTMLInputElement;
+    // A custom server may want a key; it goes to the keychain, never to settings.json.
+    const key = h("input", {
+      type: "password",
+      placeholder: customKey ? CHAT_STRINGS.stored : CHAT_STRINGS.keyOptional,
+      style: "flex:1 1 auto;min-width:0",
+      autocomplete: "off",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const connect = h("button", { class: "primary", text: CHAT_STRINGS.connect });
+
+    const showExposure = () => {
+      clear(exposure);
+      const withKey = id === "custom" && (customKey || key.value.trim() !== "");
+      const notice = exposureNotice(input.value || def.usual, withKey);
+      if (notice) exposure.append(notice);
+    };
+    input.addEventListener("input", showExposure);
+    key.addEventListener("input", showExposure);
+
+    connect.addEventListener("click", async () => {
+      connect.disabled = true;
+      clear(status);
+      status.append(h("div", { class: "hint", text: CHAT_STRINGS.connecting }));
+      try {
+        if (id === "custom" && key.value.trim()) {
+          await Bridge.secretSet(CUSTOM_SERVER_KEY, key.value.trim());
+          key.value = "";
+          customKey = true;
+        }
+        const server = await Bridge.localConnect(id, input.value);
+        if (!server.models.length) {
+          clear(status);
+          status.append(h("div", { class: "notice err", text: CHAT_STRINGS.noModels(def.name) }));
+        } else {
+          settings[field] = server.url;
+          if (!server.models.includes(settings.chatModels[id] ?? "")) {
+            settings.chatModels = { ...settings.chatModels, [id]: server.models[0] };
+          }
+          await save();
+          redraw();
+          return;
+        }
+      } catch (err) {
+        clear(status);
+        status.append(h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }));
+      }
+      connect.disabled = false;
+    });
+
+    block.append(h("div", { class: "row" }, label, input, connect));
+    if (id === "custom") block.append(h("div", { class: "row" }, h("label", { text: "" }), key));
+    block.append(status, exposure);
+    showExposure();
+    return block;
+  }
+
+  redraw();
+  localRedraw = redraw;
+  return section;
 }
 
 // ── Integrations section ──────────────────────────────────────────────────────
@@ -680,6 +942,19 @@ async function main() {
       connected[def.id] = present[def.connect.key] ?? (await Bridge.secretPresent(def.connect.key)) ?? false;
     }
   }
+  /** A chat provider's key was saved or removed: its pill's row says so at once. */
+  const keyChanged = (key: string, on: boolean) => {
+    for (const def of availablePills()) {
+      if (def.connect.kind === "key" && def.connect.key === key) connected[def.id] = on;
+    }
+    for (const redraw of declaredViews) redraw();
+  };
+  const chatKeys: Record<string, boolean> = {};
+  for (const def of CLOUD) {
+    const key = providerDef(def.id).key!;
+    chatKeys[key] = (await Bridge.secretPresent(key)) ?? false;
+  }
+  const customKey = (await Bridge.secretPresent(CUSTOM_SERVER_KEY)) ?? false;
 
   clear(root);
   root.append(
@@ -688,6 +963,8 @@ async function main() {
     agentsSection(agents),
     planSection(status),
     apiSection(hasKey),
+    chatProvidersSection(chatKeys, keyChanged),
+    localSection(customKey),
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
@@ -698,8 +975,11 @@ async function main() {
   );
 
   void onEvent<Settings>("settings-changed", (s) => {
+    const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
     for (const redraw of declaredViews) redraw();
+    const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    if (before !== after) localRedraw?.();
   });
 }
 

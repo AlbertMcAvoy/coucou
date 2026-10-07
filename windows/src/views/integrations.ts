@@ -71,6 +71,7 @@ export function idleStatus(
   // are in place (Mac #183). A session replaces this card; nothing is loading.
   if (def?.connect.kind === "hooks") return configured ? ok("Hooks installed") : missing("Hooks not installed");
   if (def?.connect.kind === "none") return ok("Ready · no setup needed");
+  if (def?.connect.kind === "server") return configured ? ok("Connected") : missing("Not connected");
   if (def?.category === "ai") {
     if (!configured) return missing("Key not configured");
     return ok(id === "ai_anthropic" ? `Key configured · ${chatModel}` : "Key configured");

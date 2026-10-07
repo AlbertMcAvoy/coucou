@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
@@ -34,6 +35,18 @@ pub struct Settings {
     /// Show the Codex plan pill (5 h / weekly limits from `codex app-server`).
     /// Off by default; nothing is installed for it.
     pub show_codex_plan_in_notch: bool,
+    /// Who the chat talks to: "anthropic", a cloud provider of
+    /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
+    /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
+    pub chat_provider: String,
+    /// The model picked for each provider other than Anthropic (whose model is
+    /// `model`), by provider id.
+    pub chat_models: BTreeMap<String, String>,
+    /// Addresses of the model servers once connected; empty means not connected.
+    pub ollama_url: String,
+    pub lmstudio_url: String,
+    /// Any other OpenAI-compatible server; its key, if any, is in the keychain.
+    pub custom_url: String,
 }
 
 fn default_model() -> String {
@@ -61,6 +74,11 @@ impl Default for Settings {
             show_plan_in_notch: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
+            chat_provider: crate::chat::ANTHROPIC.into(),
+            chat_models: BTreeMap::new(),
+            ollama_url: String::new(),
+            lmstudio_url: String::new(),
+            custom_url: String::new(),
         }
     }
 }
@@ -325,7 +343,12 @@ mod tests {
   "model": "some-model",
   "showPlanInNotch": true,
   "planRelayInstalled": true,
-  "showCodexPlanInNotch": true
+  "showCodexPlanInNotch": true,
+  "chatProvider": "ollama",
+  "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "ollamaUrl": "http://127.0.0.1:11434",
+  "lmstudioUrl": "http://127.0.0.1:1234",
+  "customUrl": "https://llm.example.com"
 }"#;
 
     fn custom() -> Value {
@@ -656,6 +679,11 @@ mod tests {
                 "showPlanInNotch",
                 "planRelayInstalled",
                 "showCodexPlanInNotch",
+                "chatProvider",
+                "chatModels",
+                "ollamaUrl",
+                "lmstudioUrl",
+                "customUrl",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

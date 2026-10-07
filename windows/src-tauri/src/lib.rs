@@ -2,14 +2,19 @@
 
 mod agent_hooks;
 mod agents;
+mod chat;
 mod claude;
 mod config_file;
 mod codex_plan;
 mod files;
 mod hooks;
+mod identity;
 mod integrations;
 mod island;
+mod local_chat;
 mod log;
+mod net;
+mod openai_compat;
 mod pipe;
 mod platform;
 mod secrets;
@@ -27,7 +32,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
-use claude::{Chat, ChatContext, ChatReply};
+use chat::{Chat, ChatContext, ChatReply, ModelInfo};
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -352,16 +357,32 @@ fn approval_decline(app: AppHandle, request_id: String) {
 
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
-/// One chat turn. The API key and any file bytes stay on the Rust side.
+/// One chat turn with the provider picked in the chat view. API keys and any
+/// file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    chat::send(&app, &chat, &settings, query, context).await
+}
+
+/// The models a provider offers, for the picker in the chat view. Only asked
+/// once the user picked that provider, and only with its key or address.
+#[tauri::command]
+async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
+    let settings = shared.settings.lock().unwrap().clone();
+    chat::models(&settings, &provider).await
+}
+
+/// Settings → Local models → Connect: does the server answer, and with which models?
+#[tauri::command]
+async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
+    local_chat::connect(&provider, &url).await
 }
 
 #[tauri::command]
@@ -522,6 +543,8 @@ pub fn run() {
             approval_decline,
             log_line,
             chat_send,
+            chat_models,
+            local_connect,
             chat_reset,
             ingest_file,
             secret_present,

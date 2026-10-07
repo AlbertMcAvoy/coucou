@@ -7,6 +7,7 @@ import {
   toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
+import type { ProviderId } from "./providers";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -110,6 +111,14 @@ export interface Settings {
   planRelayInstalled: boolean;
   /** Show the Codex plan pill in the island's header. */
   showCodexPlanInNotch: boolean;
+  /** Who the chat talks to (see core/providers.ts); picked in the chat view. */
+  chatProvider: ProviderId;
+  /** The model picked for each provider other than Anthropic, by provider id. */
+  chatModels: Record<string, string>;
+  /** Model server addresses once connected; empty means not connected. */
+  ollamaUrl: string;
+  lmstudioUrl: string;
+  customUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -128,6 +137,11 @@ export const DEFAULT_SETTINGS: Settings = {
   showPlanInNotch: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
+  chatProvider: "anthropic",
+  chatModels: {},
+  ollamaUrl: "",
+  lmstudioUrl: "",
+  customUrl: "",
 };
 
 type Listener = () => void;

@@ -34,6 +34,10 @@ export async function refreshConfigured() {
         configured = hooks?.[def.id] ??
           (def.id === "integration_claude" ? State.settings.hooksInstalled : false);
         break;
+      case "server":
+        // A local model server counts once the chat is connected to it.
+        configured = State.settings[def.connect.field] !== "";
+        break;
       case "none":
         configured = true;
         break;
