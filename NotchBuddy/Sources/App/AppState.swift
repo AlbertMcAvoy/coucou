@@ -417,6 +417,21 @@ final class AppState: ObservableObject {
     // Transient — reset when island closes or view changes
     @Published var showingPlanDetail: Bool = false
 
+    // Codex plan gauge (from `codex app-server`) — fetched when the pill shows
+    @Published var showCodexPlanInNotch: Bool = false {
+        didSet { UserDefaults.standard.set(showCodexPlanInNotch, forKey: "showCodexPlanInNotch") }
+    }
+    @Published var codexPlanUsage: CodexPlanUsage? = nil
+    // Which card showingPlanDetail opens
+    @Published var planDetailIsCodex: Bool = false
+
+    func refreshCodexPlanUsage() {
+        if let u = codexPlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
+        Task {
+            if let u = await CodexPlanGauge.fetch() { codexPlanUsage = u }
+        }
+    }
+
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
@@ -463,6 +478,7 @@ final class AppState: ObservableObject {
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
+        if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
         planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 

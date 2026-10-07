@@ -945,6 +945,15 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                     }
                 }
+                Divider()
+                Text("Shows your Codex plan usage (weekly limit and free resets left) in the notch header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Show Codex plan in the notch", isOn: Binding(
+                    get: { state.showCodexPlanInNotch },
+                    set: { state.showCodexPlanInNotch = $0 }
+                ))
             }
             .padding(6)
         }

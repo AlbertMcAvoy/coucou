@@ -104,8 +104,14 @@ struct OverviewView: View {
                 #if !APPSTORE
                 if state.showingPlanDetail {
                     CardBackground(wash: nil)
-                    ClaudePlanCardView(usage: state.claudePlanUsage)
-                        .transition(.opacity)
+                    Group {
+                        if state.planDetailIsCodex {
+                            CodexPlanCardView(usage: state.codexPlanUsage)
+                        } else {
+                            ClaudePlanCardView(usage: state.claudePlanUsage)
+                        }
+                    }
+                    .transition(.opacity)
                 }
                 #endif
 
