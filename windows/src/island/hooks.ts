@@ -13,6 +13,20 @@ const CLAUDE_ID = "integration_claude";
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
 
+/** Takes the approval or question card down and gives the island back. */
+function dropPendingCard(island: Island): void {
+  if (!State.pendingApproval) return;
+  State.pendingApproval = null;
+  State.isPinned = false;
+  island.dropPin();
+  State.updateTask(CLAUDE_ID, "working");
+  State.setPillBadge(CLAUDE_ID, null);
+  if (State.view === "approval" || State.view === "question") {
+    island.setView(State.defaultView());
+  }
+  State.notify();
+}
+
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
 
@@ -255,6 +269,16 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PostToolUse":
       supersedeStop();
+      // The question was answered in the terminal: the card would be lying.
+      if (
+        payload.tool_name === "AskUserQuestion" &&
+        State.pendingApproval?.questions &&
+        State.pendingApproval.sessionId === (payload.session_id ?? "")
+      ) {
+        if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+        pendingTimeout = null;
+        dropPendingCard(island);
+      }
       State.updateTask(agentId, "working");
       break;
 
@@ -380,16 +404,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {
         pendingTimeout = null;
-        if (!State.pendingApproval) return;
-        State.pendingApproval = null;
-        State.isPinned = false;
-        island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval" || State.view === "question") {
-          island.setView(State.defaultView());
-        }
-        State.notify();
+        dropPendingCard(island);
       }, 110_000);
       break;
     }

@@ -24,7 +24,7 @@ export interface ViewActions {
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
-  answer(answers: Record<string, string>): void;
+  answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
   answerInTerminal(): void;
   toggleSound(): void;
@@ -354,13 +354,13 @@ function buildQuestion(actions: ViewActions): ViewHost {
   // far, and what is ticked in a pick-several question.
   let requestId = "";
   let index = 0;
-  let answers: Record<string, string> = {};
+  let answers: Record<string, string | string[]> = {};
   let picked = new Set<string>();
   // The buttons are only rebuilt when what they show changes: rebuilding them
   // between a mouse-down and a mouse-up would swallow the click.
   let rowKey = "";
 
-  const next = (question: string, answer: string, total: number) => {
+  const next = (question: string, answer: string | string[], total: number) => {
     answers[question] = answer;
     picked = new Set();
     index += 1;
@@ -418,7 +418,7 @@ function buildQuestion(actions: ViewActions): ViewHost {
       }
       if (q.multiSelect) {
         const done = btn("Done", "primary", () => {
-          if (picked.size > 0) next(q.question, [...picked].join(", "), questions.length);
+          if (picked.size > 0) next(q.question, [...picked], questions.length);
         });
         if (picked.size === 0) done.classList.add("off");
         row.append(done);

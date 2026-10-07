@@ -306,7 +306,7 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
 /// Called when an option is picked for a question Claude Code asked. `answers`
 /// maps each question's text to the chosen label, which is the shape
 /// AskUserQuestion takes them in.
-pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<String, String>) {
+pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<String, serde_json::Value>) {
     log::line(format!("decision id={request_id} answered a question"));
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();

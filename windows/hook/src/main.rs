@@ -82,10 +82,11 @@ fn decision_json(decision: &str, question: Option<&serde_json::Value>) -> Option
     if decision.trim_start().starts_with('{') {
         let reply = serde_json::from_str::<serde_json::Value>(decision).ok()?;
         let answers = reply.get("answers")?.as_object()?;
-        if answers.is_empty() || !answers.values().all(|v| v.is_string()) {
+        let question = question?;
+        if !answers_fit(question, answers) {
             return None;
         }
-        let mut input = question?.as_object()?.clone();
+        let mut input = question.as_object()?.clone();
         input.insert("answers".into(), serde_json::Value::Object(answers.clone()));
         return Some(
             serde_json::json!({
@@ -107,6 +108,38 @@ fn decision_json(decision: &str, question: Option<&serde_json::Value>) -> Option
     Some(format!(
         r#"{{"hookSpecificOutput":{{"hookEventName":"PermissionRequest","decision":{behavior}}}}}"#
     ))
+}
+
+/// True when `answers` answers exactly the questions Claude Code asked: one entry
+/// per question, keyed by its text; a single-select answer is one of its option
+/// labels (a string), a multi-select answer a non-empty list of distinct labels
+/// (Claude Code 2.1.136+ takes the list, as the Mac sends it). Same rule as
+/// `QuestionPayload.accepts` on macOS.
+fn answers_fit(question: &serde_json::Value, answers: &serde_json::Map<String, serde_json::Value>) -> bool {
+    let Some(items) = question.get("questions").and_then(|q| q.as_array()) else { return false };
+    if items.is_empty() || items.len() != answers.len() {
+        return false;
+    }
+    items.iter().all(|item| {
+        let Some(text) = item.get("question").and_then(|q| q.as_str()) else { return false };
+        let labels: Vec<&str> = item
+            .get("options")
+            .and_then(|o| o.as_array())
+            .map(|opts| opts.iter().filter_map(|o| o.get("label").and_then(|l| l.as_str())).collect())
+            .unwrap_or_default();
+        let multi = item.get("multiSelect").and_then(|m| m.as_bool()).unwrap_or(false);
+        match answers.get(text) {
+            Some(serde_json::Value::String(pick)) if !multi => labels.contains(&pick.as_str()),
+            Some(serde_json::Value::Array(picks)) if multi => {
+                let picks: Vec<&str> = picks.iter().filter_map(|p| p.as_str()).collect();
+                let mut seen = picks.clone();
+                seen.sort_unstable();
+                seen.dedup();
+                !picks.is_empty() && seen.len() == picks.len() && picks.iter().all(|p| labels.contains(p))
+            }
+            _ => false,
+        }
+    })
 }
 
 /// Reads stdin and returns the payload to forward, the event name, and — for an
@@ -296,6 +329,27 @@ mod tests {
         assert!(decision_json(r#"{"answers":{}}"#, Some(&question)).is_none());
         assert!(decision_json(r#"{"answers":{"q":1}}"#, Some(&question)).is_none());
         assert!(decision_json(r#"{"command":"rm -rf /"}"#, Some(&question)).is_none());
+    }
+
+    #[test]
+    fn answers_must_match_the_questions_asked() {
+        let q = serde_json::json!({ "questions": [
+            { "question": "Which one?", "options": [{ "label": "A" }, { "label": "B" }] },
+            { "question": "Extras?", "multiSelect": true,
+              "options": [{ "label": "Tests" }, { "label": "Docs" }, { "label": "Lint" }] }
+        ]});
+        let ok = |a: &str| decision_json(a, Some(&q)).is_some();
+        assert!(ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Docs"]}}"#));
+        // Not one of the labels, or an answer to a question nobody asked.
+        assert!(!ok(r#"{"answers":{"Which one?":"C","Extras?":["Tests"]}}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests"],"Other?":"x"}}"#));
+        // A question left out.
+        assert!(!ok(r#"{"answers":{"Which one?":"A"}}"#));
+        // Shapes: single-select is one string, multi-select a non-empty list.
+        assert!(!ok(r#"{"answers":{"Which one?":["A"],"Extras?":["Tests"]}}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":"Tests"}}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":[]}}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#));
     }
 
     #[test]

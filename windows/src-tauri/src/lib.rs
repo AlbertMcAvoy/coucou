@@ -232,7 +232,7 @@ fn approval_decision(app: AppHandle, request_id: String, decision: String) {
 fn approval_answer(
     app: AppHandle,
     request_id: String,
-    answers: std::collections::HashMap<String, String>,
+    answers: std::collections::HashMap<String, serde_json::Value>,
 ) {
     pipe::answer_question(&app, &request_id, &answers);
 }
