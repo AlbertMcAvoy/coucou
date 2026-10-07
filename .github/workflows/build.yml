@@ -21,6 +21,9 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test Claude hook detection
+        run: bash scripts/test-claude-hooks.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
