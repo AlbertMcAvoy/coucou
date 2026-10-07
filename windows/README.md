@@ -46,6 +46,38 @@ installs for the current user only — no admin prompt.
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
+| `Ctrl+Alt+Space` | Opens the chat, from any app |
+| `Ctrl+Alt+A` | Jumps to the waiting permission or question |
+| `Ctrl+Alt+T` | Opens the session's folder in VS Code ("Open terminal") |
+| `Ctrl+Alt+→` / `Ctrl+Alt+←` | Next / previous pill |
+| `Ctrl+Alt+S` | Mutes or unmutes Mochi |
+| `Ctrl+Alt+G` | Opens the wardrobe |
+| `Ctrl+Alt+N` | Opens and closes the island (off until you turn it on) |
+| In the open island: `Ctrl+→` `Ctrl+←`, `Ctrl+1`–`Ctrl+9` | Switch pills |
+| In the open island: `Ctrl+Enter`, `Ctrl+K` | Send, start a new chat |
+| In the open island: `Ctrl+,`, `Ctrl+P` | Settings, keep the island open |
+
+### Keyboard shortcuts
+
+Every global shortcut can be changed or turned off in **Settings… → Shortcuts**:
+click it and press the new keys. A combination another app already holds is
+flagged *In use*, and two Coucou shortcuts on the same keys are flagged *Used
+twice*. While you record a new one, Coucou lets go of its own so the keys reach
+the recorder.
+
+The defaults are not the Mac's `⌃⌥` letters. On Windows, `Ctrl+Alt` is `AltGr`,
+so a global `Ctrl+Alt+E` would swallow every `€` typed on a French or German
+keyboard. The defaults were checked against the AltGr layer of the French,
+German, Spanish, Italian, Portuguese and Brazilian (ABNT2) layouts — that is why
+pill switching uses the arrows rather than `[` `]`, and mute is `S` rather than
+`M` (`AltGr+M` is `µ` in German). On top of that, Coucou asks Windows what each
+`Ctrl+Alt` combination types on the layouts you have installed and leaves any
+that types a character unregistered, flagged *Types “ą”* in Settings: Polish,
+for one, puts `ą` on `AltGr+A` and `ś` on `AltGr+S`. The recorder refuses such
+a combination too.
+
+Older Intel graphics drivers rotate the screen on `Ctrl+Alt+←` / `→`; if yours
+still does, those two show up as *In use*.
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
@@ -163,6 +195,14 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
+  keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
+  Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
+  terminal" here. Not in this version: sending Mochi to the desktop, attaching
+  the front window (their ids are kept for later), moving through a card's
+  list (`⌘↑` `⌘↓` `⌘O`) and the diff (`⌘E`). The island only reads its own
+  shortcuts while it has the keyboard: in the chat, or after a global shortcut
+  opened it.
 
 ## Linux
 
@@ -192,6 +232,17 @@ What changes on Linux:
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user.
+- **Global shortcuts** are X11 key grabs, so they work in an X11 session.
+  On X11, AltGr is a modifier of its own and never clashes with `Ctrl+Alt`;
+  combinations the desktop already uses (GNOME's `Ctrl+Alt+T` terminal and
+  `Ctrl+Alt+←`/`→` workspace switching) show up as *In use*. Wayland has no
+  key grabs — the GlobalShortcuts portal isn't supported yet — so nothing is
+  registered there, and **Settings → Shortcuts** lists commands to bind in your
+  desktop's own keyboard settings instead:
+  `coucou --shortcut openChat` (or the AppImage's path) runs the action in the
+  Coucou that is already open. The ids are `toggleIsland`, `openChat`,
+  `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle` and
+  `wardrobeToggle`.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
