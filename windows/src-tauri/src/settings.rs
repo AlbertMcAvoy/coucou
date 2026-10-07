@@ -23,6 +23,9 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// Global shortcuts the user changed, by action id; the others keep their
+    /// default (see shortcuts.rs).
+    pub shortcuts: crate::shortcuts::Bindings,
 }
 
 fn default_model() -> String {
@@ -46,6 +49,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            shortcuts: Default::default(),
         }
     }
 }
@@ -306,7 +310,8 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
-  "model": "some-model"
+  "model": "some-model",
+  "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } }
 }"#;
 
     fn custom() -> Value {
@@ -414,6 +419,7 @@ mod tests {
             ("soundEnabled", json!(1)),
             ("activeIntegrations", json!("integration_n8n")),
             ("screen", Value::Null),
+            ("shortcuts", json!("Ctrl+Alt+A")),
         ] {
             let loaded = parse(&custom_with(key, Some(wrong)))
                 .unwrap_or_else(|| panic!("a file with a bad {key} was thrown away"));
@@ -632,6 +638,7 @@ mod tests {
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "shortcuts",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
