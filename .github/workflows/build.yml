@@ -47,6 +47,9 @@ jobs:
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
+      - name: Claude settings file tests
+        run: bash scripts/test-claude-settings.sh
+
       - name: Build
         run: |
           xcodebuild \
