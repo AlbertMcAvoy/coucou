@@ -1,11 +1,14 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod chat;
 mod claude;
 mod files;
 mod hooks;
+mod identity;
 mod integrations;
 mod island;
 mod log;
+mod net;
 mod pipe;
 mod platform;
 mod secrets;
@@ -20,7 +23,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
-use claude::{Chat, ChatContext, ChatReply};
+use chat::{Chat, ChatContext, ChatReply, ModelInfo};
 use files::DroppedFile;
 use hooks::{HookPreview, HookStatus};
 use island::{PollGate, ScreenInfo};
@@ -238,13 +241,21 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    let settings = shared.settings.lock().unwrap().clone();
+    chat::send(&app, &chat, &settings, query, context).await
+}
+
+/// The models a provider offers. Only asked with the provider's key.
+#[tauri::command]
+async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
+    let settings = shared.settings.lock().unwrap().clone();
+    chat::models(&settings, &provider).await
 }
 
 #[tauri::command]
@@ -394,6 +405,7 @@ pub fn run() {
             approval_decline,
             log_line,
             chat_send,
+            chat_models,
             chat_reset,
             ingest_file,
             secret_present,
