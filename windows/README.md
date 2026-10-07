@@ -160,6 +160,27 @@ once; the key never is.
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
+## GitHub
+
+With a token in **Settings… → Integrations → GitHub** — a classic token with
+the `repo` scope, or a fine-grained one with read access to Pull requests,
+Commit statuses and Actions — the GitHub pill shows:
+
+- **My PRs**: your open pull requests and their CI status.
+- **To review**: the pull requests waiting for your review.
+- **Default branch CI**: the CI of the default branch of your 10 most recently
+  pushed repositories.
+- Your stars and the **last 7 days of contributions** in the card header; click
+  them for the past 23 weeks, and hover or click a day for its count.
+
+Click a row for the list, then an item to open it on github.com. The pill gets
+a badge and a sound when the CI of one of your pull requests turns red or green
+(fast runs between two checks included), when a default branch breaks, or when
+someone requests your review. Pull requests are checked every 5 minutes, every
+minute while a CI is running, and as soon as you open the card on data older
+than a minute; contributions every 30 minutes. Nothing is fetched while the pill
+is off or Coucou is paused.
+
 ## Build it yourself
 
 You need [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), and the
@@ -312,6 +333,8 @@ own window.
   MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
   Claude Desktop); other agents' edits show as plain steps. There is no
   ⌘E-style shortcut.
+- The GitHub lists are clicked, not walked with the arrow keys, and there is no
+  iPhone to keep fetching them while the pill is off.
 
 ## Linux
 

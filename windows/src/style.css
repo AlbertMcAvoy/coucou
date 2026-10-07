@@ -1980,3 +1980,175 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 600;
   color: #c5c8cd;
 }
+
+/* ── GitHub pulse (GitHubPulseCardView / GitHubDetailView) ─────────────── */
+
+.gh-spark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  cursor: default;
+  min-width: 0;
+}
+
+.gh-mini {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.gh-mini i,
+.gh-cell {
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+  flex: 0 0 auto;
+}
+
+.int-stats.gh-rows {
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.gh-stat {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: default;
+}
+
+.gh-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 600 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.gh-head-right {
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  cursor: default;
+}
+
+.gh-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 60px; /* three 20 px rows; the rest scrolls */
+  overflow-y: auto;
+  margin-top: 4px;
+  scrollbar-width: none;
+}
+
+.gh-list::-webkit-scrollbar {
+  display: none;
+}
+
+.gh-list.fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+}
+
+.gh-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  flex: 0 0 20px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  min-width: 0;
+}
+
+.gh-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gh-gap {
+  width: 5px;
+  flex: 0 0 5px;
+}
+
+.gh-ref {
+  font: 400 10.5px var(--font);
+  color: #9398a1;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.gh-title {
+  font: 400 11px var(--font);
+  color: #c5c8cd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gh-draft {
+  font: 400 9.5px var(--font);
+  color: var(--dim-3);
+  flex: 0 0 auto;
+}
+
+.gh-word {
+  margin-left: auto;
+  padding-left: 4px;
+  font: 400 10px var(--font);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.gh-empty {
+  font: 400 10.5px var(--font);
+  color: var(--dim-3);
+  padding-top: 8px;
+}
+
+.gh-grid {
+  display: flex;
+  gap: 1.5px;
+  padding-top: 5px;
+}
+
+.gh-week {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+}
+
+.gh-cell.empty {
+  background: transparent;
+}
