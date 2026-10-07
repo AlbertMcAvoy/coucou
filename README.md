@@ -40,6 +40,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
 - 💬 **Chat with Claude, Gemini, OpenAI, or a local model (Ollama / LM Studio)** — click the model name above the chat box to switch provider and pick a model. Cloud providers use your own API key; local providers connect to a server running on your Mac. *(Gemini, OpenAI and local models: macOS)*
 - 📊 **Claude plan usage** *(macOS, GitHub build)* — a small pill in the notch header shows your 5-hour and weekly Claude plan limits. Enable it from Settings → Agents → Plan usage. Pro and Max plans only.
+- 📊 **Codex plan usage** *(macOS, GitHub build)* — a Codex pill next to it shows your Codex limits and how many free resets you have left, read from the Codex CLI. Turn it on in Settings → Agents → Plan usage.
 - 📋 **Declare the tools you use** — open Settings → Active pills and pick your main workspace tool (VS Code, Cursor, Codex or Antigravity), then toggle up to 4 more: Gemini CLI, Anthropic, Google AI, OpenAI, Ollama, LM Studio and service integrations *(macOS)*.
 - 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
 - 🖥️ **Mochi on the desktop** — drag Mochi out of the island to set him loose on your desktop: he floats as a 120 pt companion, follows your cursor, wears his outfit, reacts to alerts by flying home and flying back, and comes back where you left him on next launch.
@@ -51,7 +52,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - ⌨️ **Keyboard shortcuts** — open the chat, jump to an alert or a terminal, switch pills, mute, send Mochi to the desktop or open the wardrobe from anywhere; all customizable in Settings → Shortcuts.
 - 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
-- 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen.
+- 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen. With several displays, pick his screen in Settings → General, or let him follow your mouse *(macOS)*.
 - 📱 **Coucou on iPhone** — your sessions, approvals and services in your pocket, with Live Activities, widgets and Siri. See [Coucou on iPhone](#coucou-on-iphone).
 - 📅 **Weekly recap** *(macOS)* — every Monday morning Coucou shows a summary of the past week: time coding, sessions, files, lines changed, commands, permissions, top agent and project, busiest day and longest session. Share it as a 1080 × 1920 image with Mochi — project names optional. All local, no sync.
 - 🌍 **10 languages** — English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, Bahasa Indonesia. Pick one in Settings → General → Language; community translations welcome.
@@ -114,7 +115,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 | [0.1.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.1.1) | Oct 2, 2026 | Gemini and OpenAI chat, Linux build, more agents and pills, security hardening |
 | [0.1.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.1.0) | Sep 27, 2026 | First release: Mochi, Claude Code sessions, chat, file drop, integrations |
 
-Windows 0.1.1 and Linux 0.1.1 (beta) are in Releases under the `windows-v*` and `linux-v*` tags.
+Windows and Linux builds are in Releases under the `windows-v*` and `linux-v*` tags; the newest Windows installer is always at [`windows-latest`](https://github.com/Louis-CFM/coucou/releases/tag/windows-latest).
 
 ## Demo mode
 
@@ -148,10 +149,9 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Windows
 
-The Windows installer is **temporarily unavailable**. Microsoft Defender wrongly
-flags the unsigned installer as malware; a false-positive report is under review
-at Microsoft and the installer will come back once it is cleared and signed.
-Until then you can [build it from source](#build-from-source).
+Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)** or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)** (Windows 10/11, always the newest version) and run it. The installer isn't code-signed yet, so SmartScreen may warn you: click **More info → Run anyway**. You can also [build it from source](#build-from-source).
+
+**Windows and Linux 0.2.0** catch up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
 
 There is no notch on a PC, so the island slides out of the top edge of the screen
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
@@ -159,17 +159,17 @@ rest of the differences.
 
 ### Linux
 
-The first Linux build is out as a beta: download it from [Coucou for Linux 0.1.1 (beta)](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1), x86_64 only for now. Later versions will be in [Releases](https://github.com/Louis-CFM/coucou/releases) under `linux-v*` tags.
+Download the newest Linux build from [Releases](https://github.com/Louis-CFM/coucou/releases) (`linux-v*` tags), x86_64 only for now.
 
 - **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
 - **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
 
-Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. Gemini CLI, Antigravity, Google AI, OpenAI and local model (Ollama / LM Studio) chat are macOS only for now.
+Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD).
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
-so there it opens as a regular window. See [`windows/README.md`](windows/README.md#linux).
+so there it runs through XWayland as a dock window at the top of the screen. See [`windows/README.md`](windows/README.md#linux).
 
 ### Build from source
 
@@ -243,7 +243,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 | Hermes | Plugin — **Settings → Agents → Hermes → Install** | Mac only |
 | Any other | `--agent <name>` flag; see [`docs/AGENTS.md`](docs/AGENTS.md) | No |
 
-OpenCode, Amp and Hermes use a plugin model rather than a hook command. Coucou installs the plugin file into `~/.config/opencode/plugins/`, `~/.config/amp/plugins/` and `~/.hermes/plugins/coucou/` respectively — these are macOS paths; the Windows/Linux build does not support them.
+OpenCode, Amp and Hermes use a plugin model rather than a hook command. Coucou installs the plugin file into `~/.config/opencode/plugins/`, `~/.config/amp/plugins/` and `~/.hermes/plugins/coucou/` respectively. On Windows and Linux the plugins start the `coucou-hook` relay directly — see [`windows/README.md`](windows/README.md#supported-agents).
 
 ## Things to try
 
