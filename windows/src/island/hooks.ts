@@ -18,11 +18,8 @@ let pendingTimeout: number | null = null;
 /** Takes the approval or question card down and gives the island back. */
 function dropPendingCard(island: Island): void {
   if (!State.pendingApproval) return;
-  State.pendingApproval = null;
-  State.isPinned = false;
+  State.endApproval();
   island.dropPin();
-  State.updateTask(CLAUDE_ID, "working");
-  State.setPillBadge(CLAUDE_ID, null);
   if (State.view === "approval" || State.view === "question") {
     island.setView(State.defaultView());
   }
@@ -323,7 +320,8 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "finished");
       if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
       Sound.play("finish");
-      if (focused) surface("finished", true);
+      // A card waiting for an answer is never covered by another alert.
+      if (focused && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
@@ -344,7 +342,7 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
-      if (focused) surface("error", true);
+      if (focused && !State.pendingApproval) surface("error", true);
       else State.setPillBadge(agentId, "error");
       break;
 
@@ -394,28 +392,23 @@ function handleHook(island: Island, payload: HookPayload) {
       // shows the options and sends back the one that was picked.
       const questions = askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
-      State.pendingApproval = {
+      // The card always comes up, even over another pill or an island that is
+      // already open: its pill comes to the front, and the one you were on
+      // comes back once you answer (Mac #117, #120).
+      State.beginApproval({
         requestId,
-        sessionId: payload.session_id ?? "",
+        sessionId,
+        pillId: agentId,
         tool,
         command: approvalTarget(tool, input),
         ...(questions ? { questions } : {}),
-      };
+      });
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, view);
-      State.isPinned = true;
+      State.updateTask(agentId, view);
       Sound.play(view);
-      if (focused) {
-        island.alert(view);
-      } else {
-        // Another agent holds the view, so the card would yank it away. The badge
-        // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
-        island.reveal();
-      }
+      island.alert(view);
       // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {

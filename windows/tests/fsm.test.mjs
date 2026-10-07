@@ -278,6 +278,31 @@ test("the deadline the countdown bar reads follows the delay and clears with the
   assert.equal(fsm.homeCollapseDueAt, null);
 });
 
+// ── A card folded away while it waits (Mac #290) ─────────────────────────────
+
+test("a folded card keeps the compact island on screen until it is answered", () => {
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+  // Reopening brings it back open, and the mouse leaving does not fold it.
+  fsm.mouseEntered();
+  fsm.click();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "home");
+  // Answered: the usual timers again.
+  fsm.pinned = false;
+  fsm.mouseLeft();
+  seconds(15);
+  assert.equal(fsm.state, "petit");
+  fsm.mouseLeft();
+  seconds(60);
+  assert.equal(fsm.state, "hidden");
+});
+
 test("an unusable delay is ignored", () => {
   for (const bad of [NaN, -1, Infinity]) fsm.homeToPetitDelay = bad;
   assert.equal(fsm.homeToPetitDelay, 15);

@@ -35,6 +35,8 @@ export interface AgentTask {
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
+  /** The pill the request belongs to: VS Code's, or Cursor's. */
+  pillId: string;
   tool: string;
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
@@ -147,6 +149,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** The pill that was in front when the card came up; it comes back after. */
+  focusBeforeApproval: string | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 
@@ -186,6 +190,36 @@ class AppState {
     if (!t) return;
     this.focusId = id;
     t.pillBadge = null;
+    this.notify();
+  }
+
+  /**
+   * A permission card or a question comes up: its pill comes to the front, and
+   * the pill that was there is remembered (HookServer.focusBeforeApproval).
+   */
+  beginApproval(info: ApprovalInfo) {
+    this.pendingApproval = info;
+    this.isPinned = true;
+    if (this.focusBeforeApproval == null) this.focusBeforeApproval = this.focusId;
+    this.setFocus(info.pillId);
+  }
+
+  /**
+   * The card has its answer, or is withdrawn: the session carries on, and the
+   * pill you were on comes back — unless you moved to another one meanwhile.
+   */
+  endApproval() {
+    const req = this.pendingApproval;
+    if (!req) return;
+    this.pendingApproval = null;
+    this.isPinned = false;
+    this.updateTask(req.pillId, "working");
+    this.setPillBadge(req.pillId, null);
+    const previous = this.focusBeforeApproval;
+    this.focusBeforeApproval = null;
+    if (previous && this.focusId === req.pillId && this.tasks.some((t) => t.id === previous)) {
+      this.focusId = previous;
+    }
     this.notify();
   }
 
@@ -322,7 +356,12 @@ class AppState {
     this.loadIntegrationTasks();
   }
 
+  /**
+   * What the island opens on. A card waiting for an answer comes first, so
+   * reopening a folded island shows it again (Mac #117, #290).
+   */
   defaultView(): IslandViewName {
+    if (this.pendingApproval) return this.pendingApproval.questions ? "question" : "approval";
     return this.tasks.length === 0 ? "empty" : "overview";
   }
 }

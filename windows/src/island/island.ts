@@ -104,12 +104,21 @@ export class Island {
 
   /** The request has its answer: the card goes and the session carries on. */
   private closeApproval() {
-    State.pendingApproval = null;
-    State.isPinned = false;
+    State.endApproval();
     this.fsm.pinned = false;
-    State.updateTask("integration_claude", "working");
-    State.setPillBadge("integration_claude", null);
     this.setView(State.defaultView());
+  }
+
+  /**
+   * Folds a card that is waiting for an answer down to the compact island,
+   * without answering it (Mac #290). Nothing is decided: the request keeps
+   * waiting, the island stays on screen, and opening it shows the card again.
+   */
+  foldApproval() {
+    if (!State.pendingApproval || State.mode !== "expanded") return;
+    State.isPinned = true;
+    this.fsm.pinned = true;
+    this.fsm.forcePetit();
   }
 
   // ── DOM ─────────────────────────────────────────────────────────────────────
@@ -119,6 +128,7 @@ export class Island {
       setView: (v) => this.setView(v),
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
+      foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
@@ -287,7 +297,8 @@ export class Island {
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
-      State.isPinned = false;
+      // A folded card is still waiting: it keeps the island pinned.
+      if (!State.pendingApproval) State.isPinned = false;
       void Bridge.focusWindow(false);
     }
     if (mode !== "expanded") {
@@ -338,6 +349,11 @@ export class Island {
   }
 
   collapse() {
+    // A waiting card is only ever folded, never dropped by a close.
+    if (State.pendingApproval) {
+      this.foldApproval();
+      return;
+    }
     State.isPinned = false;
     this.fsm.pinned = false;
     // Drive the state machine rather than the mode: setting the mode behind its
@@ -360,6 +376,8 @@ export class Island {
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
+    // The countdown the pin held back starts now, if the mouse is elsewhere.
+    if (!this.wasInIsland) this.fsm.mouseLeft();
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -580,8 +598,14 @@ export class Island {
       }
     });
 
+    // Only keys typed into the island itself land here, never Escape typed in
+    // a terminal — so it may fold a waiting card away, as Escape in the notch
+    // does on macOS.
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      if (e.key === "Escape" && State.mode === "expanded") {
+        if (State.pendingApproval) this.foldApproval();
+        else if (!State.isPinned) this.collapse();
+      }
       State.lastActivity = performance.now();
     });
 

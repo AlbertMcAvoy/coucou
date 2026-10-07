@@ -18,6 +18,8 @@ export interface ViewActions {
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
+  /** Folds a waiting card to the compact island without answering it. */
+  foldApproval(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
@@ -310,11 +312,25 @@ function buildEmpty(actions: ViewActions): ViewHost {
 /** How long a fresh permission card ignores clicks on its buttons. */
 const CLICK_GUARD_MS = 600;
 
+/**
+ * The ⌃ in the corner of a waiting card: folds the island to its compact size
+ * and leaves the request waiting — nothing is answered (Mac #290). Opening the
+ * island again brings the card back.
+ */
+function foldButton(actions: ViewActions): HTMLElement {
+  return h(
+    "button",
+    { class: "icon-btn fold", title: "Later — keep it waiting", onclick: () => actions.foldApproval() },
+    svg(ICONS.chevronUp, 8, { stroke: 2.4 }),
+  );
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const el = h("div", { class: "view" },
+    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
   let rowKey = "";
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
@@ -359,7 +375,8 @@ function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title question-text" });
   const row = h("div", { class: "actions options" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
+  const fold = foldButton(actions);
+  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row), fold));
 
   // Where we are in the request on screen: which question, what is answered so
   // far, and what is ticked in a pick-several question.
@@ -384,6 +401,8 @@ function buildQuestion(actions: ViewActions): ViewHost {
     sync() {
       const questions = State.pendingApproval?.questions;
       clear(who);
+      // Only a request that is waiting can be folded away and come back.
+      fold.style.display = State.pendingApproval ? "" : "none";
 
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {

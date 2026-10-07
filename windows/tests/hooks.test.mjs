@@ -299,6 +299,7 @@ test("a permission request puts the card up, says exactly what it authorises, an
   assert.deepEqual(State.pendingApproval, {
     requestId: "r1",
     sessionId: "s1",
+    pillId: CLAUDE,
     tool: "Write",
     command: "Write · C:\\Users\\me\\proj\\.env",
   });
@@ -323,12 +324,71 @@ test("the card names the most specific thing the tool carries", () => {
   assert.equal(target(undefined, undefined), "Tool");
 });
 
-test("a request behind another pill badges and reveals instead of taking the view", () => {
+test("a request behind another pill comes to the front, and that pill comes back after (Mac #120)", () => {
   State.setFocus("integration_n8n");
   ask("r1");
-  assert.deepEqual(asked, ["reveal"]);
-  assert.equal(task().pillBadge, "approval");
+  assert.deepEqual(asked, ["alert:approval"]);
+  assert.equal(State.focusId, CLAUDE);
   assert.deepEqual(sent("approval_ack"), [{ requestId: "r1" }]);
+  State.endApproval();
+  assert.equal(State.focusId, "integration_n8n");
+  assert.equal(State.isPinned, false);
+  assert.equal(task().state, "working");
+});
+
+test("the pill you were on comes back after a withdrawn card too", () => {
+  State.setFocus("integration_n8n");
+  ask("r1");
+  seconds(110);
+  assert.equal(State.pendingApproval, null);
+  assert.equal(State.focusId, "integration_n8n");
+});
+
+test("a pill picked while the card was up keeps the front after the answer", () => {
+  State.setFocus("integration_n8n");
+  ask("r1");
+  State.setFocus("integration_github");
+  State.endApproval();
+  assert.equal(State.focusId, "integration_github");
+});
+
+test("the card shows when the island is already open, and is what it reopens on", () => {
+  State.mode = "expanded";
+  ask("r1");
+  assert.deepEqual(asked, ["alert:approval"]);
+  assert.equal(State.defaultView(), "approval");
+  State.endApproval();
+  assert.equal(State.defaultView(), "overview");
+});
+
+test("a question is what the island reopens on while it waits", () => {
+  ask("r1", {
+    tool_name: "AskUserQuestion",
+    tool_input: { questions: [{ question: "Which?", options: [{ label: "A" }, { label: "B" }] }] },
+  });
+  assert.equal(State.defaultView(), "question");
+});
+
+test("a finished or failed session behind a waiting card only badges its pill", () => {
+  State.settings.activeIntegrations = ["agent_gemini"];
+  State.loadIntegrationTasks();
+  hook({ hook_event_name: "SessionStart", coucou_agent: "gemini" });
+  ask("r1");
+  asked = [];
+  State.focusId = "agent_gemini";
+  hook({ hook_event_name: "Stop", coucou_agent: "gemini" });
+  hook({ hook_event_name: "StopFailure", coucou_agent: "gemini" });
+  assert.deepEqual(asked, []);
+  assert.equal(task("agent_gemini").pillBadge, "error");
+});
+
+test("a request from Claude Code in Cursor's terminal goes on the Cursor pill", () => {
+  ask("r1", { term_editor: "cursor" });
+  assert.equal(State.pendingApproval.pillId, "agent_cursor");
+  assert.equal(task("agent_cursor").state, "approval");
+  assert.equal(task("agent_cursor").name, "proj");
+  assert.equal(State.focusId, "agent_cursor");
+  assert.equal(task().state, "idle");
 });
 
 test("a second request never replaces the card: it goes back to the terminal", () => {
@@ -407,11 +467,12 @@ test("a permission request within 5.2 s of a stop keeps its card", () => {
   assert.equal(State.pendingApproval.requestId, "r1");
 });
 
-test("a permission request behind another pill keeps its badge past the stop timer", () => {
+test("a permission request behind another pill keeps the front past the stop timer", () => {
   State.setFocus("integration_n8n");
   afterStop(() => ask("r1"));
   assert.equal(task().state, "approval");
-  assert.equal(task().pillBadge, "approval");
+  assert.equal(State.focusId, CLAUDE);
+  assert.equal(State.pendingApproval.requestId, "r1");
 });
 
 test("a rate limit within 5.2 s of a stop stays a rate limit", () => {
