@@ -1544,17 +1544,7 @@ final class HookServer: @unchecked Sendable {
     }
     #endif
 
-    // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
-
-    #if !APPSTORE
-    private static var geminiSettingsURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/settings.json")
-    }
-    private static var agyHooksURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/config/hooks.json")
-    }
-
-    // MARK: Installed-state detection
+    // MARK: - Claude Code installed-state detection (both builds)
 
     /// True when ~/.claude/settings.json already routes Claude Code events to Coucou.
     /// Cursor sessions ride on these same hooks, so they share this state.
@@ -1571,6 +1561,18 @@ final class HookServer: @unchecked Sendable {
         return coucouHooksPresent(inSettings: json)
         #endif
     }
+
+    // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
+
+    #if !APPSTORE
+    private static var geminiSettingsURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/settings.json")
+    }
+    private static var agyHooksURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/config/hooks.json")
+    }
+
+    // MARK: Installed-state detection
 
     static func geminiHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: geminiSettingsURL),
