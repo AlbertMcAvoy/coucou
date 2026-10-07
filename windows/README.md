@@ -44,6 +44,8 @@ installs for the current user only — no admin prompt.
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
+| Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
+| On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Esc` | Closes the island |
 | Tray icon | Open, Wardrobe…, Settings…, Pause, Quit |
@@ -51,6 +53,13 @@ installs for the current user only — no admin prompt.
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
+
+When Mochi lives on the desktop, he flies back to the island with a permission
+request or a question and returns to his spot once you have answered; he does a
+little jump when a task finishes, and dozes off when nothing has happened for
+two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
+polling, a few frames a second. He remembers his spot between launches; if it
+was on a display that is no longer connected, he stays in the island.
 
 ## Claude Code
 
@@ -124,6 +133,7 @@ npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
 windows/
   src/                 island front end (TypeScript, no framework)
     mochi/             Mochi and the launch greeting, in Canvas 2D
+    desktop/           Mochi's own little window, when he lives on the desktop
     island/            state machine, hooks, integrations
     views/             every island view
     settings/          the settings window
@@ -167,6 +177,11 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
 - The wardrobe opens with a right-click on Mochi or from the tray menu; the
   Mac's keyboard shortcut for it isn't there. In the compact island a tall hat
   is cut by the top edge of the screen, as it is by the notch on a Mac.
+- Mochi on the desktop doesn't dance: there is no music integration to dance
+  to. Dropping him on a window doesn't attach it to the chat, and the Mac's
+  ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
+  sleeps, the transparent square around him (120 px) takes the first mouse
+  move, which wakes him and gives the rest back to the desktop.
 
 ## Linux
 
@@ -192,7 +207,14 @@ What changes on Linux:
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
-  gives no app the cursor position anywhere else.
+  gives no app the cursor position anywhere else. On the desktop, likewise,
+  they follow it only while it is over him, and "the cursor is far away" (so
+  he may fall asleep) means it hasn't been over him for a few seconds.
+- **Mochi on the desktop** is a layer-shell surface on the island's display
+  (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
+  that display; on X11 it is an ordinary always-on-top window that goes
+  anywhere. **GNOME on Wayland** has no layer-shell and lets no app place its
+  own window, so there Mochi can't leave the island: dragging him does nothing.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user.
