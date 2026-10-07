@@ -60,6 +60,26 @@ pub fn local_dir() -> PathBuf {
     base.join("Coucou")
 }
 
+/// Where a saved image goes, best first: Pictures (also where OneDrive moves
+/// it), then Downloads and the profile folder. The caller takes the first one
+/// that exists. Read from the environment rather than the Known Folders API: a
+/// relocated Pictures folder falls back to Downloads, which is fine for a PNG.
+pub fn picture_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    let home = std::env::var_os("USERPROFILE").map(PathBuf::from);
+    if let Some(home) = &home {
+        dirs.push(home.join("Pictures"));
+    }
+    if let Some(onedrive) = std::env::var_os("OneDrive").map(PathBuf::from) {
+        dirs.push(onedrive.join("Pictures"));
+    }
+    if let Some(home) = home {
+        dirs.push(home.join("Downloads"));
+        dirs.push(home);
+    }
+    dirs
+}
+
 /// %APPDATA% and %LOCALAPPDATA% are already private to the user.
 pub fn ensure_private_dir(dir: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dir)

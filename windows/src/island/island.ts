@@ -87,6 +87,11 @@ export class Island {
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
 
+  /** The launch greeting ended, or the island came out of hidden — two of the
+   *  moments the Monday recap may open (see src/recap/recap.ts). */
+  onGreetingDone: (() => void) | null = null;
+  onWake: (() => void) | null = null;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -97,7 +102,10 @@ export class Island {
     this.wireFsm();
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
-    this.greeting.onComplete = () => this.fsm.greetComplete();
+    this.greeting.onComplete = () => {
+      this.fsm.greetComplete();
+      this.onGreetingDone?.();
+    };
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
@@ -291,6 +299,7 @@ export class Island {
           break;
       }
       State.notify();
+      if (from === "hidden") this.onWake?.();
     };
   }
 

@@ -18,6 +18,7 @@ mod net;
 mod openai_compat;
 mod pipe;
 mod platform;
+mod recap;
 mod secrets;
 mod session_window;
 mod settings;
@@ -361,6 +362,7 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
 
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
+    recap::record_decision(&app, &request_id, &decision);
     pipe::answer(&app, &request_id, &decision);
 }
 
@@ -371,6 +373,8 @@ fn approval_answer(
     request_id: String,
     answers: std::collections::HashMap<String, serde_json::Value>,
 ) {
+    // An answered question is not an Allow / Deny: nothing for the recap.
+    recap::forget_request(&app, &request_id);
     pipe::answer_question(&app, &request_id, &answers);
 }
 
@@ -386,6 +390,7 @@ fn approval_ack(app: AppHandle, request_id: String) {
 /// already up. Claude Code falls back to asking in the terminal immediately.
 #[tauri::command]
 fn approval_decline(app: AppHandle, request_id: String) {
+    recap::forget_request(&app, &request_id);
     pipe::decline(&app, &request_id);
 }
 
@@ -601,6 +606,7 @@ pub fn run() {
         .manage(Pending::default())
         .manage(Chat::default())
         .manage(shortcuts::Registry::default())
+        .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -645,6 +651,14 @@ pub fn run() {
             set_paused,
             shortcuts_status,
             shortcuts_suspend,
+            recap::recap_history,
+            recap::recap_prefs,
+            recap::recap_set_enabled,
+            recap::recap_set_hide_projects,
+            recap::recap_mark_shown,
+            recap::recap_clear,
+            recap::recap_save_png,
+            recap::recap_reveal_saved,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

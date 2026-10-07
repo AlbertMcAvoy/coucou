@@ -207,6 +207,8 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
+    // Counts for the weekly recap — never the command, path or prompt itself.
+    crate::recap::observe(&app, &payload);
 
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
@@ -224,6 +226,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let pending = app.state::<Pending>();
         pending.0.lock().unwrap().insert(id.clone(), tx);
     }
+    crate::recap::note_request(&app, &id, &payload);
     payload["request_id"] = json!(id);
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
