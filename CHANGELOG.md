@@ -5,6 +5,12 @@
 - Apple Music (macOS, GitHub build): the card gets the album cover, the album, a progress bar you drag or click to seek, shuffle, repeat (all or one), volume and a heart to favorite the track, in the same layout as Spotify. The cover comes from Music itself, or from Apple's public catalog for a track that has none — thanks @JhoanG956
 - Spotify (macOS, GitHub build): a new pill with the album cover, title, artist and album, a progress bar you drag or click to seek, play/pause, previous/next, shuffle, repeat and volume. It follows Spotify's own notification, so nothing polls, and it never opens Spotify by itself. The cover shows even before you allow Automation, through Spotify's public oEmbed; Mochi dances while it plays — thanks @JhoanG956
 
+## 0.2.1 — October 7, 2026
+
+- **Hermes Agent** (Nous Research, open-source): sessions appear in the notch — live tool steps, the final response when done, and the platform (Telegram, Discord…) when running via the gateway. Install from Settings → Agents → Hermes: it writes a small Python plugin to `~/.hermes/plugins/coucou/` and enables it in `~/.hermes/config.yaml`, with the same preview, backup and confirmation flow as other agents *(macOS, GitHub build)* (#288)
+- Hermes approval requests show a "⏳ Approval pending in Hermes" step in the notch. Approving directly from the notch isn't supported yet — current Hermes versions (0.15.x) don't expose the transport API. The Approvals toggle in Settings will activate automatically once Hermes adds it (#288)
+- Coucou never blocks Hermes: if the app is closed or unreachable, Hermes continues normally and handles approvals itself (#288)
+
 ## 0.2.0 — October 6, 2026
 
 - GitHub Copilot CLI and Muse Code sessions show up in the notch: see every step live and approve or deny permissions right from the island. Install from Settings → Agents → Copilot CLI / Muse Code, which shows what will change in your config and backs it up before writing *(GitHub build)* (#263)
