@@ -60,7 +60,10 @@ pub fn ancestors(procs: &HashMap<u32, Proc>, start: u32) -> Vec<u32> {
     out
 }
 
-/// The nearest ancestor that owns a window: the terminal or the editor.
+/// The nearest ancestor that owns a window: the terminal or the editor. The
+/// Windows side walks `ancestors` itself (platform/windows.rs); this states the
+/// rule the tests pin down.
+#[cfg(test)]
 pub fn window_owner(procs: &HashMap<u32, Proc>, start: u32, has_window: impl Fn(u32) -> bool) -> Option<u32> {
     ancestors(procs, start).into_iter().find(|pid| has_window(*pid))
 }
