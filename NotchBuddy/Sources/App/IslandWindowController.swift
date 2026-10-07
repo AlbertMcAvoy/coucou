@@ -362,9 +362,10 @@ final class IslandWindowController: NSWindowController {
         state.lastActivity = .now
     }
 
-    func collapse() {
-        guard fsm.isHeldOpen?() != true else { return }
-        state.isPinned = false
+    func collapse(allowPendingApproval: Bool = false) {
+        let keepsApprovalPending = allowPendingApproval && state.pendingApproval != nil
+        guard fsm.isHeldOpen?() != true || keepsApprovalPending else { return }
+        if !keepsApprovalPending { state.isPinned = false }
         finishedPinTimer?.cancel()
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
         fsm.collapse()
@@ -384,9 +385,10 @@ final class IslandWindowController: NSWindowController {
         switch action {
         case .toggleIsland:
             if state.mode == .expanded {
-                collapse()
+                collapse(allowPendingApproval: true)
             } else {
                 islandPanel.makeKey()
+                fsm.openedExternally()
                 expand(to: defaultView())
             }
 
@@ -397,6 +399,7 @@ final class IslandWindowController: NSWindowController {
         case .goToAlert:
             if state.pendingApproval != nil {
                 islandPanel.makeKey()
+                fsm.openedExternally()
                 expand(to: .approval)
             } else if state.pendingQuestion != nil {
                 islandPanel.makeKey()
@@ -499,8 +502,9 @@ final class IslandWindowController: NSWindowController {
         // ⎋ Escape — focused views (.onExitCommand) have first crack; fall back to collapse
         if event.keyCode == 53 && raw.isEmpty {
             let consumed = NSApp.sendAction(Selector(("cancelOperation:")), to: nil, from: nil)
-            if !consumed && state.mode == .expanded && !state.isPinned {
-                collapse()
+            let canCollapse = !state.isPinned || state.pendingApproval != nil
+            if !consumed && state.mode == .expanded && canCollapse {
+                collapse(allowPendingApproval: true)
             }
             return true
         }
@@ -554,7 +558,7 @@ final class IslandWindowController: NSWindowController {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
-        collapse()
+        collapse(allowPendingApproval: true)
     }
 
     private func performAttachFrontWindow() {
@@ -579,8 +583,9 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor in
                 guard let self = self else { return }
                 if event.keyCode == 53 { // Escape
-                    if self.state.mode == .expanded && !self.state.isPinned {
-                        self.collapse()
+                    let canCollapse = !self.state.isPinned || self.state.pendingApproval != nil
+                    if self.state.mode == .expanded && canCollapse {
+                        self.collapse(allowPendingApproval: true)
                     }
                 }
             }
