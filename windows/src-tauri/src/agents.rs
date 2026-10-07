@@ -93,15 +93,17 @@ type JsonChange = Box<dyn Fn(&Value) -> Result<Option<Value>, String>>;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Agent {
     Gemini,
+    Antigravity,
 }
 
 impl Agent {
-    pub const ALL: &'static [Agent] = &[Agent::Gemini];
+    pub const ALL: &'static [Agent] = &[Agent::Gemini, Agent::Antigravity];
 
     /// The `--agent` name; the pill is `agent_<id>` (PillCatalog.swift).
     pub fn id(self) -> &'static str {
         match self {
             Agent::Gemini => "gemini",
+            Agent::Antigravity => "antigravity",
         }
     }
 
@@ -113,6 +115,7 @@ impl Agent {
     fn files(self, home: &Path) -> Vec<PathBuf> {
         match self {
             Agent::Gemini => vec![home.join(".gemini").join("settings.json")],
+            Agent::Antigravity => vec![home.join(".gemini").join("config").join("hooks.json")],
         }
     }
 
@@ -129,12 +132,9 @@ impl Agent {
     /// remove a file that is Coucou's alone. Command lines are built here, up
     /// front, so the change itself is pure.
     fn json_change(self, relay: &Relay, install: bool) -> JsonChange {
-        let agent = self.id();
-        if !install {
-            return Box::new(move |v| groups_uninstall(v, agent).map(Some));
-        }
-        match self {
-            Agent::Gemini => {
+        match (self, install) {
+            (Agent::Gemini, false) => Box::new(|v| groups_uninstall(v, "gemini").map(Some)),
+            (Agent::Gemini, true) => {
                 let commands: Vec<(String, String, u64)> = GEMINI_EVENTS
                     .iter()
                     .map(|(event, said, timeout)| {
@@ -143,6 +143,11 @@ impl Agent {
                     })
                     .collect();
                 Box::new(move |v| gemini_install(v, &commands).map(Some))
+            }
+            (Agent::Antigravity, false) => Box::new(|v| antigravity_uninstall(v).map(Some)),
+            (Agent::Antigravity, true) => {
+                let block = antigravity_block(relay);
+                Box::new(move |v| antigravity_install(v, &block).map(Some))
             }
         }
     }
@@ -160,6 +165,7 @@ impl Agent {
         };
         match self {
             Agent::Gemini => groups_have_ours(&json(), "gemini"),
+            Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
         }
     }
 
@@ -171,12 +177,14 @@ impl Agent {
 
 // ── Strings shown in Settings ─────────────────────────────────────────────────
 
+const TEXT_UNTOUCHED: &str = "Coucou has not touched it.";
 const TEXT_UNEXPECTED: &str = "has an unexpected type — Coucou has not touched it.";
 
 impl Agent {
     pub fn name(self) -> &'static str {
         match self {
             Agent::Gemini => "Gemini CLI",
+            Agent::Antigravity => "Antigravity",
         }
     }
 
@@ -184,6 +192,7 @@ impl Agent {
     fn note(self) -> &'static str {
         match self {
             Agent::Gemini => "Start a new Gemini CLI session to pick the hooks up.",
+            Agent::Antigravity => "Start a new Antigravity conversation to pick the hooks up.",
         }
     }
 }
@@ -387,6 +396,59 @@ fn gemini_install(root: &Value, commands: &[(String, String, u64)]) -> Result<Va
     groups_install(root, "gemini", events).map(Value::Object)
 }
 
+// ── Antigravity — ~/.gemini/config/hooks.json ─────────────────────────────────
+//
+// Hooks are named groups at the top level; Coucou's is `coucou`. Tool events
+// take matcher groups, lifecycle events take handlers directly; timeouts are
+// in seconds. Merge and removal come from #298 (kobaltgit). The relay answers
+// PreToolUse with "{}" — no decision — never with an allow: Antigravity's own
+// permission rules stay in charge.
+
+const ANTIGRAVITY_TOOL_EVENTS: &[&str] = &["PreToolUse", "PostToolUse"];
+const ANTIGRAVITY_LIFECYCLE_EVENTS: &[&str] = &["PreInvocation", "PostInvocation", "Stop"];
+
+fn antigravity_block(relay: &Relay) -> Value {
+    let handler = |event: &str| {
+        json!({
+            "type": "command",
+            "command": relay.command(Shell::Cmd, &format!("--agent antigravity {event}")),
+            "timeout": 10,
+        })
+    };
+    let mut block = Map::new();
+    for event in ANTIGRAVITY_TOOL_EVENTS {
+        block.insert((*event).into(), json!([{ "matcher": "*", "hooks": [handler(event)] }]));
+    }
+    for event in ANTIGRAVITY_LIFECYCLE_EVENTS {
+        block.insert((*event).into(), json!([handler(event)]));
+    }
+    Value::Object(block)
+}
+
+/// A `coucou` group Coucou wrote (it runs the relay as `--agent antigravity`).
+fn antigravity_is_ours(group: &Value) -> bool {
+    let text = group.to_string();
+    text.contains(MARKER) && text.contains("--agent antigravity")
+}
+
+fn antigravity_install(root: &Value, block: &Value) -> Result<Value, String> {
+    let mut root = root.as_object().cloned().unwrap_or_default();
+    if root.get("coucou").is_some_and(|g| !antigravity_is_ours(g)) {
+        return Err(format!("A hook group named \"coucou\" that Coucou did not write is already there — {TEXT_UNTOUCHED}"));
+    }
+    root.insert("coucou".into(), block.clone());
+    Ok(Value::Object(root))
+}
+
+/// Removes Coucou's group, and only if it is Coucou's.
+fn antigravity_uninstall(root: &Value) -> Result<Value, String> {
+    let mut root = root.as_object().cloned().unwrap_or_default();
+    if root.get("coucou").is_some_and(antigravity_is_ours) {
+        root.remove("coucou");
+    }
+    Ok(Value::Object(root))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -504,7 +566,11 @@ mod tests {
             let file = agent.files(&home)[0].clone();
             if file.extension().is_some_and(|e| e == "json") {
                 std::fs::create_dir_all(file.parent().unwrap()).unwrap();
-                for odd in [r#"{"hooks":"nope"}"#, r#"{"hooks":[1]}"#, "[1,2]", "{ broken"] {
+                let shaped: &[&str] = match agent {
+                    Agent::Antigravity => &[r#"{"coucou":"nope"}"#],
+                    _ => &[r#"{"hooks":"nope"}"#, r#"{"hooks":[1]}"#],
+                };
+                for odd in shaped.iter().copied().chain(["[1,2]", "{ broken", "\"text\""]) {
                     std::fs::write(&file, odd).unwrap();
                     let edits = agent.edits(&home, &linux(), true);
                     assert!(config_file::preview(&edits).is_err(), "{agent:?} accepted {odd}");
@@ -513,6 +579,40 @@ mod tests {
             }
             let _ = std::fs::remove_dir_all(home);
         }
+    }
+
+    #[test]
+    fn antigravity_gets_its_own_named_group_and_nothing_else_changes() {
+        let existing = r#"{"my-guard":{"PreToolUse":[{"matcher":"run_command","hooks":[{"command":"/bin/guard"}]}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Antigravity, Some(existing));
+        assert_eq!(installed["my-guard"]["PreToolUse"][0]["matcher"], "run_command");
+        let ours = &installed["coucou"];
+        for event in ANTIGRAVITY_TOOL_EVENTS {
+            assert_eq!(ours[event][0]["matcher"], "*");
+            let cmd = ours[event][0]["hooks"][0]["command"].as_str().unwrap();
+            assert!(cmd.ends_with(&format!("--agent antigravity {event}")), "{cmd}");
+        }
+        for event in ANTIGRAVITY_LIFECYCLE_EVENTS {
+            assert_eq!(ours[event][0]["timeout"], 10);
+            assert!(ours[event][0]["command"].as_str().unwrap().contains(MARKER));
+        }
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn a_coucou_group_someone_else_wrote_is_neither_replaced_nor_removed() {
+        let theirs = json!({ "coucou": { "Stop": [{ "command": "/bin/notify" }] } });
+        assert!(antigravity_install(&theirs, &antigravity_block(&linux())).is_err());
+        assert_eq!(antigravity_uninstall(&theirs).unwrap(), theirs);
+    }
+
+    #[test]
+    fn on_windows_antigravity_runs_the_relay_path_quoted_only_when_needed() {
+        let block = antigravity_block(&windows(WIN));
+        assert_eq!(block["Stop"][0]["command"], format!("{WIN} --agent antigravity Stop"));
+        let block = antigravity_block(&windows(WIN_SPACE));
+        assert_eq!(block["Stop"][0]["command"], format!("\"{WIN_SPACE}\" --agent antigravity Stop"));
     }
 
     #[test]

@@ -93,6 +93,13 @@ const TOOL_LABELS: Record<string, string> = {
   MultiEdit: "Modifie",
   NotebookEdit: "Notebook",
   PowerShell: "Exécute",
+  // Antigravity's tools (#298).
+  run_command: "Exécute",
+  view_file: "Lit",
+  write_to_file: "Écrit",
+  replace_file_content: "Modifie",
+  read_url_content: "Récupère",
+  search_web: "Recherche web",
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
