@@ -54,6 +54,10 @@ pub struct Settings {
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
     pub mochi_outfit: String,
+    /// Interface language: "" follows the system, else one of i18n::LANGUAGES
+    /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
+    /// code this build doesn't know reads as "".
+    pub language: String,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -108,6 +112,7 @@ impl Default for Settings {
             custom_url: String::new(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
+            language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
         }
     }
@@ -381,6 +386,7 @@ mod tests {
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
+  "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"#;
 
@@ -509,6 +515,9 @@ mod tests {
         // the choice must survive a save made by this one.
         let loaded = parse(&custom_with("mochiOutfit", Some(json!("topHat")))).unwrap();
         assert_eq!(loaded.mochi_outfit, "topHat");
+        // The language too: "" (follow the system) when absent, as it comes otherwise.
+        assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
+        assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
     }
 
     #[test]
@@ -760,6 +769,7 @@ mod tests {
                 "customUrl",
                 "shortcuts",
                 "mochiOutfit",
+                "language",
                 "desktopMochi",
             ]
         );

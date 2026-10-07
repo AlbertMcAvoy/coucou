@@ -5,29 +5,35 @@
 import { Bridge, type AgentHookStatus } from "../core/bridge";
 import { clear, h } from "../views/dom";
 import { renderDiff, statusDot } from "./parts";
+import { t } from "../i18n/i18n";
 
+/** In the current language (src/i18n); the settings window redraws on a change. */
 const TEXT = {
-  title: "Agents",
-  intro:
-    "Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.",
-  none: "Coucou could not list the agents.",
-  approvals: "Sessions, and Allow / Deny from the island",
-  displayOnly: "Sessions — approvals stay in the agent",
-  install: "Install…",
-  reinstall: "Reinstall…",
-  uninstall: "Uninstall…",
-  relayMissing: "The relay isn't installed yet. Restart Coucou.",
-  previewInstall: (name: string) =>
-    `This is exactly what changes for ${name}. Nothing else is touched.`,
-  previewRemove: "This removes Coucou's entries only. Everything else stays.",
-  backup: (to: string) => (to ? `Backup → ${to}` : "No existing file — nothing to back up."),
-  confirmInstall: "Back up and write",
-  confirmRemove: "Back up and remove",
-  cancel: "Cancel",
-  back: "Back",
-  done: (backups: string, note: string) =>
-    `Done.${backups ? ` Previous version saved as ${backups.split("\n").join(", ")}.` : ""} ${note}`,
-  failed: (err: unknown) => `Could not write: ${errorText(err)}`,
+  get title() { return t("Agents"); },
+  get intro() {
+    return t("Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.");
+  },
+  get none() { return t("Coucou could not list the agents."); },
+  get approvals() { return t("Sessions, and Allow / Deny from the island"); },
+  get displayOnly() { return t("Sessions — approvals stay in the agent"); },
+  get install() { return t("Install…"); },
+  get reinstall() { return t("Reinstall…"); },
+  get uninstall() { return t("Uninstall…"); },
+  get relayMissing() { return t("The relay isn't installed yet. Restart Coucou."); },
+  previewInstall: (name: string) => t("This is exactly what changes for {name}. Nothing else is touched.", { name }),
+  get previewRemove() { return t("This removes Coucou's entries only. Everything else stays."); },
+  backup: (to: string) => (to ? t("Backup → {path}", { path: to }) : t("No existing file — nothing to back up.")),
+  get confirmInstall() { return t("Back up and write"); },
+  get confirmRemove() { return t("Back up and remove"); },
+  get cancel() { return t("Cancel"); },
+  get back() { return t("Back"); },
+  done: (backups: string, note: string) => {
+    const saved = backups
+      ? t("Done. Previous version saved as {paths}.", { paths: backups.split("\n").join(", ") })
+      : t("Done.");
+    return `${saved} ${note}`;
+  },
+  failed: (err: unknown) => t("Could not write: {error}", { error: errorText(err) }),
 };
 
 function errorText(err: unknown): string {

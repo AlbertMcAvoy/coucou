@@ -5,7 +5,10 @@
      the <select> popup is white text on white. */
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  /* Then the scripts of the other interface languages (see src/style.css). */
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Nirmala UI", "Microsoft YaHei UI",
+    "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Arabic",
+    "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --ink: #f5f6f8;
   --dim: #9398a1;
@@ -377,4 +380,10 @@ select option {
 .tag.err {
   background: rgba(244, 80, 94, 0.14);
   color: #ff8d97;
+}
+
+/* Arabic: the window reads right to left (main.ts sets <html dir="rtl">);
+   diffs, paths, keys and addresses stay left to right. */
+html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
+  direction: ltr;
 }

@@ -10,6 +10,7 @@ mod desktop;
 mod files;
 mod github;
 mod hooks;
+mod i18n;
 mod identity;
 mod integrations;
 mod island;
@@ -109,8 +110,29 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
+    if i18n::set_picked(&settings.language) {
+        language_changed(&app);
+    }
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
+}
+
+/// The island reports the system's languages at launch, for "System" in
+/// Settings → Language (WebView2 and WebKitGTK know them best).
+#[tauri::command]
+fn set_system_languages(app: AppHandle, languages: Vec<String>) {
+    if i18n::set_system(languages) {
+        language_changed(&app);
+    }
+}
+
+/// What Rust labels itself follows the new language: the tray menu and the
+/// settings window's title. The webviews switch on their own.
+fn language_changed(app: &AppHandle) {
+    tray::retitle(app);
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.set_title(&i18n::t("Settings — Coucou"));
+    }
 }
 
 /// Hidden island → shrink the window to the invisible wake strip and park the
@@ -544,7 +566,7 @@ fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
     match WebviewWindowBuilder::new(app, "settings", url)
         .additional_browser_args(BROWSER_ARGS)
-        .title("Settings — Coucou")
+        .title(i18n::t("Settings — Coucou"))
         .inner_size(560.0, 680.0)
         .min_inner_size(460.0, 480.0)
         .resizable(true)
@@ -584,6 +606,7 @@ fn open_settings_window(app: AppHandle) {
 pub fn run() {
     platform::prepare_environment();
     let loaded = settings::load();
+    i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
     let mut builder = tauri::Builder::default()
@@ -615,6 +638,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
+            set_system_languages,
             set_collapsed,
             set_island_rect,
             focus_window,
