@@ -99,7 +99,9 @@ pub fn json_edit<'a>(
             text.push('\n');
             text
         });
-        Ok(Change { before: pretty(&current), after })
+        // A file that is not there yet shows as all additions.
+        let before = if bytes.is_some() { pretty(&current) } else { String::new() };
+        Ok(Change { before, after })
     })
 }
 
@@ -155,8 +157,10 @@ pub fn preview(edits: &[FileEdit]) -> Result<Plan, String> {
         let change = (file.edit)(current.as_deref())?;
         let after = change.after.clone().unwrap_or_default();
         let mut diff = unified_diff(&change.before, after.trim_end_matches('\n'));
-        if change.after.is_none() && current.is_some() {
-            diff = format!("The file is removed.\n{diff}");
+        match (&current, &change.after) {
+            (Some(_), None) => diff = format!("The file is removed.\n{diff}"),
+            (None, None) => diff = "No change.".into(),
+            _ => {}
         }
         if edits.len() > 1 {
             diff = format!("── {}\n{diff}", file.path.display());

@@ -96,10 +96,19 @@ pub enum Agent {
     Antigravity,
     Cursor,
     Codex,
+    Copilot,
+    Muse,
 }
 
 impl Agent {
-    pub const ALL: &'static [Agent] = &[Agent::Codex, Agent::Gemini, Agent::Antigravity, Agent::Cursor];
+    pub const ALL: &'static [Agent] = &[
+        Agent::Codex,
+        Agent::Copilot,
+        Agent::Muse,
+        Agent::Gemini,
+        Agent::Antigravity,
+        Agent::Cursor,
+    ];
 
     /// The `--agent` name; the pill is `agent_<id>` (PillCatalog.swift).
     pub fn id(self) -> &'static str {
@@ -108,6 +117,8 @@ impl Agent {
             Agent::Antigravity => "antigravity",
             Agent::Cursor => "cursor",
             Agent::Codex => "codex",
+            Agent::Copilot => "copilot",
+            Agent::Muse => "muse",
         }
     }
 
@@ -122,6 +133,8 @@ impl Agent {
             Agent::Antigravity => vec![home.join(".gemini").join("config").join("hooks.json")],
             Agent::Cursor => vec![home.join(".cursor").join("hooks.json")],
             Agent::Codex => vec![home.join(".codex").join("hooks.json")],
+            Agent::Copilot => vec![home.join(".copilot").join("hooks").join("coucou.json")],
+            Agent::Muse => vec![home.join(".config").join("muse").join("settings.json")],
         }
     }
 
@@ -165,6 +178,25 @@ impl Agent {
                 let command = relay.command(Shell::Cmd, "--agent codex");
                 Box::new(move |v| codex_install(v, &command).map(Some))
             }
+            (Agent::Copilot, false) => Box::new(copilot_uninstall),
+            (Agent::Copilot, true) => {
+                let entries: Vec<(String, Value)> = COPILOT_EVENTS
+                    .iter()
+                    .map(|(event, timeout)| (event.to_string(), copilot_entry(relay, event, *timeout)))
+                    .collect();
+                Box::new(move |v| copilot_install(v, &entries).map(Some))
+            }
+            (Agent::Muse, false) => Box::new(|v| groups_uninstall(v, "muse").map(Some)),
+            (Agent::Muse, true) => {
+                let commands: Vec<(String, String, u64)> = MUSE_EVENTS
+                    .iter()
+                    .map(|(event, seconds)| {
+                        let command = relay.command(Shell::Cmd, &format!("--agent muse {event}"));
+                        (event.to_string(), command, seconds * 1000)
+                    })
+                    .collect();
+                Box::new(move |v| muse_install(v, &commands).map(Some))
+            }
         }
     }
 
@@ -184,13 +216,18 @@ impl Agent {
             Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
             Agent::Cursor => groups_have_ours(&json(), "cursor"),
             Agent::Codex => groups_have_ours(&json(), "codex"),
+            Agent::Copilot => json()
+                .get("hooks")
+                .and_then(Value::as_object)
+                .is_some_and(|h| h.values().filter_map(Value::as_array).flatten().any(copilot_entry_is_ours)),
+            Agent::Muse => groups_have_ours(&json(), "muse"),
         }
     }
 
     /// Whether the island can answer this agent's permission requests. Must
     /// match `takes_decisions` in the relay (hook/src/reply.rs).
     fn approvals(self) -> bool {
-        matches!(self, Agent::Codex)
+        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse)
     }
 }
 
@@ -206,6 +243,8 @@ impl Agent {
             Agent::Antigravity => "Antigravity",
             Agent::Cursor => "Cursor Agent",
             Agent::Codex => "Codex",
+            Agent::Copilot => "GitHub Copilot CLI",
+            Agent::Muse => "Muse Code",
         }
     }
 
@@ -216,6 +255,8 @@ impl Agent {
             Agent::Antigravity => "Start a new Antigravity conversation to pick the hooks up.",
             Agent::Cursor => "Restart Cursor to pick the hooks up.",
             Agent::Codex => "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.",
+            Agent::Copilot => "Start a new Copilot CLI session to pick the hooks up.",
+            Agent::Muse => "Start a new Muse Code session to pick the hooks up.",
         }
     }
 }
@@ -532,6 +573,107 @@ fn codex_install(root: &Value, command: &str) -> Result<Value, String> {
     groups_install(root, "codex", events).map(Value::Object)
 }
 
+// ── GitHub Copilot CLI — ~/.copilot/hooks/coucou.json ─────────────────────────
+//
+// A file of Coucou's own in Copilot's hooks folder: camelCase events, each
+// entry `{"type": "command", "bash": …, "timeoutSec": N}`, plus `powershell`
+// on Windows, where Copilot runs that one. The event goes on the command line
+// because Copilot does not put it in the payload. Copilot is fail-closed on
+// permissionRequest: the relay always answers it with valid JSON — "ask" when
+// nobody clicked. Removing the last of Coucou's entries removes the file.
+
+const COPILOT_EVENTS: &[(&str, u64)] = &[
+    ("sessionStart", 10),
+    ("userPromptSubmitted", 10),
+    ("preToolUse", 10),
+    ("permissionRequest", 120),
+    ("postToolUse", 10),
+    ("agentStop", 10),
+    ("sessionEnd", 3),
+    ("notification", 10),
+];
+
+fn copilot_entry(relay: &Relay, event: &str, timeout: u64) -> Value {
+    let args = format!("--agent copilot {event}");
+    let mut entry = json!({ "type": "command", "bash": relay.command(Shell::Sh, &args), "timeoutSec": timeout });
+    if relay.windows {
+        entry["powershell"] = json!(relay.command(Shell::PowerShell, &args));
+    }
+    entry
+}
+
+fn copilot_entry_is_ours(entry: &Value) -> bool {
+    ["bash", "powershell", "command"].iter().any(|k| is_our_command(entry.get(*k), "copilot"))
+}
+
+fn copilot_install(root: &Value, entries: &[(String, Value)]) -> Result<Value, String> {
+    let mut root = root.as_object().cloned().unwrap_or_default();
+    let mut hooks = object_at(&root, "hooks")?;
+    for (event, entry) in entries {
+        let mut list = list_at(&hooks, event)?;
+        list.retain(|e| !copilot_entry_is_ours(e));
+        list.push(entry.clone());
+        hooks.insert(event.clone(), Value::Array(list));
+    }
+    root.insert("hooks".into(), Value::Object(hooks));
+    root.insert("version".into(), json!(1));
+    Ok(Value::Object(root))
+}
+
+fn copilot_uninstall(root: &Value) -> Result<Option<Value>, String> {
+    let mut root = root.as_object().cloned().unwrap_or_default();
+    if root.contains_key("hooks") {
+        let mut hooks = object_at(&root, "hooks")?;
+        for list in hooks.values_mut() {
+            if let Value::Array(entries) = list {
+                entries.retain(|e| !copilot_entry_is_ours(e));
+            }
+        }
+        hooks.retain(|_, v| !v.as_array().is_some_and(Vec::is_empty));
+        if hooks.is_empty() {
+            root.remove("hooks");
+        } else {
+            root.insert("hooks".into(), Value::Object(hooks));
+        }
+    }
+    // Nothing of anyone else's left: the file was Coucou's, and goes.
+    if root.keys().all(|k| k == "version") {
+        return Ok(None);
+    }
+    Ok(Some(Value::Object(root)))
+}
+
+// ── Muse Code — ~/.config/muse/settings.json ──────────────────────────────────
+//
+// Claude-style groups with a `*` matcher, PascalCase events, timeouts in
+// milliseconds. Permission requests get the island's card and a bare
+// permissionDecision back.
+
+const MUSE_EVENTS: &[(&str, u64)] = &[
+    ("SessionStart", 10),
+    ("UserPromptSubmit", 5),
+    ("PreToolUse", 5),
+    ("PermissionRequest", 120),
+    ("PostToolUse", 5),
+    ("Stop", 5),
+    ("SessionEnd", 3),
+];
+
+fn muse_install(root: &Value, commands: &[(String, String, u64)]) -> Result<Value, String> {
+    let fresh = root.as_object().is_none_or(Map::is_empty);
+    let events = commands.iter().map(|(event, command, timeout)| {
+        (
+            event.clone(),
+            json!({ "matcher": "*", "hooks": [{ "type": "command", "command": command, "timeout": timeout }] }),
+        )
+    });
+    let mut root = groups_install(root, "muse", events)?;
+    if fresh {
+        root.insert("schema_version".into(), json!(1));
+    }
+    Ok(Value::Object(root))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -551,7 +693,10 @@ mod tests {
     /// Installs then uninstalls `agent` in a fresh home holding `existing` in
     /// its first file, and returns (installed file, uninstalled file).
     fn round_trip(agent: Agent, existing: Option<&str>) -> (PathBuf, Value, Option<Value>) {
-        let home = scratch(&format!("agent-{}", agent.id()));
+        // Tests run in parallel: every round trip gets a home of its own.
+        static RUN: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let run = RUN.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let home = scratch(&format!("agent-{}-{run}", agent.id()));
         let file = agent.files(&home)[0].clone();
         if let Some(text) = existing {
             std::fs::create_dir_all(file.parent().unwrap()).unwrap();
@@ -743,6 +888,64 @@ mod tests {
     fn on_windows_codex_gets_a_command_cmd_can_run() {
         let after = codex_install(&json!({}), &windows(WIN_SPACE).command(Shell::Cmd, "--agent codex")).unwrap();
         assert_eq!(after["hooks"]["Stop"][0]["hooks"][0]["command"], format!("\"{WIN_SPACE}\" --agent codex"));
+    }
+
+    #[test]
+    fn copilot_gets_a_file_of_its_own_which_goes_when_coucou_leaves() {
+        let (home, installed, removed) = round_trip(Agent::Copilot, None);
+        assert_eq!(installed["version"], 1);
+        for (event, timeout) in COPILOT_EVENTS {
+            let entry = &installed["hooks"][event][0];
+            assert_eq!(entry["timeoutSec"], *timeout);
+            assert!(entry["bash"].as_str().unwrap().ends_with(&format!("--agent copilot {event}")));
+            // No PowerShell line on Linux.
+            assert!(entry.get("powershell").is_none());
+        }
+        assert!(removed.is_none(), "the file should be gone");
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn copilot_keeps_what_someone_else_added_to_the_file() {
+        let existing = r#"{"version":1,"hooks":{"sessionStart":[{"type":"command","bash":"echo hi","timeoutSec":5}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Copilot, Some(existing));
+        assert_eq!(installed["hooks"]["sessionStart"].as_array().unwrap().len(), 2);
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn on_windows_copilot_gets_a_powershell_line_too() {
+        let entry = copilot_entry(&windows(WIN), "preToolUse", 10);
+        assert_eq!(entry["powershell"], format!("& '{WIN}' --agent copilot preToolUse"));
+        assert_eq!(
+            entry["bash"],
+            "\"C:/Users/me/AppData/Local/Coucou/bin/coucou-hook.exe\" --agent copilot preToolUse"
+        );
+    }
+
+    #[test]
+    fn muse_hooks_use_milliseconds_and_a_schema_version_for_a_new_file() {
+        let (home, installed, removed) = round_trip(Agent::Muse, None);
+        assert_eq!(installed["schema_version"], 1);
+        assert_eq!(installed["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"], 120_000);
+        assert_eq!(installed["hooks"]["PreToolUse"][0]["matcher"], "*");
+        assert!(installed["hooks"]["Stop"][0]["hooks"][0]["command"].as_str().unwrap().ends_with("--agent muse Stop"));
+        // Only Coucou's hooks go; the file and its schema_version stay.
+        assert_eq!(removed.unwrap(), json!({ "schema_version": 1 }));
+        let _ = std::fs::remove_dir_all(home);
+
+        let existing = r#"{"model":"m","hooks":{"Stop":[{"matcher":"*","hooks":[{"type":"command","command":"say done"}]}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Muse, Some(existing));
+        assert!(installed.get("schema_version").is_none());
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn only_codex_copilot_and_muse_take_approvals() {
+        let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
+        assert_eq!(with, ["codex", "copilot", "muse"]);
     }
 
     #[test]
