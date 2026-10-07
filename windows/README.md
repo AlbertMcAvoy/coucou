@@ -45,7 +45,7 @@ installs for the current user only — no admin prompt.
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Esc` | Closes the island |
-| Tray icon | Open, Settings…, Pause, Quit |
+| Tray icon | Open, Weekly recap, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
@@ -67,6 +67,24 @@ never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+
+## Weekly recap
+
+On Monday from 8 am, the first time Coucou starts, an agent starts working or
+you wake the island, a card sums up the past week: time spent, sessions, files
+and lines changed, commands run, permissions and questions, your top agent,
+top project, busiest day and longest session. **Tray → Weekly recap** opens it
+any day.
+
+**Share image** turns it into a 1080 × 1920 picture with Mochi. **Save image**
+writes it to your Pictures folder (Downloads if there is none) as
+`Coucou weekly recap YYYY-MM-DD.png`, never over an existing file; **Copy** puts
+it on the clipboard. **Hide project names** leaves the project out of the image.
+
+The history is `recap.json` next to the log, a 12-week rolling window: counts,
+the agent and the project folder's name — never a command, a file path, file
+contents or a prompt. It never leaves your machine. **Settings → General →
+Weekly recap** turns it off or clears it.
 
 ## Chat and keys
 
@@ -93,7 +111,9 @@ npm run pack           # builds the installer and drops it in windows/release/
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
 to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
-otherwise needs a real drag from Explorer to see. Neither page ships in the app.
+otherwise needs a real drag from Explorer to see — and `dev/recap-preview.html`,
+the weekly recap card and its shared image on a sample week. None of these pages
+ships in the app.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -134,7 +154,8 @@ windows/
 ### Log
 
 `%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
-problems. It stays on your machine.
+problems. It stays on your machine. The weekly recap's history sits beside it in
+`recap.json`.
 
 ## Supported agents
 
@@ -163,6 +184,20 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Weekly recap:
+  - Sharing happens inside the island instead of a separate panel, and Save
+    writes straight into Pictures (or Downloads) instead of asking where. There
+    is no system Share sheet; Copy uses the web clipboard.
+  - Questions are counted when an agent asks one (`AskUserQuestion`), not when
+    it is answered from the island, which can't answer questions yet.
+  - There is no sleep/wake notification to listen to without a background
+    loop, so after the machine wakes the Monday card waits for the first agent
+    to start or for you to hover the island.
+  - The card is 24 px taller than the Mac's: it also lists top agent, project,
+    busiest day, longest session, permissions and questions, which the Mac
+    leaves to the image. A turn cut short by the session ending still counts.
+  - Tray → Pause doesn't stop the history (it stays on the machine anyway);
+    switch it off in Settings → General.
 
 ## Linux
 
@@ -194,7 +229,11 @@ What changes on Linux:
   runs as the same user.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
 - **Files**: preferences in `~/.config/coucou/`, the log at
-  `~/.local/share/coucou/coucou.log`.
+  `~/.local/share/coucou/coucou.log`, the weekly recap history beside it in
+  `recap.json`. A saved recap image goes to the pictures folder named in
+  `~/.config/user-dirs.dirs`, else `~/Pictures`, else `~/Downloads`.
+- **Copying the recap image** needs a WebKitGTK with image clipboard support;
+  where it is missing, the island says so and Save still works.
 - What the Windows build leaves out, this one does too: sending a file by
   email, dragging Mochi onto a window, and jumping to a specific terminal
   window — "Open terminal" opens the folder in VS Code.
