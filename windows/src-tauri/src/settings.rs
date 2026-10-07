@@ -24,12 +24,18 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
-    /// Who the chat talks to: "anthropic", or a cloud provider of
-    /// openai_compat.rs ("openai", "google", "openrouter"). Picked in the chat view.
+    /// Who the chat talks to: "anthropic", a cloud provider of
+    /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
+    /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
     pub chat_provider: String,
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
     pub chat_models: BTreeMap<String, String>,
+    /// Addresses of the model servers once connected; empty means not connected.
+    pub ollama_url: String,
+    pub lmstudio_url: String,
+    /// Any other OpenAI-compatible server; its key, if any, is in the keychain.
+    pub custom_url: String,
 }
 
 fn default_model() -> String {
@@ -55,6 +61,9 @@ impl Default for Settings {
             model: default_model(),
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
+            ollama_url: String::new(),
+            lmstudio_url: String::new(),
+            custom_url: String::new(),
         }
     }
 }
@@ -316,8 +325,11 @@ mod tests {
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
-  "chatProvider": "openai",
-  "chatModels": { "openai": "gpt-x" }
+  "chatProvider": "ollama",
+  "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "ollamaUrl": "http://127.0.0.1:11434",
+  "lmstudioUrl": "http://127.0.0.1:1234",
+  "customUrl": "https://llm.example.com"
 }"#;
 
     fn custom() -> Value {
@@ -645,6 +657,9 @@ mod tests {
                 "model",
                 "chatProvider",
                 "chatModels",
+                "ollamaUrl",
+                "lmstudioUrl",
+                "customUrl",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

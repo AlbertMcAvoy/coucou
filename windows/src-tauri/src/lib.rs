@@ -7,6 +7,7 @@ mod hooks;
 mod identity;
 mod integrations;
 mod island;
+mod local_chat;
 mod log;
 mod net;
 mod openai_compat;
@@ -254,11 +255,17 @@ async fn chat_send(
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked
-/// once the user picked that provider, and only with its key.
+/// once the user picked that provider, and only with its key or address.
 #[tauri::command]
 async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
     let settings = shared.settings.lock().unwrap().clone();
     chat::models(&settings, &provider).await
+}
+
+/// Settings → Local models → Connect: does the server answer, and with which models?
+#[tauri::command]
+async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
+    local_chat::connect(&provider, &url).await
 }
 
 #[tauri::command]
@@ -409,6 +416,7 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            local_connect,
             chat_reset,
             ingest_file,
             secret_present,

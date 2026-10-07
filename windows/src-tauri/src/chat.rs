@@ -1,6 +1,7 @@
 // The chat, whoever answers it: the conversation, the system prompt, and which
 // provider a turn goes to. Each provider's own wire format lives in its module:
-// claude.rs (Anthropic) and openai_compat.rs (OpenAI, Google AI, OpenRouter).
+// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter) and
+// local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server).
 //
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
@@ -12,7 +13,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, openai_compat, secrets};
+use crate::{claude, local_chat, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -187,12 +188,15 @@ pub async fn send(
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
     }
-    let _ = app;
+    if let Some(server) = local_chat::server(settings, provider) {
+        return local_chat::send(app, chat, &server, &model, query, context).await;
+    }
     Err(format!("Unknown chat provider: {provider}"))
 }
 
 /// The models `provider` offers. Asked only when the user opens the picker on
-/// that provider, and only once it has a key: nothing is sent anywhere before that.
+/// that provider, and only once it has a key (or, for a local server, an
+/// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     const NO_KEY: &str = "No API key — add it in Settings.";
     if provider == ANTHROPIC {
@@ -203,7 +207,9 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
         let key = secrets::get(p.key).ok_or(NO_KEY)?;
         return openai_compat::models(p, &key).await;
     }
-    let _ = settings;
+    if let Some(server) = local_chat::server(settings, provider) {
+        return local_chat::models(&server).await;
+    }
     Err(format!("Unknown chat provider: {provider}"))
 }
 
@@ -303,9 +309,12 @@ mod tests {
         let mut s = Settings::default();
         assert_eq!(model_for(&s, "anthropic"), claude::DEFAULT_MODEL);
         assert_eq!(model_for(&s, "openai"), openai_compat::provider("openai").unwrap().default_model);
+        assert_eq!(model_for(&s, "ollama"), "");
         s.chat_models.insert("openai".into(), " gpt-x ".into());
+        s.chat_models.insert("ollama".into(), "llama3.2".into());
         s.model = "claude-haiku-4-5".into();
         assert_eq!(model_for(&s, "openai"), "gpt-x");
+        assert_eq!(model_for(&s, "ollama"), "llama3.2");
         assert_eq!(model_for(&s, "anthropic"), "claude-haiku-4-5");
     }
 }
