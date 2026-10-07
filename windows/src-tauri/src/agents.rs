@@ -95,10 +95,11 @@ pub enum Agent {
     Gemini,
     Antigravity,
     Cursor,
+    Codex,
 }
 
 impl Agent {
-    pub const ALL: &'static [Agent] = &[Agent::Gemini, Agent::Antigravity, Agent::Cursor];
+    pub const ALL: &'static [Agent] = &[Agent::Codex, Agent::Gemini, Agent::Antigravity, Agent::Cursor];
 
     /// The `--agent` name; the pill is `agent_<id>` (PillCatalog.swift).
     pub fn id(self) -> &'static str {
@@ -106,6 +107,7 @@ impl Agent {
             Agent::Gemini => "gemini",
             Agent::Antigravity => "antigravity",
             Agent::Cursor => "cursor",
+            Agent::Codex => "codex",
         }
     }
 
@@ -119,6 +121,7 @@ impl Agent {
             Agent::Gemini => vec![home.join(".gemini").join("settings.json")],
             Agent::Antigravity => vec![home.join(".gemini").join("config").join("hooks.json")],
             Agent::Cursor => vec![home.join(".cursor").join("hooks.json")],
+            Agent::Codex => vec![home.join(".codex").join("hooks.json")],
         }
     }
 
@@ -157,6 +160,11 @@ impl Agent {
                 let command = relay.command(Shell::Cmd, "--agent cursor");
                 Box::new(move |v| cursor_install(v, &command).map(Some))
             }
+            (Agent::Codex, false) => Box::new(|v| groups_uninstall(v, "codex").map(Some)),
+            (Agent::Codex, true) => {
+                let command = relay.command(Shell::Cmd, "--agent codex");
+                Box::new(move |v| codex_install(v, &command).map(Some))
+            }
         }
     }
 
@@ -175,12 +183,14 @@ impl Agent {
             Agent::Gemini => groups_have_ours(&json(), "gemini"),
             Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
             Agent::Cursor => groups_have_ours(&json(), "cursor"),
+            Agent::Codex => groups_have_ours(&json(), "codex"),
         }
     }
 
-    /// Whether the island can answer this agent's permission requests.
+    /// Whether the island can answer this agent's permission requests. Must
+    /// match `takes_decisions` in the relay (hook/src/reply.rs).
     fn approvals(self) -> bool {
-        false
+        matches!(self, Agent::Codex)
     }
 }
 
@@ -195,6 +205,7 @@ impl Agent {
             Agent::Gemini => "Gemini CLI",
             Agent::Antigravity => "Antigravity",
             Agent::Cursor => "Cursor Agent",
+            Agent::Codex => "Codex",
         }
     }
 
@@ -204,6 +215,7 @@ impl Agent {
             Agent::Gemini => "Start a new Gemini CLI session to pick the hooks up.",
             Agent::Antigravity => "Start a new Antigravity conversation to pick the hooks up.",
             Agent::Cursor => "Restart Cursor to pick the hooks up.",
+            Agent::Codex => "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.",
         }
     }
 }
@@ -485,6 +497,41 @@ fn cursor_install(root: &Value, command: &str) -> Result<Value, String> {
     Ok(Value::Object(root))
 }
 
+// ── Codex — ~/.codex/hooks.json ───────────────────────────────────────────────
+//
+// Claude-style groups without a matcher, timeouts in seconds; Codex sends the
+// event name in the payload. PermissionRequest waits for the island (120 s,
+// with a status line shown in Codex meanwhile) and is answered with Claude
+// Code's hookSpecificOutput — only after a click. Codex runs hook commands with
+// `cmd /C` on Windows and `$SHELL -lc` elsewhere, and only once the user has
+// trusted them with /hooks.
+
+const CODEX_EVENTS: &[(&str, u64)] = &[
+    ("SessionStart", 10),
+    ("UserPromptSubmit", 10),
+    ("PreToolUse", 10),
+    ("PermissionRequest", 120),
+    ("PostToolUse", 10),
+    ("Stop", 10),
+    ("SubagentStart", 10),
+    ("SubagentStop", 10),
+    ("Interrupt", 3),
+    ("SessionEnd", 3),
+];
+
+const CODEX_WAITING: &str = "Waiting for your answer in the island (Coucou)";
+
+fn codex_install(root: &Value, command: &str) -> Result<Value, String> {
+    let events = CODEX_EVENTS.iter().map(|(event, timeout)| {
+        let mut hook = json!({ "type": "command", "command": command, "timeout": timeout });
+        if *event == "PermissionRequest" {
+            hook["statusMessage"] = json!(CODEX_WAITING);
+        }
+        (event.to_string(), json!({ "hooks": [hook] }))
+    });
+    groups_install(root, "codex", events).map(Value::Object)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -673,6 +720,29 @@ mod tests {
         // A version the user set is theirs.
         let after = cursor_install(&json!({ "version": 2 }), "c").unwrap();
         assert_eq!(after["version"], 2);
+    }
+
+    #[test]
+    fn codex_hooks_match_the_macs_and_leave_the_rest_alone() {
+        let existing = r#"{"description":"mine","hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"guard.sh"}]}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Codex, Some(existing));
+        assert_eq!(installed["description"], "mine");
+        for (event, timeout) in CODEX_EVENTS {
+            let ours = installed["hooks"][event].as_array().unwrap().last().unwrap()["hooks"][0].clone();
+            assert_eq!(ours["timeout"], *timeout, "{event}");
+            assert!(ours["command"].as_str().unwrap().ends_with("--agent codex"), "{event}");
+            assert_eq!(ours.get("statusMessage").is_some(), *event == "PermissionRequest");
+        }
+        assert_eq!(installed["hooks"]["PreToolUse"][0]["matcher"], "Bash");
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        assert!(Agent::Codex.approvals());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn on_windows_codex_gets_a_command_cmd_can_run() {
+        let after = codex_install(&json!({}), &windows(WIN_SPACE).command(Shell::Cmd, "--agent codex")).unwrap();
+        assert_eq!(after["hooks"]["Stop"][0]["hooks"][0]["command"], format!("\"{WIN_SPACE}\" --agent codex"));
     }
 
     #[test]
