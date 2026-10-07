@@ -179,6 +179,17 @@ npm run tauri dev      # live-reloading development build
 npm run pack           # AppImage, .deb and .rpm in windows/release/
 ```
 
+On Arch Linux, build and install the package from `linux/arch/`:
+
+```bash
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/linux/arch
+makepkg -si
+```
+
+It needs `webkit2gtk-4.1`, `gtk-layer-shell` and `libayatana-appindicator`
+(pulled in as dependencies); store API keys with GNOME Keyring or KWallet.
+
 What changes on Linux:
 
 - **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
