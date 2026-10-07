@@ -262,13 +262,16 @@ interface IntegrationDef {
   color: string;
   /** Credential Manager keys, in the order they are shown. */
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
+  /** What the key needs, shown under its field. */
+  hint?: string;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
-    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }] },
+    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }],
+    hint: "Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions." },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
     fields: [{ key: "vercel-token", label: "Token", placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
@@ -341,6 +344,8 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         ),
       );
     }
+
+    if (def.hint) rows.append(h("div", { class: "hint", text: def.hint }));
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
