@@ -174,8 +174,15 @@ fn read_event() -> Option<(String, String, Option<serde_json::Value>)> {
     }
     // Which agent this hook was installed for. Absent means Claude Code,
     // so existing hook commands keep working unchanged.
-    if !agent.is_empty() {
-        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+    let env = |name: &str| std::env::var(name).ok();
+    if let Some(tag) = agent_tag(&agent, &env) {
+        map.insert("coucou_agent".into(), serde_json::Value::String(tag));
+    }
+    // Claude Code in Cursor's terminal goes on the Cursor pill (Mac #120).
+    if !map.contains_key("term_editor") {
+        if let Some(editor) = term_editor(&env) {
+            map.insert("term_editor".into(), serde_json::Value::String(editor.into()));
+        }
     }
     let event = map
         .get("hook_event_name")
@@ -229,6 +236,30 @@ fn read_event() -> Option<(String, String, Option<serde_json::Value>)> {
     let mut line = payload.to_string();
     line.push('\n');
     Some((line, event, question))
+}
+
+/// The `coucou_agent` tag: `--agent` when given, otherwise `claude-desktop` for
+/// a Claude Code session started from the Claude desktop app, which says so in
+/// CLAUDE_CODE_ENTRYPOINT — the same rule as the Mac's relay (#191). Nothing
+/// for a plain Claude Code session.
+fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> {
+    if !arg.is_empty() {
+        return Some(arg.to_string());
+    }
+    (env("CLAUDE_CODE_ENTRYPOINT").as_deref() == Some("claude-desktop"))
+        .then(|| "claude-desktop".to_string())
+}
+
+/// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
+/// TERM_PROGRAM=vscode like VS Code does, so it is told apart by its own trace
+/// variable, or by its executable behind VS Code's git helper.
+fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
+    if env("CURSOR_TRACE_ID").is_some_and(|v| !v.is_empty()) {
+        return Some("cursor");
+    }
+    let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
+    let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
+    exe.starts_with("cursor").then_some("cursor")
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
@@ -350,6 +381,40 @@ mod tests {
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":"Tests"}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":[]}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#));
+    }
+
+    fn env_of(vars: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<String> {
+        move |name| vars.iter().find(|(k, _)| *k == name).map(|(_, v)| v.to_string())
+    }
+
+    #[test]
+    fn claude_desktop_sessions_are_tagged_and_an_explicit_agent_wins() {
+        let desktop = env_of(&[("CLAUDE_CODE_ENTRYPOINT", "claude-desktop")]);
+        assert_eq!(agent_tag("", &desktop).as_deref(), Some("claude-desktop"));
+        assert_eq!(agent_tag("gemini", &desktop).as_deref(), Some("gemini"));
+        assert_eq!(agent_tag("", &env_of(&[("CLAUDE_CODE_ENTRYPOINT", "cli")])), None);
+        assert_eq!(agent_tag("", &env_of(&[])), None);
+    }
+
+    #[test]
+    fn cursor_is_told_apart_from_vs_code() {
+        assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "abc")])), Some("cursor"));
+        assert_eq!(
+            term_editor(&env_of(&[(
+                "VSCODE_GIT_ASKPASS_NODE",
+                r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe"
+            )])),
+            Some("cursor")
+        );
+        assert_eq!(
+            term_editor(&env_of(&[(
+                "VSCODE_GIT_ASKPASS_NODE",
+                r"C:\Users\me\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+            )])),
+            None
+        );
+        assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
+        assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
     }
 
     #[test]

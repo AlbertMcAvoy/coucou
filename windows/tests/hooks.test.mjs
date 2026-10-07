@@ -248,6 +248,17 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   assert.equal(State.pendingApproval, null);
 });
 
+test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac #191)", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "C:\\p\\proj", session_id: "d1", coucou_agent: "claude-desktop" });
+  const desktop = task("agent_claude-desktop");
+  assert.equal(desktop.color, "#D97757");
+  assert.equal(desktop.sessionId, "d1");
+  assert.equal(task().state, "idle");
+  // Its permission requests are answered in the app, as on macOS.
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash" });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+});
+
 // ── Main tool and Cursor ──────────────────────────────────────────────────────
 
 test("Claude Code in Cursor's terminal works on the Cursor pill, made for the session", () => {
