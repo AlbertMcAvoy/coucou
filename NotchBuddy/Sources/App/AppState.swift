@@ -343,7 +343,9 @@ final class AppState: ObservableObject {
     @Published var pendingApproval: ApprovalInfo? = nil
 
     // Pending AskUserQuestion from Claude Code hook
-    @Published var pendingQuestion: AskQuestion? = nil
+    @Published var pendingQuestion: AskQuestion? = nil {
+        didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
+    }
 
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.

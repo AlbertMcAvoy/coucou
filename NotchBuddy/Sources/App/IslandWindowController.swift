@@ -57,7 +57,7 @@ final class IslandWindowController: NSWindowController {
         let nH = geometry.height
 
         let panelW: CGFloat = 720
-        let panelH: CGFloat = 320
+        let panelH: CGFloat = 560
         let sf = screen.frame
         let panel = IslandPanel(
             contentRect: NSRect(x: sf.midX - panelW/2, y: sf.maxY - panelH,
@@ -1158,6 +1158,9 @@ func islandSize(mode: IslandMode, view: IslandView,
     case .compact:  return (nw + 160, nh)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
+        if view == .question, let h = QuestionLayout.height {
+            return (IslandConst.expandedWidth, h)
+        }
         return (IslandConst.expandedWidth, layout.height)
     }
 }

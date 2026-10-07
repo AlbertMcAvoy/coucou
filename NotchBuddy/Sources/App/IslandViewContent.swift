@@ -383,7 +383,7 @@ struct QuestionView: View {
                     Text(item.question)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     // Options (wrapping) or "Other…" compact inline row
                     if curOther {
                         HStack(spacing: 6) {
@@ -416,6 +416,42 @@ struct QuestionView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundColor(Color(hex: "#6B7079"))
+                        }
+                    } else if item.hasDescriptions {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(item.options.enumerated()), id: \.offset) { idx, opt in
+                                let isSelected = curSel.contains(opt.label)
+                                Button {
+                                    if isMulti {
+                                        toggleSelection(qi: qi, label: opt.label)
+                                    } else {
+                                        selectAndProceed(q: q, qi: qi, label: opt.label, isLast: isLast)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(opt.label)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(isSelected ? Color(hex: "#67E8F9") : Color(hex: "#F5F6F8"))
+                                        if !opt.description.isEmpty {
+                                            Text(opt.description)
+                                                .font(.system(size: 11))
+                                                .foregroundColor(Color(hex: "#9AA0A8"))
+                                                .multilineTextAlignment(.leading)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(isSelected ? Color(hex: "#22D3EE").opacity(0.22) : Color.white.opacity(0.07))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Color(hex: "#22D3EE").opacity(0.55) : Color.white.opacity(0.1), lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+                                .keyboardShortcut(KeyEquivalent(Character(String(idx + 1))), modifiers: [])
+                            }
+                            SecondaryButton("Other…") {
+                                if qi < showOther.count { showOther[qi] = true }
+                            }
                         }
                     } else {
                         ChipFlowLayout(spacing: 6) {
