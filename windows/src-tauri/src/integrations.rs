@@ -883,9 +883,6 @@ pub fn gitlab_base() -> Result<String, String> {
 const GITLAB_APPROVAL_CHECKS: usize = 5;
 /// The discussion is read for at most this many updated MRs a minute.
 const GITLAB_ACTIVITY_CHECKS: usize = 5;
-/// News stays on the card this long, and at most this many items.
-const GITLAB_NEWS_FOR_MS: i64 = 30 * 60 * 1000;
-const GITLAB_NEWS_KEEP: usize = 5;
 
 /// What the poller remembers between polls, source by source. `None` until that
 /// source has answered once: its first answer only fills it — no news on
@@ -899,8 +896,10 @@ struct GitlabMemory {
     authored: Option<std::collections::HashMap<i64, (String, Vec<String>)>>,
     /// The open MRs the user is involved in, as last seen: id → updated_at.
     involved: Option<std::collections::HashMap<i64, String>>,
-    /// Recent news, newest first: { label, url, success, at, todoId?, mrId? }.
+    /// The latest news, newest first: { label, url, success, at, todoId?, mrId?, changes? }.
     news: Vec<Value>,
+    /// Whose news `news` is (the instance and the user), once read from disk.
+    news_owner: Option<String>,
 }
 
 static GITLAB: std::sync::LazyLock<Mutex<GitlabMemory>> = std::sync::LazyLock::new(Default::default);
@@ -918,6 +917,41 @@ fn gitlab_todo_kind(action: &str) -> (&'static str, bool) {
         "review_submitted" => ("Reviewed", true),
         "member_access_requested" => ("Access requested", true),
         _ => ("To-do", true),
+    }
+}
+
+// ── News kept across restarts ──
+
+/// News stays on its card, through restarts too, until this many newer pieces
+/// push it out.
+const NEWS_KEEP: usize = 10;
+
+/// This poll's news first, then what came before, `NEWS_KEEP` at most.
+fn recent_news(fresh: &[Value], before: &[Value]) -> Vec<Value> {
+    fresh.iter().chain(before).take(NEWS_KEEP).cloned().collect()
+}
+
+/// Where a service's news is kept: next to the log, never sent anywhere.
+fn news_file(service: &str) -> std::path::PathBuf {
+    crate::settings::local_dir().join(format!("news-{service}.json"))
+}
+
+/// The news kept for `owner` — the account or the search it came from. None
+/// when the file is missing, unreadable, or someone else's.
+fn load_news(service: &str, owner: &str) -> Vec<Value> {
+    std::fs::read_to_string(news_file(service))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .filter(|saved| saved["owner"] == owner)
+        .and_then(|saved| saved["news"].as_array().cloned())
+        .unwrap_or_default()
+}
+
+fn save_news(service: &str, owner: &str, news: &[Value]) {
+    let written = crate::platform::ensure_private_dir(&crate::settings::local_dir())
+        .and_then(|_| std::fs::write(news_file(service), json!({ "owner": owner, "news": news }).to_string()));
+    if let Err(e) = written {
+        log::line(format!("{service} news not saved: {e}"));
     }
 }
 
@@ -1381,13 +1415,19 @@ async fn poll_gitlab(app: AppHandle) {
         }
     }
 
-    // News for the card: the fresh items first, then what is still recent.
+    // News for the card: the fresh items first, then the earlier ones — read
+    // back from disk after a restart, unless they were another account's.
     let kept = {
         let mut memory = GITLAB.lock().unwrap();
-        let cutoff = now_ms() as i64 - GITLAB_NEWS_FOR_MS;
-        let mut kept: Vec<Value> = fresh.clone();
-        kept.extend(memory.news.iter().filter(|n| n["at"].as_i64().unwrap_or(0) >= cutoff).cloned());
-        kept.truncate(GITLAB_NEWS_KEEP);
+        let owner = format!("{username}@{base}");
+        if memory.news_owner.as_deref() != Some(owner.as_str()) {
+            memory.news = load_news("gitlab", &owner);
+            memory.news_owner = Some(owner.clone());
+        }
+        let kept = recent_news(&fresh, &memory.news);
+        if !fresh.is_empty() {
+            save_news("gitlab", &owner, &kept);
+        }
         memory.news = kept.clone();
         kept
     };
@@ -1794,5 +1834,15 @@ mod gitlab_tests {
         assert_eq!(lines, vec!["test: unit failed", "lint failed"]);
         let long = format!("<p>{}</p>", "word ".repeat(30));
         assert_eq!(gitlab_plain(&long).chars().count(), 80);
+    }
+
+    #[test]
+    fn news_keeps_the_ten_latest_however_old() {
+        let piece = |i: i64| json!({ "label": format!("n{i}"), "at": i });
+        let before: Vec<Value> = (0..9).rev().map(piece).collect();
+        let kept = recent_news(&[piece(10), piece(9)], &before);
+        assert_eq!(kept.len(), NEWS_KEEP);
+        assert_eq!(kept[0]["label"], "n10", "this poll's news first");
+        assert_eq!(kept[9]["label"], "n1", "the oldest pushed out, not timed out");
     }
 }
