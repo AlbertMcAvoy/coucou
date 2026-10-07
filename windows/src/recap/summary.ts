@@ -4,6 +4,8 @@
 // "Monday 8 am" are local time, and the webview knows the user's time zone.
 // No DOM, no Tauri: tests/recap.test.mjs runs it as it is.
 
+import { N_, dayMonth, t } from "../i18n/i18n";
+
 /** One finished turn, as recap.rs stores it. Times are Unix seconds. */
 export interface RecapTurn {
   agent: string;
@@ -91,7 +93,8 @@ export function shouldAutoShow(now: Date, lastShownWeek: string): boolean {
 
 // ── Aggregation ───────────────────────────────────────────────────────────────
 
-const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+/** English names, kept in the summary; shown with `t()` (src/i18n). */
+const DAY_NAMES = [N_("Sunday"), N_("Monday"), N_("Tuesday"), N_("Wednesday"), N_("Thursday"), N_("Friday"), N_("Saturday")];
 
 /** Pill IDs → names, from PillCatalog.swift. Claude Code hooks come from any
  *  terminal here, so its pill reads "Claude Code" rather than "VS Code". */
@@ -196,10 +199,10 @@ export function summarize(history: RecapHistory, weekStart: Date): WeeklySummary
 // ── Formatting ────────────────────────────────────────────────────────────────
 
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return t("{n}m", { n: minutes });
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  return m === 0 ? t("{n}h", { n: h }) : t("{h}h {m}m", { h, m });
 }
 
 /** 1234 → "1,234"; 12345 → "12.3k" — keeps a stat chip narrow. */
@@ -208,11 +211,9 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 /** "Sep 28 – Oct 4". */
 export function weekRangeLabel(s: Pick<WeeklySummary, "weekStart" | "weekEnd">): string {
-  const f = (d: Date) => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const f = (d: Date) => dayMonth(d.getMonth(), d.getDate());
   return `${f(s.weekStart)} – ${f(s.weekEnd)}`;
 }
 

@@ -15,41 +15,36 @@ import {
   dayKey, formatCount, formatDuration, weekRangeLabel, type WeeklySummary,
 } from "../recap/summary";
 import type { ViewActions, ViewHost } from "./views";
+import { onLanguageChange, t, tl, type Msg } from "../i18n/i18n";
 
-/** User-visible strings, in one place for the translation layer. */
+/** User-visible strings, in the current language (src/i18n). */
 const T = {
-  title: "Weekly recap",
-  noActivity: "No activity last week",
-  noActivitySub: "Coucou counts your agent sessions as they happen — check back next Monday.",
-  coding: "coding",
-  session: "session",
-  sessions: "sessions",
-  file: "file",
-  files: "files",
-  lines: "lines",
-  commands: "commands",
-  topAgent: "Top agent",
-  topProject: "Top project",
-  busiestDay: "Busiest day",
-  longest: "Longest session",
-  permissions: "Permissions",
-  allowedDenied: (a: number, d: number) => `${a} allowed, ${d} denied`,
-  questions: "Questions",
-  shareImage: "Share image",
-  ok: "OK",
-  shareTitle: "Share your week",
-  hideProjects: "Hide project names",
-  save: "Save image",
-  copy: "Copy",
-  back: "Back",
-  saving: "Saving…",
-  savedAs: (name: string) => `Saved as ${name}`,
-  showInFolder: "Show in folder",
-  copied: "Copied — paste it anywhere.",
-  copyUnavailable: "Copying images isn't available here — use Save image.",
+  get title() { return t("Weekly recap"); },
+  get noActivity() { return t("No activity last week"); },
+  get noActivitySub() { return t("Coucou counts your agent sessions as they happen — check back next Monday."); },
+  get coding() { return t("coding"); },
+  get session() { return t("session"); },
+  get sessions() { return t("sessions"); },
+  get file() { return t("file"); },
+  get files() { return t("files"); },
+  get lines() { return t("lines"); },
+  get commands() { return t("commands"); },
+  get topAgent() { return t("Top agent"); },
+  get topProject() { return t("Top project"); },
+  get busiestDay() { return t("Busiest day"); },
+  get longest() { return t("Longest session"); },
+  get permissions() { return t("Permissions"); },
+  allowedDenied: (allowed: number, denied: number) => t("{allowed} allowed, {denied} denied", { allowed, denied }),
+  get questions() { return t("Questions"); },
+  get shareImage() { return t("Share image"); },
+  get ok() { return t("OK"); },
+  get saving() { return t("Saving…"); },
+  savedAs: (name: string) => t("Saved as {name}", { name }),
+  get copied() { return t("Copied — paste it anywhere."); },
+  get copyUnavailable() { return t("Copying images isn't available here — use Save image."); },
 };
 
-function btn(label: string, kind: "primary" | "secondary", onClick: () => void): HTMLButtonElement {
+function btn(label: string | Msg, kind: "primary" | "secondary", onClick: () => void): HTMLButtonElement {
   return h("button", { class: `btn ${kind}`, onclick: onClick }, h("span", { text: label }));
 }
 
@@ -80,6 +75,16 @@ export function buildRecap(actions: ViewActions): ViewHost {
 
   let built = -1;
   let shareCanvas: HTMLCanvasElement | null = null;
+  /** Share mode's redraw, while it is open: a language change redraws the image. */
+  let redrawShare: (() => void) | null = null;
+
+  // In place: the summary is redrawn in the new language, share mode keeps
+  // its state (its labels follow by themselves) and only redraws the image.
+  onLanguageChange(() => {
+    if (built === -1) return;
+    if (redrawShare) redrawShare();
+    else showSummary();
+  });
 
   function summaryBody(s: WeeklySummary): HTMLElement {
     const chips = h("div", { class: "recap-chips" },
@@ -95,7 +100,7 @@ export function buildRecap(actions: ViewActions): ViewHost {
     const first: [string, string][] = [];
     if (s.topAgent) first.push([T.topAgent, s.topAgent]);
     if (s.topProject) first.push([T.topProject, s.topProject]);
-    if (s.busiestDay) first.push([T.busiestDay, s.busiestDay]);
+    if (s.busiestDay) first.push([T.busiestDay, t(s.busiestDay)]);
     const second: [string, string][] = [];
     if (s.longestSessionMinutes > 1) second.push([T.longest, formatDuration(s.longestSessionMinutes)]);
     if (s.permissionsAllowed + s.permissionsDenied > 0) {
@@ -128,6 +133,7 @@ export function buildRecap(actions: ViewActions): ViewHost {
   }
 
   function showSummary() {
+    redrawShare = null;
     clear(card);
     card.append(Recap.summary ? summaryBody(Recap.summary) : emptyBody());
   }
@@ -163,7 +169,7 @@ export function buildRecap(actions: ViewActions): ViewHost {
       clear(status);
     });
 
-    const save = btn(T.save, "primary", async () => {
+    const save = btn(tl("Save image"), "primary", async () => {
       if (!shareCanvas) return;
       save.disabled = true;
       say(T.saving);
@@ -172,7 +178,7 @@ export function buildRecap(actions: ViewActions): ViewHost {
         const name = path.split(/[\\/]/).pop() ?? path;
         say(T.savedAs(name), h("button", {
           class: "link-btn recap-link",
-          text: T.showInFolder,
+          text: tl("Show in folder"),
           onclick: () => void Bridge.recapRevealSaved(),
         }));
       } catch (err) {
@@ -182,7 +188,7 @@ export function buildRecap(actions: ViewActions): ViewHost {
       }
     });
 
-    const copy = btn(T.copy, "secondary", async () => {
+    const copy = btn(tl("Copy"), "secondary", async () => {
       if (!shareCanvas) return;
       say(await copyImage(shareCanvas) ? T.copied : T.copyUnavailable);
     });
@@ -191,13 +197,14 @@ export function buildRecap(actions: ViewActions): ViewHost {
     card.append(h("div", { class: "stack recap-share" },
       thumb,
       h("div", { class: "recap-share-side" },
-        h("div", { class: "recap-title", text: T.shareTitle }),
-        h("div", { class: "settings-row" }, sw, h("span", { text: T.hideProjects })),
-        h("div", { class: "actions" }, save, copy, btn(T.back, "secondary", showSummary)),
+        h("div", { class: "recap-title", text: tl("Share your week") }),
+        h("div", { class: "settings-row" }, sw, h("span", { text: tl("Hide project names") })),
+        h("div", { class: "actions" }, save, copy, btn(tl("Back"), "secondary", showSummary)),
         status,
       ),
     ));
     draw();
+    redrawShare = draw;
   }
 
   return {

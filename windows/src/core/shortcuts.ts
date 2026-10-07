@@ -13,26 +13,30 @@
 // Portuguese or Brazilian layouts (ALTGR_CHARACTERS below).
 
 // ── Strings shown to the user ─────────────────────────────────────────────────
+// English keys: Settings shows them through `t()` (src/i18n). Key names
+// (Ctrl, Alt, Space…) are never translated.
+
+import { N_ } from "../i18n/i18n";
 
 export const SHORTCUT_TEXT = {
-  toggleIsland: "Open or close the island",
-  openChat: "Open the chat",
-  goToAlert: "Go to the waiting permission or question",
-  jumpToTerminal: "Open the terminal",
-  attachFrontWindow: "Attach the front window to the chat",
-  nextPill: "Next pill",
-  prevPill: "Previous pill",
-  muteToggle: "Mute or unmute Mochi",
-  desktopToggle: "Send Mochi to the desktop",
-  wardrobeToggle: "Open the wardrobe",
+  toggleIsland: N_("Open or close the island"),
+  openChat: N_("Open the chat"),
+  goToAlert: N_("Go to the waiting permission or question"),
+  jumpToTerminal: N_("Open the terminal"),
+  attachFrontWindow: N_("Attach the front window to the chat"),
+  nextPill: N_("Next pill"),
+  prevPill: N_("Previous pill"),
+  muteToggle: N_("Mute or unmute Mochi"),
+  desktopToggle: N_("Send Mochi to the desktop"),
+  wardrobeToggle: N_("Open the wardrobe"),
   island: {
-    nextPrev: "Next or previous pill",
-    byNumber: "Go to pill 1 to 9",
-    send: "Send the message",
-    newChat: "Start a new chat",
-    settings: "Open Settings",
-    pin: "Keep the island open",
-    close: "Close the island",
+    nextPrev: N_("Next or previous pill"),
+    byNumber: N_("Go to pill 1 to 9"),
+    send: N_("Send the message"),
+    newChat: N_("Start a new chat"),
+    settings: N_("Open Settings"),
+    pin: N_("Keep the island open"),
+    close: N_("Close the island"),
   },
 } as const;
 

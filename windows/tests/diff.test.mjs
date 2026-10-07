@@ -131,7 +131,7 @@ test("makeDiffStep / parseDiffStep round-trip", () => {
 });
 
 test("lastTextStep skips diff markers", () => {
-  assert.equal(lastTextStep(["Lit · a.ts", makeDiffStep("a.ts", 1, 0, 1)]), "Lit · a.ts");
+  assert.equal(lastTextStep(["Reads · a.ts", makeDiffStep("a.ts", 1, 0, 1)]), "Reads · a.ts");
   assert.equal(lastTextStep([makeDiffStep("a.ts", 1, 0, 1)]), undefined);
   assert.equal(lastTextStep([]), undefined);
 });
