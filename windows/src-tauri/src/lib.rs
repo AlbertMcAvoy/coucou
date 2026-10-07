@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod codex_plan;
 mod files;
 mod hooks;
 mod integrations;
@@ -50,7 +51,9 @@ pub struct BootInfo {
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
-    settings.hooks_installed = hooks::status().installed;
+    let hooks_status = hooks::status();
+    settings.hooks_installed = hooks_status.installed;
+    settings.plan_relay_installed = hooks_status.plan_relay_installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -220,6 +223,45 @@ fn hooks_apply(
     };
     let _ = app.emit("settings-changed", updated);
     Ok(backup)
+}
+
+/// The diff of putting the plan usage relay into (or taking it out of) the
+/// status line: just the `statusLine` key, before and after.
+#[tauri::command]
+fn status_line_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::status_line_preview(install)
+}
+
+/// Only ever called from an explicit click in the settings window.
+#[tauri::command]
+fn status_line_apply(
+    app: AppHandle,
+    shared: State<Shared>,
+    install: bool,
+    fingerprint: String,
+) -> Result<String, String> {
+    let backup = hooks::status_line_write(install, &fingerprint)?;
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        current.plan_relay_installed = install;
+        // As on the Mac: taking the relay out turns the pill off with it.
+        if !install {
+            current.show_plan_in_notch = false;
+        }
+        if let Err(err) = settings::save(&current) {
+            log::line(format!("could not save settings: {err}"));
+        }
+        current.clone()
+    };
+    let _ = app.emit("settings-changed", updated);
+    Ok(backup)
+}
+
+/// Codex plan usage, asked of the Codex CLI (`codex app-server`) when its pill
+/// shows. Off the main thread: it can take a few seconds.
+#[tauri::command]
+async fn codex_plan_usage() -> Option<serde_json::Value> {
+    tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
 #[tauri::command]
@@ -409,6 +451,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            status_line_preview,
+            status_line_apply,
+            codex_plan_usage,
             approval_decision,
             approval_answer,
             approval_ack,

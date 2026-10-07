@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import type { CodexPlanUsage, PlanUsage } from "./plan";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -107,6 +108,12 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** Show the Claude plan pill (5 h and weekly limits) in the island's header. */
+  showPlanInNotch: boolean;
+  /** Coucou's status line relay is installed in Claude Code's settings. */
+  planRelayInstalled: boolean;
+  /** Show the Codex plan pill in the island's header. */
+  showCodexPlanInNotch: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -121,6 +128,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  showPlanInNotch: false,
+  planRelayInstalled: false,
+  showCodexPlanInNotch: false,
 };
 
 type Listener = () => void;
@@ -155,6 +165,15 @@ class AppState {
 
   integrations: Record<string, IntegrationInfo> = {};
 
+  /** Claude's 5 h / weekly limits, from the status line (null until the first call). */
+  planUsage: PlanUsage | null = null;
+  /** Codex's limits, from `codex app-server` (null until it has answered). */
+  codexPlanUsage: CodexPlanUsage | null = null;
+  /** A plan card is open in place of the overview's left card. */
+  showingPlanDetail = false;
+  /** Which one: the Codex card rather than Claude's. */
+  planDetailIsCodex = false;
+
   lastActivity = performance.now();
 
   settings: Settings = { ...DEFAULT_SETTINGS };
@@ -187,6 +206,7 @@ class AppState {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
     this.focusId = id;
+    this.showingPlanDetail = false;
     t.pillBadge = null;
     this.notify();
   }

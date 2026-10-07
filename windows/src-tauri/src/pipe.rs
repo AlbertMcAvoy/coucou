@@ -198,7 +198,10 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     if event != "PermissionRequest" {
-        log::line(format!("hook {event}"));
+        // The status line relay calls in with every Claude Code update: not log-worthy.
+        if event != "StatusLine" {
+            log::line(format!("hook {event}"));
+        }
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
         return;
