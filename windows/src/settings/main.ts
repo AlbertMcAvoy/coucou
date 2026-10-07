@@ -697,7 +697,8 @@ function localSection(customKey: boolean): HTMLElement {
       status.append(h("div", { class: "hint", text: CHAT_STRINGS.connecting }));
       try {
         if (id === "custom" && key.value.trim()) {
-          await Bridge.secretSet(CUSTOM_SERVER_KEY, key.value.trim());
+          // Stored with this address: the key is only ever sent there.
+          await Bridge.localSetKey(input.value || def.usual, key.value.trim());
           key.value = "";
           customKey = true;
         }

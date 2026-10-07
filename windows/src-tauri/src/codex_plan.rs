@@ -87,6 +87,15 @@ pub fn read() -> Option<Value> {
         drop(stdin);
         answer
     })();
+    // An npm install runs `codex.cmd`: killing cmd.exe alone would leave the
+    // node app-server under it running. End the whole tree there.
+    #[cfg(windows)]
+    {
+        let mut kill = Command::new("taskkill");
+        kill.args(["/T", "/F", "/PID", &child.id().to_string()]);
+        platform::no_console(&mut kill);
+        let _ = kill.status();
+    }
     let _ = child.kill();
     let _ = child.wait();
     answer.map(|result| limits_only(&result))

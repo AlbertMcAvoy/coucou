@@ -228,7 +228,7 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
                 .map_err(|e| {
                     tf("Write to {path} failed: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
                 })?,
-            None if current.is_some() => std::fs::remove_file(&file.path)
+            None if current.is_some() => std::fs::remove_file(resolve_link(&file.path))
                 .map_err(|e| {
                     tf("Could not remove {path}: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
                 })?,
@@ -321,6 +321,16 @@ pub fn write_like(temp: &Path, original: &Path, bytes: &[u8]) -> std::io::Result
     keep_mode(&file, original)
 }
 
+/// The file a symlinked config points at (on Windows too), else `path` itself.
+fn resolve_link(path: &Path) -> std::path::PathBuf {
+    let is_link = std::fs::symlink_metadata(path).map(|m| m.file_type().is_symlink()).unwrap_or(false);
+    if is_link {
+        std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// Replaces `path` with `bytes`: written beside it and renamed over it, so a
 /// crash or a full disk leaves the original intact rather than half a file.
 fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
@@ -329,9 +339,7 @@ fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     }
     // A dotfiles setup often makes a config a symlink: write to the file it
     // points at, so the link survives the rename.
-    #[cfg(unix)]
-    let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    #[cfg(unix)]
+    let resolved = resolve_link(path);
     let path = resolved.as_path();
 
     let name = path.file_name().unwrap_or_default().to_string_lossy();

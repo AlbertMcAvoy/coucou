@@ -269,20 +269,25 @@ fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&
     }
 }
 
-fn status_line_settings(current: &Value, install: bool, previous: Option<&Value>) -> Value {
+fn status_line_settings(current: &Value, install: bool, previous: Option<&Value>) -> Result<Value, String> {
     let mut root = current.as_object().cloned().unwrap_or_default();
+    // A statusLine that is not an object is something we do not understand:
+    // refuse rather than replace it.
+    if install && root.get("statusLine").is_some_and(|v| !v.is_object()) {
+        return Err(unexpected("\"statusLine\""));
+    }
     match status_line_after(root.get("statusLine"), install, previous) {
         Some(sl) => root.insert("statusLine".into(), sl),
         None => root.remove("statusLine"),
     };
-    Value::Object(root)
+    Ok(Value::Object(root))
 }
 
 fn status_line_edits(install: bool, previous: Option<Value>) -> Vec<FileEdit<'static>> {
     vec![FileEdit {
         path: settings_path(),
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            Ok(Some(status_line_settings(current, install, previous.as_ref())))
+            Ok(Some(status_line_settings(current, install, previous.as_ref())?))
         }),
     }]
 }
@@ -432,20 +437,20 @@ mod tests {
     #[test]
     fn the_relay_takes_the_status_line_and_keeps_the_users_other_fields() {
         // None yet: ours is added.
-        let fresh = status_line_settings(&json!({ "model": "opus" }), true, None);
+        let fresh = status_line_settings(&json!({ "model": "opus" }), true, None).unwrap();
         assert!(status_line_is_ours(&fresh["statusLine"]));
         assert_eq!(fresh["statusLine"]["type"], "command");
         assert_eq!(fresh["model"], "opus");
 
         // Their own: only the command is swapped; padding and refresh stay.
         let own = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line", "padding": 2, "refreshInterval": 5 } });
-        let taken = status_line_settings(&own, true, None);
+        let taken = status_line_settings(&own, true, None).unwrap();
         assert!(status_line_is_ours(&taken["statusLine"]));
         assert_eq!(taken["statusLine"]["padding"], 2);
         assert_eq!(taken["statusLine"]["refreshInterval"], 5);
 
         // Installing again keeps ours and its extra fields.
-        let again = status_line_settings(&taken, true, None);
+        let again = status_line_settings(&taken, true, None).unwrap();
         assert_eq!(again["statusLine"]["padding"], 2);
         assert!(status_line_is_ours(&again["statusLine"]));
     }
@@ -453,15 +458,17 @@ mod tests {
     #[test]
     fn removing_the_relay_restores_what_was_there_and_never_touches_anything_else() {
         let previous = json!({ "type": "command", "command": "~/bin/my-line", "padding": 2 });
-        let ours = status_line_settings(&json!({}), true, None);
+        let ours = status_line_settings(&json!({}), true, None).unwrap();
 
         // There was one before: it comes back exactly.
-        assert_eq!(status_line_settings(&ours, false, Some(&previous))["statusLine"], previous);
+        assert_eq!(status_line_settings(&ours, false, Some(&previous)).unwrap()["statusLine"], previous);
         // There was none: the key goes.
-        assert!(status_line_settings(&ours, false, None).get("statusLine").is_none());
+        assert!(status_line_settings(&ours, false, None).unwrap().get("statusLine").is_none());
         // The user changed it since: not ours, so untouched.
         let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/other" } });
-        assert_eq!(status_line_settings(&theirs, false, Some(&previous))["statusLine"], theirs["statusLine"]);
+        assert_eq!(status_line_settings(&theirs, false, Some(&previous)).unwrap()["statusLine"], theirs["statusLine"]);
+        // A statusLine we do not understand is refused, never replaced.
+        assert!(status_line_settings(&json!({ "statusLine": "echo hi" }), true, None).is_err());
     }
 
     #[test]

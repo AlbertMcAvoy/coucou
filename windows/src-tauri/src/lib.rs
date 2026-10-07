@@ -451,6 +451,13 @@ async fn local_connect(provider: String, url: String) -> Result<local_chat::Conn
     local_chat::connect(&provider, &url).await
 }
 
+/// Stores the custom server's key for the address typed next to it; it is only
+/// ever sent to that address.
+#[tauri::command]
+fn local_set_key(url: String, key: String) -> Result<(), String> {
+    local_chat::set_custom_key(&url, &key)
+}
+
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
@@ -470,6 +477,10 @@ fn secret_present(key: String) -> bool {
 
 #[tauri::command]
 fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+    // Bound to its server's address: only local_set_key may store it.
+    if key == local_chat::CUSTOM_KEY {
+        return Err("use local_set_key".into());
+    }
     let before = (key == "github-token").then(|| secrets::get(&key));
     secrets::set(&key, &value)?;
     if let Some(before) = before {
@@ -668,6 +679,7 @@ pub fn run() {
             chat_send,
             chat_models,
             local_connect,
+            local_set_key,
             chat_reset,
             ingest_file,
             secret_present,

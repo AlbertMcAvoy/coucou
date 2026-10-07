@@ -172,6 +172,30 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         .unwrap_or_default()
 }
 
+/// A file rides along only if it is one of Coucou's own copies of a dropped
+/// file (files.rs puts them in the inbox). The page names the path, so without
+/// this any file the user can read could be sent to a chat provider.
+fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
+    match context {
+        ChatContext::File { name, path } => {
+            let inbox = crate::files::inbox_dir();
+            if !is_inside(&inbox, std::path::Path::new(&path)) {
+                return Err(crate::i18n::t("Only a file dropped on the island can be sent with a question."));
+            }
+            Ok(ChatContext::File { name, path })
+        }
+        other => Ok(other),
+    }
+}
+
+/// True when `path` is a regular file directly inside `dir`, both resolved
+/// (no `..`, no symlink pointing out of it).
+fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
+    let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
+    file.parent() == Some(dir.as_path())
+        && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
+}
+
 /// One chat turn with the provider chosen in the settings.
 pub async fn send(
     app: &AppHandle,
@@ -180,6 +204,7 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
+    let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
@@ -316,5 +341,27 @@ mod tests {
         assert_eq!(model_for(&s, "openai"), "gpt-x");
         assert_eq!(model_for(&s, "ollama"), "llama3.2");
         assert_eq!(model_for(&s, "anthropic"), "claude-haiku-4-5");
+    }
+
+    #[test]
+    fn only_files_in_the_inbox_ride_along() {
+        let base = std::env::temp_dir().join(format!("coucou-chat-ctx-{}", std::process::id()));
+        let inbox = base.join("inbox");
+        std::fs::create_dir_all(inbox.join("sub")).unwrap();
+        std::fs::write(inbox.join("a.txt"), b"a").unwrap();
+        std::fs::write(base.join("secret.txt"), b"s").unwrap();
+        std::fs::write(inbox.join("sub").join("b.txt"), b"b").unwrap();
+        assert!(is_inside(&inbox, &inbox.join("a.txt")));
+        assert!(!is_inside(&inbox, &base.join("secret.txt")));
+        assert!(!is_inside(&inbox, &inbox.join("..").join("secret.txt")));
+        assert!(!is_inside(&inbox, &inbox.join("sub").join("b.txt")));
+        assert!(!is_inside(&inbox, &inbox.join("missing.txt")));
+        assert!(!is_inside(&inbox, &inbox));
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(base.join("secret.txt"), inbox.join("link.txt")).unwrap();
+            assert!(!is_inside(&inbox, &inbox.join("link.txt")));
+        }
+        let _ = std::fs::remove_dir_all(&base);
     }
 }

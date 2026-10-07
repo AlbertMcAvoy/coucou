@@ -140,6 +140,9 @@ export const Bridge = {
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
+  /** The custom server's key, bound to the address it is entered for. */
+  localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
+
   localConnect: (provider: "ollama" | "lmstudio" | "custom", url: string) =>
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */

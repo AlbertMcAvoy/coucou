@@ -39,6 +39,46 @@ const NO_KEY: &str = "ollama";
 /// Models that embed or rank rather than chat are left out of the list.
 const NOT_CHAT: &[&str] = &["embed", "bge-", "all-minilm", "clip", "rerank"];
 
+// ── The custom server's key ───────────────────────────────────────────────────
+//
+// The key is stored together with the one address it was entered for, and is
+// only ever sent there. The address in the settings, or the one given to
+// "Connect", can be changed from the page; the key cannot follow it. And a key
+// never goes over plain http to another machine.
+
+#[derive(Serialize, serde::Deserialize)]
+struct BoundKey {
+    url: String,
+    key: String,
+}
+
+fn may_carry_key(url: &Url) -> bool {
+    url.scheme() == "https" || net::is_loopback_url(url)
+}
+
+/// Settings → Local models: stores the key for the address typed next to it.
+pub fn set_custom_key(typed_url: &str, key: &str) -> Result<(), String> {
+    let url = net::normalise_server_url(typed_url)?;
+    if !may_carry_key(&url) {
+        return Err(t("A key is only sent over https, or to a server on this computer."));
+    }
+    let bound = BoundKey { url: url.as_str().trim_end_matches('/').to_string(), key: key.trim().to_string() };
+    let value = serde_json::to_string(&bound).map_err(|e| e.to_string())?;
+    secrets::set(CUSTOM_KEY, &value)
+}
+
+/// The key, if it was entered for exactly this address.
+fn custom_key_for(url: &Url) -> Option<String> {
+    let stored = secrets::get(CUSTOM_KEY)?;
+    key_for(&stored, url)
+}
+
+fn key_for(stored: &str, url: &Url) -> Option<String> {
+    let bound: BoundKey = serde_json::from_str(stored).ok()?;
+    (may_carry_key(url) && bound.url == url.as_str().trim_end_matches('/') && !bound.key.is_empty())
+        .then_some(bound.key)
+}
+
 /// A model server as the settings describe it.
 pub struct Server {
     pub id: &'static str,
@@ -53,7 +93,10 @@ pub fn server(settings: &Settings, id: &str) -> Option<Server> {
     let (id, name, url, key) = match id {
         "ollama" => ("ollama", "Ollama", &settings.ollama_url, None),
         "lmstudio" => ("lmstudio", "LM Studio", &settings.lmstudio_url, None),
-        "custom" => ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, secrets::get(CUSTOM_KEY)),
+        "custom" => {
+            let key = net::normalise_server_url(&settings.custom_url).ok().and_then(|u| custom_key_for(&u));
+            ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, key)
+        }
         _ => return None,
     };
     Some(Server { id, name, url: url.clone(), key })
@@ -104,7 +147,7 @@ pub struct Connected {
 pub async fn connect(id: &str, typed: &str) -> Result<Connected, String> {
     let raw = if typed.trim().is_empty() { usual_address(id).unwrap_or_default() } else { typed.to_string() };
     let url = net::normalise_server_url(&raw)?;
-    let key = if id == "custom" { secrets::get(CUSTOM_KEY) } else { None };
+    let key = if id == "custom" { custom_key_for(&url) } else { None };
     let models = list(&url, key.as_deref()).await?;
     Ok(Connected {
         url: url.as_str().trim_end_matches('/').to_string(),
@@ -499,5 +542,19 @@ mod tests {
         std::fs::write(&bin, [0xff, 0xfe, 0x00, 0x80]).unwrap();
         assert_eq!(file_note("blob.bin", bin.to_str().unwrap()), "File: blob.bin");
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_custom_key_only_goes_to_the_address_it_was_entered_for() {
+        let url = |u: &str| net::normalise_server_url(u).unwrap();
+        let stored = serde_json::to_string(&BoundKey { url: "https://llm.example.com".into(), key: "sk-1".into() }).unwrap();
+        assert_eq!(key_for(&stored, &url("https://llm.example.com")).as_deref(), Some("sk-1"));
+        assert_eq!(key_for(&stored, &url("https://attacker.example")), None);
+        assert_eq!(key_for(&stored, &url("http://llm.example.com")), None);
+        // A plain string (the page can write one through secret_set) binds nothing.
+        assert_eq!(key_for("sk-raw", &url("https://llm.example.com")), None);
+        let local = serde_json::to_string(&BoundKey { url: "http://127.0.0.1:8080".into(), key: "k".into() }).unwrap();
+        assert_eq!(key_for(&local, &url("http://127.0.0.1:8080")).as_deref(), Some("k"));
+        assert!(!may_carry_key(&url("http://192.168.1.20:8080")));
     }
 }
