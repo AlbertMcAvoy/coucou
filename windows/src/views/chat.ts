@@ -1,8 +1,9 @@
 // Chat view — DOM port of PromptView / ChatBubble / TypingDotsView from
-// IslandViewContent.swift.
+// IslandViewContent.swift. Answers are rendered as Markdown (markdown.ts).
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
+import { renderMarkdown } from "./markdown";
 import { Bridge, type ChatContext } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
@@ -18,7 +19,9 @@ function bubble(message: ChatMessage): HTMLElement {
       h("div", { class: "bubble", text: message.content }),
     );
   }
-  return h("div", { class: "chat-row" }, h("div", { class: "reply", text: message.content }));
+  const reply = h("div", { class: "reply" });
+  renderMarkdown(reply, message.content);
+  return h("div", { class: "chat-row" }, reply);
 }
 
 function typingDots(): HTMLElement {
