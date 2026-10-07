@@ -15,6 +15,7 @@ final class IslandWindowController: NSWindowController {
     private var frameTimer: Timer?
     private var keyMonitor: Any?
     private var viewSubscription: AnyCancellable?
+    private var displaySubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -51,7 +52,8 @@ final class IslandWindowController: NSWindowController {
     private var localKeyMonitor: Any?
 
     convenience init() {
-        let screen = Self.notchScreen() ?? NSScreen.main!
+        let screen = Self.targetScreen(for: AppState.shared.islandDisplay)
+        Self.currentScreen = screen
         let geometry = Self.screenGeometry(for: screen)
         let nW = geometry.width
         let nH = geometry.height
@@ -158,6 +160,63 @@ final class IslandWindowController: NSWindowController {
                     self.islandPanel.makeKey()
                 }
             }
+
+        // Screen choice changed in Settings: move right away (explicit user action).
+        displaySubscription = state.$islandDisplay
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] choice in
+                self?.moveToTargetScreen(choice: choice)
+            }
+
+        // Screen plugged/unplugged, lid closed, arrangement or resolution changed.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.moveToTargetScreen(choice: AppState.shared.islandDisplay) }
+        }
+    }
+
+    // MARK: - Screen choice
+
+    private func moveToTargetScreen(choice: IslandDisplayChoice) {
+        guard !inAttachDrag, attachDragStart == nil else { return }
+        relocate(to: Self.targetScreen(for: choice))
+    }
+
+    /// Recomputes the resting geometry for `screen` and moves the panel to its top centre.
+    /// Always re-applied, even on the same screen: its menu bar or resolution may have changed.
+    private func relocate(to screen: NSScreen) {
+        guard let panel = window as? IslandPanel else { return }
+        let geometry = Self.screenGeometry(for: screen)
+        notchW = geometry.width
+        notchH = geometry.height
+        hasNotch = geometry.hasNotch
+        panel.notchWidth  = notchW
+        panel.notchHeight = notchH
+        AppState.shared.notchWidth  = notchW
+        AppState.shared.notchHeight = notchH
+        AppState.shared.hasNotch = hasNotch
+        Self.currentScreen = screen
+
+        let sf = screen.frame
+        let size = panel.frame.size
+        panel.setFrame(NSRect(x: sf.midX - size.width/2, y: sf.maxY - size.height,
+                              width: size.width, height: size.height), display: true)
+        // notchWidth/hasNotch are not @Published: tell the views to resize the island.
+        NotificationCenter.default.post(name: .islandScreenChanged, object: nil)
+        state.objectWillChange.send()
+    }
+
+    /// Follow-the-mouse mode: hop to the cursor's screen while the island is not open,
+    /// so an approval or a chat never jumps away mid-click.
+    private func followMouseIfNeeded(_ mouse: NSPoint) {
+        guard state.islandDisplay == .followMouse,
+              state.mode != .expanded, !inAttachDrag, attachDragStart == nil else { return }
+        if let current = Self.currentScreen, current.frame.contains(mouse) { return }
+        guard let target = NSScreen.screens.first(where: { $0.frame.contains(mouse) }),
+              target != Self.currentScreen else { return }
+        relocate(to: target)
     }
 
     // MARK: - FSM wiring
@@ -223,6 +282,7 @@ final class IslandWindowController: NSWindowController {
         guard let panel = window as? IslandPanel else { return }
 
         let mouse = NSEvent.mouseLocation
+        followMouseIfNeeded(mouse)
 
         // Convert mouse to panel-local coords (macOS: origin bottom-left)
         let pf = panel.frame
@@ -245,9 +305,8 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Mouse in screen coords (Y flipped, origin top-left) for Bot look-at
-        let screenH = panel.screen?.frame.height ?? NSScreen.main!.frame.height
-        let newPos = CGPoint(x: mouse.x - (panel.screen?.frame.minX ?? 0), y: screenH - mouse.y)
+        // Mouse in desktop space (y-down from the menu-bar screen top) for Bot look-at
+        let newPos = DesktopSpace.topDown(mouse, desktopTop: Self.desktopTop)
         let cur = AppState.shared.mousePosition
         if abs(newPos.x - cur.x) > 1 || abs(newPos.y - cur.y) > 1 {
             AppState.shared.mousePosition = newPos
@@ -1052,6 +1111,38 @@ final class IslandWindowController: NSWindowController {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     }
 
+    /// Top of the menu-bar screen in AppKit coordinates: origin of `DesktopSpace`.
+    static var desktopTop: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
+
+    /// Screen the island currently sits on (Settings window, desktop Mochi flights).
+    private(set) static var currentScreen: NSScreen?
+
+    static func islandScreen() -> NSScreen {
+        if let s = currentScreen, NSScreen.screens.contains(s) { return s }
+        return notchScreen() ?? NSScreen.main!
+    }
+
+    /// Screen matching the user's choice; falls back to the notch screen, then the main one.
+    static func targetScreen(for choice: IslandDisplayChoice) -> NSScreen {
+        let screens = NSScreen.screens
+        let mouse = NSEvent.mouseLocation
+        let candidates = screens.map {
+            IslandDisplayCandidate(uuid: displayUUID($0), hasNotch: $0.safeAreaInsets.top > 0,
+                                   containsMouse: $0.frame.contains(mouse))
+        }
+        if let i = IslandDisplayResolver.index(for: choice, in: candidates) { return screens[i] }
+        return notchScreen() ?? NSScreen.main ?? screens[0]
+    }
+
+    /// Stable display UUID (the NSScreenNumber can change after a reboot or a replug).
+    static func displayUUID(_ screen: NSScreen) -> String? {
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        guard let number = screen.deviceDescription[key] as? NSNumber,
+              let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue()
+        else { return nil }
+        return CFUUIDCreateString(nil, uuid) as String
+    }
+
     static func screenGeometry(for screen: NSScreen) -> IslandScreenGeometry {
         let visibleMenuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
         // visibleFrame includes the menu bar only while it is visible. Keep a
@@ -1145,6 +1236,8 @@ extension Notification.Name {
     static let greetingHover    = Notification.Name("notchBuddy.greetingHover")
     static let greetingInterrupt = Notification.Name("notchBuddy.greetingInterrupt")
     static let openWardrobeFromDesktop = Notification.Name("notchBuddy.openWardrobeFromDesktop")
+    // Island moved to another screen (resting size may differ: notch vs bar)
+    static let islandScreenChanged = Notification.Name("notchBuddy.islandScreenChanged")
 }
 
 // MARK: - islandSize (takes real notch dimensions)
