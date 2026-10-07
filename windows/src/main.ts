@@ -56,9 +56,12 @@ async function main() {
 
   // The settings window writes preferences; apply them here without a restart.
   await onEvent<Settings>("settings-changed", (s) => {
+    const previousMain = State.mainPillId;
     State.settings = { ...State.settings, ...s };
     island.applySettings();
     State.loadIntegrationTasks();
+    // A new main tool comes to the front, as on macOS.
+    if (State.mainPillId !== previousMain) State.setFocus(State.mainPillId);
     void refreshConfigured();
   });
 

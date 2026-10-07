@@ -6,9 +6,11 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
+import { pillDefinition } from "../core/pills";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
+const CURSOR_ID = "agent_cursor";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -50,6 +52,8 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
+  term_editor?: string;
 }
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
@@ -167,21 +171,27 @@ function askedQuestions(tool: string, input: Record<string, unknown>): AskedQues
   return out.length > 0 ? out : null;
 }
 
-function upsert(projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
-  if (!t) return;
-  t.name = projectName;
-  if (cwd) t.sessionCwd = cwd;
+/** The Claude Code session's pill, named after its project for the session. */
+function upsert(id: string, projectName: string, cwd: string, sessionId: string) {
+  const t = State.upsertWorkspacePill(id, projectName, cwd);
+  if (t && sessionId) t.sessionId = sessionId;
 }
 
-function clearSession() {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+/** The session is over: the pill goes back as it was, or away if it was only there for it. */
+function clearSession(id: string) {
+  const t = State.tasks.find((x) => x.id === id);
   if (!t) return;
+  if (!State.isKept(id)) {
+    State.removeTask(id);
+    return;
+  }
+  t.state = "idle";
   t.steps = [];
   t.stepIndex = 0;
   delete t.stepSeq;
-  t.name = "VS Code";
+  t.name = pillDefinition(id)?.name ?? t.name;
   t.pillBadge = null;
+  t.sessionId = null;
 }
 
 export function registerHookHandlers(island: Island) {
@@ -203,10 +213,13 @@ function handleHook(island: Island, payload: HookPayload) {
   const projectName = aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
-  // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
+  // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
+  // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
+  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
+  const sessionId = payload.session_id ?? "";
 
   const focused = State.focusId === agentId;
 
@@ -225,8 +238,11 @@ function handleHook(island: Island, payload: HookPayload) {
   const ensurePill = () => {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, validAgent!, agentColor(validAgent!));
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t && cwd) t.sessionCwd = cwd;
+      if (t && sessionId) t.sessionId = sessionId;
     } else {
-      upsert(projectName, cwd);
+      upsert(agentId, projectName, cwd, sessionId);
     }
   };
 
@@ -340,7 +356,7 @@ function handleHook(island: Island, payload: HookPayload) {
         State.removeTask(agentId);
       } else {
         State.updateTask(agentId, "idle");
-        clearSession();
+        clearSession(agentId);
       }
       break;
 
@@ -369,7 +385,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      upsert(agentId, projectName, cwd, sessionId);
       supersedeStop();
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";

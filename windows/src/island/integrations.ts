@@ -3,20 +3,10 @@
 // the pill isn't focused, plays a sound, and clears itself after 60 s.
 
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
+import { availablePills } from "../core/pills";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import type { Island } from "./island";
-
-/** Which Credential Manager key backs each pill. */
-const KEY_FOR: Record<string, string> = {
-  integration_stripe: "stripe-api-key",
-  integration_github: "github-token",
-  integration_vercel: "vercel-token",
-  integration_n8n: "n8n-api-key",
-  integration_resend: "resend-api-key",
-  integration_notion: "notion-api-key",
-  integration_calcom: "calcom-api-key",
-};
 
 const clearTimers = new Map<string, number>();
 
@@ -25,18 +15,43 @@ export function registerIntegrationHandlers(island: Island) {
   void refreshConfigured();
 }
 
-/** Asks Rust which keys exist so the idle cards can say so. */
+/**
+ * Whether each pill is connected, so its idle card can say so: a key in the
+ * credential store for a service or a chat provider, the hooks in place for a
+ * pill fed by hook events (Mac #183), nothing at all for Claude Desktop.
+ */
 export async function refreshConfigured() {
-  for (const [id, key] of Object.entries(KEY_FOR)) {
-    const present = (await Bridge.secretPresent(key)) ?? false;
+  const hooks = (await Bridge.agentHooksStatus()) ?? null;
+  for (const def of availablePills(State.os)) {
+    let configured: boolean;
+    switch (def.connect.kind) {
+      case "key":
+        configured = (await Bridge.secretPresent(def.connect.key)) ?? false;
+        break;
+      case "hooks":
+        // Without an answer from Rust (a plain browser), the Claude Code pill
+        // falls back to what the settings say about its hooks.
+        configured = hooks?.[def.id] ??
+          (def.id === "integration_claude" ? State.settings.hooksInstalled : false);
+        break;
+      case "none":
+        configured = true;
+        break;
+    }
+    const info = State.integrations[def.id] ?? { data: {}, error: null, loaded: false, configured: false };
+    State.integrations[def.id] = { ...info, configured };
+  }
+  State.notify();
+}
+
+/** Only the hook-driven pills, for when the island opens: a few small file reads. */
+export async function refreshHookPills() {
+  const hooks = await Bridge.agentHooksStatus();
+  if (!hooks) return;
+  for (const [id, present] of Object.entries(hooks)) {
     const info = State.integrations[id] ?? { data: {}, error: null, loaded: false, configured: false };
     State.integrations[id] = { ...info, configured: present };
   }
-  const hooks = State.settings.hooksInstalled;
-  const claude = State.integrations.integration_claude ?? {
-    data: {}, error: null, loaded: false, configured: false,
-  };
-  State.integrations.integration_claude = { ...claude, configured: hooks };
   State.notify();
 }
 

@@ -248,6 +248,39 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   assert.equal(State.pendingApproval, null);
 });
 
+// ── Main tool and Cursor ──────────────────────────────────────────────────────
+
+test("Claude Code in Cursor's terminal works on the Cursor pill, made for the session", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj", session_id: "s9", term_editor: "cursor" });
+  hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", term_editor: "cursor", tool_name: "Bash", tool_input: { command: "ls" } });
+  assert.equal(task("agent_cursor").state, "working");
+  assert.equal(task("agent_cursor").sessionId, "s9");
+  assert.equal(task().state, "idle");
+  hook({ hook_event_name: "SessionEnd", term_editor: "cursor" });
+  assert.equal(task("agent_cursor"), undefined);
+});
+
+test("with another main tool, Claude Code's pill comes for the session and goes after", () => {
+  State.settings.mainPill = "agent_codex";
+  State.loadIntegrationTasks();
+  assert.equal(task(), undefined);
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj" });
+  assert.equal(task().name, "proj");
+  assert.equal(State.tasks[0].id, "agent_codex");
+  hook({ hook_event_name: "SessionEnd" });
+  assert.equal(task(), undefined);
+});
+
+test("the main tool's agent sessions put it back as it was, never take it away", () => {
+  State.settings.mainPill = "agent_codex";
+  State.loadIntegrationTasks();
+  hook({ hook_event_name: "SessionStart", coucou_agent: "codex" });
+  hook({ hook_event_name: "Stop", coucou_agent: "codex" });
+  seconds(5.2);
+  assert.equal(task("agent_codex").state, "idle");
+  assert.equal(task("agent_codex").name, "Codex");
+});
+
 // ── Permission requests ───────────────────────────────────────────────────────
 
 const ask = (request_id, extra = {}) =>

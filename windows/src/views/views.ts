@@ -11,6 +11,7 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { pillDefinition, sessionSubtitle } from "../core/pills";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -180,10 +181,9 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker; every other
-      // pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0);
+      // A workspace or agent pill with a live session keeps the ticker; every
+      // other pill shows its own card, exactly like IntegrationCardView.
+      const sessionActive = task != null && hasSessionTicker(task);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -196,7 +196,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: task.source === "claudeCode" ? "Claude Code" : "n8n" }),
+          h("span", { class: "tool", text: sessionSubtitle(task.id) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -232,6 +232,17 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
     },
   };
+}
+
+/**
+ * IntegrationCardView.agentSessionActive: a workspace tool or an agent — or
+ * any other tagged agent — with something going on.
+ */
+export function hasSessionTicker(task: AgentTask): boolean {
+  const category = pillDefinition(task.id)?.category;
+  const isSession = category === "workspace" || category === "agent" ||
+    (category == null && task.id.startsWith("agent_"));
+  return isSession && (task.state !== "idle" || task.steps.length > 0);
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {

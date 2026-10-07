@@ -5,6 +5,10 @@
 import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import {
+  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  sanitizeDeclared, toggleDeclared, type PillDefinition,
+} from "../core/pills";
 import { h, clear } from "../views/dom";
 
 /** Where secrets.rs keeps the keys on this OS. */
@@ -259,6 +263,87 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Active pills section ──────────────────────────────────────────────────────
+
+/**
+ * The tools you use (Mac 0.1.1–0.1.2): pick the main workspace tool, which is
+ * always on and takes no slot, and declare the agents and chat providers you
+ * want as pills. Services are declared in Integrations below, next to their keys.
+ */
+function activePillsSection(connected: Record<string, boolean>): HTMLElement {
+  const slots = h("div", { class: "hint" });
+  const main = h("select", {}) as HTMLSelectElement;
+  for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
+  main.addEventListener("change", () => {
+    const next = chooseMainPill(settings, main.value);
+    if (!next) return;
+    settings.mainPill = next.mainPill;
+    settings.activeIntegrations = next.activeIntegrations;
+    declaredChanged();
+  });
+  const groups = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+
+  /** Why a pill would show nothing yet, as on the Mac's row. */
+  function hint(def: PillDefinition): string | null {
+    if (isComingSoon(def.id)) return "Coming soon";
+    if (def.connect.kind === "hooks" && !connected[def.id]) return "Hooks not installed";
+    if (def.connect.kind === "key" && !connected[def.id]) return "Key not configured";
+    return null;
+  }
+
+  function row(def: PillDefinition): HTMLElement {
+    const isMain = def.id === settings.mainPill;
+    const on = settings.activeIntegrations.includes(def.id);
+    const full = !isMain && !on && settings.activeIntegrations.length >= MAX_ACTIVE;
+    const el = h("div", { class: full ? "pill-row full" : "pill-row" },
+      h("i", { class: "dot", style: `background:${def.color};width:10px;height:10px` }),
+      h("span", { class: "name", text: def.name }),
+    );
+    if (isMain) {
+      el.append(h("span", { class: "state", text: "Main" }));
+      return el;
+    }
+    const why = hint(def);
+    el.append(h("span", { class: "state", text: why ?? "" }));
+    const sw = h("button", { class: on ? "switch on" : "switch" }) as HTMLButtonElement;
+    sw.disabled = full;
+    sw.addEventListener("click", () => {
+      const next = toggleDeclared(settings, def.id);
+      if (!next) return;
+      settings.activeIntegrations = next;
+      declaredChanged();
+    });
+    el.append(sw);
+    return el;
+  }
+
+  function draw() {
+    const used = settings.activeIntegrations.length;
+    slots.textContent = `${used}/${MAX_ACTIVE} slots in use — the main tool doesn't take one.`;
+    slots.classList.toggle("full", used >= MAX_ACTIVE);
+    main.value = settings.mainPill;
+    clear(groups);
+    for (const cat of PILL_CATEGORIES) {
+      if (cat.id === "service") continue;
+      const pills = availablePills().filter((p) => p.category === cat.id);
+      if (pills.length === 0) continue;
+      groups.append(h("div", { class: "pill-group" }, h("h3", { text: cat.title }), ...pills.map(row)));
+    }
+  }
+  declaredViews.push(draw);
+  draw();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: "Active pills" })),
+    h("div", { class: "hint", text: "Choose the tools you use. Coucou only shows what you declare here." }),
+    slots,
+    h("div", { class: "row" }, h("label", { text: "Main tool" }), main),
+    groups,
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -289,7 +374,15 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
 ];
 
-const MAX_ACTIVE = 4;
+const MAX_ACTIVE = MAX_DECLARED;
+
+/** Everything that shows the declared pills, redrawn when any of them changes. */
+const declaredViews: (() => void)[] = [];
+
+function declaredChanged() {
+  for (const redraw of declaredViews) redraw();
+  void save();
+}
 
 function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
@@ -299,6 +392,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     const used = settings.activeIntegrations.length;
     note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the ${KEY_STORE}, never on disk.`;
   }
+  declaredViews.push(updateNote);
 
   for (const def of INTEGRATIONS) {
     const active = settings.activeIntegrations.includes(def.id);
@@ -312,8 +406,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
-      updateNote();
-      void save();
+      declaredChanged();
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
@@ -458,11 +551,21 @@ async function main() {
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
 
+  // A main pill this build can run, and no pill declared twice.
+  settings = { ...settings, ...sanitizeDeclared(settings) };
+  const connected: Record<string, boolean> = { ...((await Bridge.agentHooksStatus()) ?? {}) };
+  for (const def of availablePills()) {
+    if (def.connect.kind === "key") {
+      connected[def.id] = present[def.connect.key] ?? (await Bridge.secretPresent(def.connect.key)) ?? false;
+    }
+  }
+
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
+    activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
     h("div", {
@@ -473,6 +576,7 @@ async function main() {
 
   void onEvent<Settings>("settings-changed", (s) => {
     settings = { ...settings, ...s };
+    for (const redraw of declaredViews) redraw();
   });
 }
 

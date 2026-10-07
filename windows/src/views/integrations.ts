@@ -8,6 +8,8 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
+import { isComingSoon, pillDefinition } from "../core/pills";
+import { refreshHookPills } from "../island/integrations";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -53,15 +55,34 @@ const OPEN_URLS: Record<string, string> = {
   integration_calcom: "https://app.cal.com/bookings",
 };
 
+/** IntegrationCardView.statusLabel on macOS. */
+export function idleStatus(
+  id: string,
+  info: { configured: boolean; error: string | null } | undefined,
+  chatModel: string,
+): { label: string; color: string } {
+  if (isComingSoon(id)) return { label: "Coming soon", color: "#6B7079" };
+  if (info?.error) return { label: info.error, color: "#F4505E" };
+  const configured = info?.configured ?? false;
+  const def = pillDefinition(id);
+  const ok = (label: string) => ({ label, color: "#22C55E" });
+  const missing = (label: string) => ({ label, color: "#F4505E" });
+  // Pills driven by hooks never have a key: they are connected once the hooks
+  // are in place (Mac #183). A session replaces this card; nothing is loading.
+  if (def?.connect.kind === "hooks") return configured ? ok("Hooks installed") : missing("Hooks not installed");
+  if (def?.connect.kind === "none") return ok("Ready · no setup needed");
+  if (def?.category === "ai") {
+    if (!configured) return missing("Key not configured");
+    return ok(id === "ai_anthropic" ? `Key configured · ${chatModel}` : "Key configured");
+  }
+  return configured ? ok("Connected · loading…") : missing("Key not configured");
+}
+
 function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
-  const error = info?.error ?? null;
-  // The Claude Code pill is about hooks, not a key — the macOS wording would be
-  // misleading here.
-  const missing = task.id === "integration_claude" ? "Hooks not installed" : "Key not configured";
-  const label = error ?? (configured ? "Connected · loading…" : missing);
-  const statusColor = error || !configured ? "#F4505E" : "#22C55E";
+  const def = pillDefinition(task.id);
+  const status = idleStatus(task.id, info, State.settings.model);
 
   const actions = h("div", { class: "int-actions" });
   if (task.id === "integration_claude") {
@@ -92,16 +113,20 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       }),
     );
   }
-  if (configured) {
+  const hookPill = def?.connect.kind === "hooks";
+  if (isComingSoon(task.id) || def?.connect.kind === "none") {
+    // Nothing to set up, and nothing to refresh.
+  } else if (configured && (hookPill || def?.category !== "ai")) {
     actions.append(
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
         text: "Refresh",
-        onclick: () => void Bridge.refreshIntegration(task.id),
+        // A hook pill has nothing to poll: look at its hooks again instead.
+        onclick: () => void (hookPill ? refreshHookPills() : Bridge.refreshIntegration(task.id)),
       }),
     );
-  } else {
+  } else if (!configured) {
     actions.append(
       h("button", { class: "link-btn", style: "color:#8e939c", text: "Settings…", onclick: openSettings }),
     );
@@ -110,8 +135,12 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   return h(
     "div",
     { class: "int-card" },
-    header(task.color, task.id === "integration_claude" ? "VS Code" : task.name, "Integration"),
-    h("div", { class: "int-status" }, dot(statusColor, 5), h("span", { text: label })),
+    header(
+      task.color,
+      task.id === "integration_claude" ? "VS Code" : task.name,
+      def?.subtitle ?? "Integration",
+    ),
+    h("div", { class: "int-status" }, dot(status.color, 5), h("span", { text: status.label })),
     actions,
   );
 }
