@@ -61,6 +61,7 @@ pub fn local_dir() -> PathBuf {
 /// plugin paths that vanish once Coucou quits. Give ours its own file.
 pub fn prepare_environment() {
     prefer_x11_on_gnome();
+    follow_gnome_text_scaling();
     if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY").is_some() {
         return;
     }
@@ -77,15 +78,57 @@ pub fn prepare_environment() {
 /// pass theirs down to every child. COUCOU_X11=0 keeps the Wayland window.
 fn prefer_x11_on_gnome() {
     let env = |k: &str| std::env::var(k).unwrap_or_default();
-    if should_prefer_x11(&env("XDG_SESSION_TYPE"), &env("XDG_CURRENT_DESKTOP"), &env("COUCOU_X11")) {
+    if should_prefer_x11(
+        &env("XDG_SESSION_TYPE"),
+        &env("XDG_CURRENT_DESKTOP"),
+        &env("COUCOU_X11"),
+        &env("DISPLAY"),
+    ) {
         std::env::set_var("GDK_BACKEND", "x11");
     }
 }
 
-fn should_prefer_x11(session: &str, desktop: &str, opt: &str) -> bool {
+/// Only with XWayland actually there (`DISPLAY` set): forcing x11 without it
+/// would leave GTK with no display at all.
+fn should_prefer_x11(session: &str, desktop: &str, opt: &str, display: &str) -> bool {
     session.eq_ignore_ascii_case("wayland")
         && desktop.split(':').any(|d| d.eq_ignore_ascii_case("gnome"))
         && opt != "0"
+        && !display.trim().is_empty()
+}
+
+fn is_gnome(desktop: &str) -> bool {
+    desktop.split(':').any(|d| d.eq_ignore_ascii_case("gnome"))
+}
+
+/// GNOME's "Large text" (text-scaling-factor > 1) makes WebKitGTK draw every
+/// font larger inside a window sized in fixed pixels, so the island's content
+/// was cut off (#122). The island's layout is its own, so it asks GDK to undo
+/// that factor for this process only. An explicit GDK_DPI_SCALE always wins.
+fn follow_gnome_text_scaling() {
+    if std::env::var_os("GDK_DPI_SCALE").is_some()
+        || !is_gnome(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default())
+    {
+        return;
+    }
+    let Ok(out) = Command::new("gsettings")
+        .args(["get", "org.gnome.desktop.interface", "text-scaling-factor"])
+        .output()
+    else {
+        return;
+    };
+    if let Some(scale) = dpi_scale_for(&String::from_utf8_lossy(&out.stdout)) {
+        std::env::set_var("GDK_DPI_SCALE", scale);
+    }
+}
+
+/// `"1.25\n"` → `Some("0.8")`; `None` for 1.0 or anything unreadable.
+fn dpi_scale_for(gsettings_output: &str) -> Option<String> {
+    let factor: f64 = gsettings_output.trim().parse().ok()?;
+    if !(0.5..=3.0).contains(&factor) || (factor - 1.0).abs() < 0.01 {
+        return None;
+    }
+    Some(format!("{:.4}", 1.0 / factor).trim_end_matches('0').trim_end_matches('.').to_string())
 }
 
 pub fn local_time() -> LocalTime {
@@ -230,6 +273,10 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 /// up to the window manager.
 pub fn make_non_activating(win: &WebviewWindow) {
     let Ok(gw) = win.gtk_window() else { return };
+    // The pointer watch reports the pointer leaving on every kind of window:
+    // a regular one (GNOME, X11) misses `mouseout` just as a layer surface does.
+    ISLAND_GTK.with(|cell| *cell.borrow_mut() = Some(gw.clone()));
+    watch_pointer_leave(win);
     // COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
     let wanted = std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true);
     let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
@@ -291,8 +338,6 @@ pub fn make_non_activating(win: &WebviewWindow) {
         }
         gtk::glib::Propagation::Proceed
     });
-    ISLAND_GTK.with(|cell| *cell.borrow_mut() = Some(gw.clone()));
-    watch_pointer_leave(win);
     LAYER_SURFACE.store(true, Ordering::Relaxed);
     crate::log::line("island is a layer-shell overlay");
 }
@@ -465,10 +510,22 @@ mod tests {
 
     #[test]
     fn x11_is_only_preferred_on_gnome_wayland_unless_opted_out() {
-        assert!(should_prefer_x11("wayland", "ubuntu:GNOME", ""));
-        assert!(!should_prefer_x11("x11", "ubuntu:GNOME", ""));
-        assert!(!should_prefer_x11("wayland", "KDE", ""));
-        assert!(!should_prefer_x11("wayland", "GNOME", "0"));
+        assert!(should_prefer_x11("wayland", "ubuntu:GNOME", "", ":0"));
+        assert!(!should_prefer_x11("x11", "ubuntu:GNOME", "", ":0"));
+        assert!(!should_prefer_x11("wayland", "KDE", "", ":0"));
+        assert!(!should_prefer_x11("wayland", "GNOME", "0", ":0"));
+        // No XWayland: keep the Wayland window rather than no display at all.
+        assert!(!should_prefer_x11("wayland", "GNOME", "", ""));
+    }
+
+    #[test]
+    fn text_scaling_is_undone_for_the_island() {
+        assert_eq!(dpi_scale_for("1.25\n").as_deref(), Some("0.8"));
+        assert_eq!(dpi_scale_for("1.5").as_deref(), Some("0.6667"));
+        assert_eq!(dpi_scale_for("1.0").as_deref(), None);
+        assert_eq!(dpi_scale_for("").as_deref(), None);
+        assert_eq!(dpi_scale_for("nonsense").as_deref(), None);
+        assert_eq!(dpi_scale_for("40").as_deref(), None);
     }
 
     #[test]

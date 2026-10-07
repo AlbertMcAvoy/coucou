@@ -394,8 +394,17 @@ function generalSection(): HTMLElement {
   screen.value = settings.screen;
   void Bridge.listMonitors().then((list) => {
     for (const m of list ?? []) screen.append(h("option", { value: m.key, text: m.label }));
-    // Set again now the option exists; a display that is gone shows as the main one.
-    screen.value = settings.screen;
+    // Set again now the option exists. A display saved under an older key (moved,
+    // resized, or saved before names were kept) is shown by its place or its
+    // name; one that is gone shows as the main one.
+    const saved = settings.screen;
+    const [place, name] = saved.split("|");
+    const keys = (list ?? []).map((m) => m.key);
+    screen.value =
+      keys.find((k) => k === saved) ??
+      (saved.startsWith("at:") ? keys.find((k) => k.split("|")[0] === place) : undefined) ??
+      (name ? keys.find((k) => k.split("|")[1] === name) : undefined) ??
+      saved;
     if (!screen.value) screen.value = "primary";
   });
   screen.addEventListener("change", () => {

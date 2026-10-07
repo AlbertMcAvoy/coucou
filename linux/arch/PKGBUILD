@@ -9,7 +9,7 @@ pkgrel=1
 pkgdesc="Mochi lives at the top of your screen and keeps an eye on your Claude Code sessions"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Louis-CFM/coucou"
-license=('MIT')
+license=("MIT" "LicenseRef-coucou-assets")
 depends=(
   'webkit2gtk-4.1'
   'gtk3'
