@@ -99,6 +99,18 @@ export const Bridge = {
    */
   agentHooksApply: (agent: string, install: boolean, fingerprint: string) =>
     callOrThrow<string>("agent_hooks_apply", { agent, install, fingerprint }),
+  // ── Plan usage: the status line relay, installed apart from the hooks ──────
+  /** Diff of the status line change. `install: false` previews taking the relay out. */
+  statusLinePreview: (install: boolean) => callOrThrow<HookPreview>("status_line_preview", { install }),
+  /** Same rules as hooksApply: an explicit click, and only for the diff that was shown. */
+  statusLineApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("status_line_apply", { install, fingerprint }),
+  /**
+   * Asks the Codex CLI (`codex app-server`) for its plan limits, as Codex's
+   * /status does. The raw `account/rateLimits/read` result, or null when Codex
+   * is missing, not signed in or slow (15 s).
+   */
+  codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -151,6 +163,8 @@ export interface DroppedFile {
 
 export interface HookStatus {
   installed: boolean;
+  /** Coucou's status line relay (plan usage) is the status line in settings.json. */
+  planRelayInstalled: boolean;
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;

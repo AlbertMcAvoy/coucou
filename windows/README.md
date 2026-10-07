@@ -88,6 +88,29 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+### Plan usage
+
+As on the Mac, the island's header can show your plan limits: a small pill
+("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
+weekly Claude limits, and another for Codex. Click one for the details and the
+reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+
+- **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
+  line. **Show in notch** first shows you the diff of the `statusLine` change in
+  `%USERPROFILE%\.claude\settings.json`, takes a dated backup and writes only
+  after your click, with the same writer as the hooks: the status line becomes `coucou-hook --statusline`, which
+  passes only the limits on (300 ms at most) and runs the status line you had
+  before — kept in `statusline-previous.json` next to the relay — with the same
+  input, printing what it prints. On Windows that one runs through Git Bash, as
+  Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
+  `git.exe` on `PATH` belongs to, then the usual install folders); it gets 10 s
+  and 64 KB of output. **Uninstall relay** puts your status line back. The
+  numbers arrive with Claude Code's replies.
+- **Codex**: nothing is installed. When the pill shows (or is clicked, at most
+  once a minute) Coucou starts `codex app-server` and asks it
+  `account/rateLimits/read`, as Codex's `/status` does, then stops it (15 s at
+  most, never while paused). Codex must be signed in with ChatGPT.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
@@ -234,6 +257,10 @@ own window.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
   turned on once by hand. Hermes runs natively on Linux; on Windows it is
   untested.
+- Plan usage: the user's previous status line runs through Git Bash on Windows
+  (`/bin/sh` on Linux and Mac); without Git Bash it is not run, rather than
+  guessed at with `cmd`. The Codex CLI is looked for on `PATH` and in npm's,
+  Volta's, Bun's and pnpm's folders (and nvm's on Linux).
 
 ## Linux
 
@@ -282,6 +309,11 @@ What changes on Linux:
   symlink (dotfiles) is written through to its target, with its permissions
   kept.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Plan usage**: the status line relay is `~/.local/share/coucou/bin/coucou-hook
+  --statusline` and runs your previous status line with `/bin/sh -c`, like Claude
+  Code. Codex is found on `$PATH`, in `~/.local/bin`, npm's global prefix, Volta,
+  Bun, pnpm, or nvm (newest Node first), since a desktop launch often has a
+  shorter `$PATH` than your shell.
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
 - What the Windows build leaves out, this one does too: sending a file by

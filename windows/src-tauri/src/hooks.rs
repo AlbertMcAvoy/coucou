@@ -45,6 +45,8 @@ const MARKER: &str = "coucou-hook";
 #[serde(rename_all = "camelCase")]
 pub struct HookStatus {
     pub installed: bool,
+    /// Coucou's status line relay (plan usage) is the one in settings.json.
+    pub plan_relay_installed: bool,
     pub settings_path: String,
     pub hook_path: String,
     pub hook_ready: bool,
@@ -94,6 +96,12 @@ fn entry_is_ours(entry: &Value) -> bool {
             })
         })
         .unwrap_or(false)
+}
+
+/// The status line in settings.json is Coucou's relay (old installs wrote
+/// `coucou-hook StatusLine`, new ones `coucou-hook --statusline`; both match).
+fn status_line_is_ours(v: &Value) -> bool {
+    v.get("command").and_then(Value::as_str).is_some_and(|c| c.contains(MARKER))
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched. A
@@ -190,6 +198,7 @@ pub fn status() -> HookStatus {
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,
+        plan_relay_installed: plan_relay_installed(&current),
         settings_path: settings_path().to_string_lossy().to_string(),
         hook_ready: hook_path.exists(),
         hook_path: hook_path.to_string_lossy().to_string(),
@@ -197,13 +206,16 @@ pub fn status() -> HookStatus {
 }
 
 pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let plan = config_file::preview(&edits(install))?;
-    Ok(HookPreview {
+    Ok(plan_to_preview(config_file::preview(&edits(install))?))
+}
+
+fn plan_to_preview(plan: config_file::Plan) -> HookPreview {
+    HookPreview {
         diff: plan.diff,
         backup: plan.backup,
         settings_path: plan.path,
         fingerprint: plan.fingerprint,
-    })
+    }
 }
 
 /// Writes the merged (or cleaned) settings after taking a dated backup, and
@@ -214,6 +226,111 @@ pub fn preview(install: bool) -> Result<HookPreview, String> {
 pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let backups = config_file::apply(&edits(install), fingerprint)?;
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
+}
+
+// ── Status line (plan usage) ──────────────────────────────────────────────────
+//
+// Claude Code runs one `statusLine` command and hands it the plan limits. Coucou
+// puts its relay there; a status line the user already had is kept in
+// statusline-previous.json beside the relay, and the relay still runs it, so it
+// keeps working. Installing and removing it is separate from the hooks, and
+// goes through the same hardened writer (config_file.rs): strict read, diff,
+// fingerprint, dated backup, then the write.
+
+/// Where the user's own status line waits while the relay stands in for it.
+pub fn status_line_previous_path() -> PathBuf {
+    settings::hook_exe_path().with_file_name("statusline-previous.json")
+}
+
+fn read_status_line_previous() -> Option<Value> {
+    let bytes = std::fs::read(status_line_previous_path()).ok()?;
+    serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object)
+}
+
+/// True when the `statusLine` in settings.json is Coucou's relay.
+pub fn plan_relay_installed(settings: &Value) -> bool {
+    settings.get("statusLine").is_some_and(status_line_is_ours)
+}
+
+/// `statusLine` as it reads after installing or removing the relay. `None`: the
+/// key goes. Installing swaps only `command`, so `padding`, `refreshInterval`
+/// and the rest of the user's status line stay as they were.
+fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&Value>) -> Option<Value> {
+    if install {
+        let mut sl = existing.filter(|v| v.is_object()).cloned().unwrap_or_else(|| json!({}));
+        let obj = sl.as_object_mut().expect("an object");
+        obj.entry("type").or_insert_with(|| json!("command"));
+        obj.insert("command".into(), json!(hook_command("--statusline")));
+        Some(sl)
+    } else if existing.is_some_and(status_line_is_ours) {
+        previous.cloned()
+    } else {
+        existing.cloned() // not ours any more (the user changed it): leave it alone
+    }
+}
+
+fn status_line_settings(current: &Value, install: bool, previous: Option<&Value>) -> Value {
+    let mut root = current.as_object().cloned().unwrap_or_default();
+    match status_line_after(root.get("statusLine"), install, previous) {
+        Some(sl) => root.insert("statusLine".into(), sl),
+        None => root.remove("statusLine"),
+    };
+    Value::Object(root)
+}
+
+fn status_line_edits(install: bool, previous: Option<Value>) -> Vec<FileEdit<'static>> {
+    vec![FileEdit {
+        path: settings_path(),
+        edit: config_file::json_edit("settings.json".into(), move |current| {
+            Ok(Some(status_line_settings(current, install, previous.as_ref())))
+        }),
+    }]
+}
+
+/// The diff the user has to look at before the relay goes in or out.
+pub fn status_line_preview(install: bool) -> Result<HookPreview, String> {
+    Ok(plan_to_preview(config_file::preview(&status_line_edits(install, read_status_line_previous()))?))
+}
+
+/// Installs or removes the relay, after the same backup and fingerprint checks as
+/// the hooks. Installing first saves a status line of the user's own, removing
+/// puts it back (or removes the key if there was none).
+pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, String> {
+    let before = config_file::read(&settings_path())
+        .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json"))?;
+    let previous = read_status_line_previous();
+    let own = before.get("statusLine").filter(|v| !status_line_is_ours(v)).cloned();
+    let saved = match (install, own.as_ref()) {
+        (true, Some(own)) => {
+            save_status_line_previous(own).map_err(|_| {
+                "could not save your current status line next to the relay; nothing was changed".to_string()
+            })?;
+            true
+        }
+        _ => false,
+    };
+    let result = config_file::apply(&status_line_edits(install, previous), fingerprint);
+    match &result {
+        // Back in settings.json: the saved copy has done its job.
+        Ok(_) if !install => {
+            let _ = std::fs::remove_file(status_line_previous_path());
+        }
+        // Nothing was written: do not leave a stale copy behind.
+        Err(_) if saved => {
+            let _ = std::fs::remove_file(status_line_previous_path());
+        }
+        _ => {}
+    }
+    let backups = result?;
+    Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
+}
+
+fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
+    let path = status_line_previous_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    config_file::write_like(&path, &path, config_file::pretty(status_line).as_bytes())
 }
 
 /// Copies the relay (coucou-hook.exe / coucou-hook) into the local data dir's
@@ -303,6 +420,49 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_hooks_leave_the_status_line_alone() {
+        let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line" } });
+        assert_eq!(merged(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
+        assert_eq!(without_ours(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
+        assert!(merged(&json!({})).unwrap().get("statusLine").is_none());
+    }
+
+    #[test]
+    fn the_relay_takes_the_status_line_and_keeps_the_users_other_fields() {
+        // None yet: ours is added.
+        let fresh = status_line_settings(&json!({ "model": "opus" }), true, None);
+        assert!(status_line_is_ours(&fresh["statusLine"]));
+        assert_eq!(fresh["statusLine"]["type"], "command");
+        assert_eq!(fresh["model"], "opus");
+
+        // Their own: only the command is swapped; padding and refresh stay.
+        let own = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line", "padding": 2, "refreshInterval": 5 } });
+        let taken = status_line_settings(&own, true, None);
+        assert!(status_line_is_ours(&taken["statusLine"]));
+        assert_eq!(taken["statusLine"]["padding"], 2);
+        assert_eq!(taken["statusLine"]["refreshInterval"], 5);
+
+        // Installing again keeps ours and its extra fields.
+        let again = status_line_settings(&taken, true, None);
+        assert_eq!(again["statusLine"]["padding"], 2);
+        assert!(status_line_is_ours(&again["statusLine"]));
+    }
+
+    #[test]
+    fn removing_the_relay_restores_what_was_there_and_never_touches_anything_else() {
+        let previous = json!({ "type": "command", "command": "~/bin/my-line", "padding": 2 });
+        let ours = status_line_settings(&json!({}), true, None);
+
+        // There was one before: it comes back exactly.
+        assert_eq!(status_line_settings(&ours, false, Some(&previous))["statusLine"], previous);
+        // There was none: the key goes.
+        assert!(status_line_settings(&ours, false, None).get("statusLine").is_none());
+        // The user changed it since: not ours, so untouched.
+        let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/other" } });
+        assert_eq!(status_line_settings(&theirs, false, Some(&previous))["statusLine"], theirs["statusLine"]);
+    }
 
     #[test]
     fn merging_keeps_every_other_setting_and_every_foreign_hook() {

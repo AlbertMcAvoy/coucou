@@ -12,6 +12,9 @@ import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
+import {
+  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
+} from "./usage";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -93,6 +96,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
+  const claudePill = buildPlanPill(false);
+  const codexPill = buildPlanPill(true);
+  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
+  let codexShown = false;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -103,8 +111,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
+  const headerActions = el.lastElementChild as HTMLElement;
 
   return {
     el,
@@ -118,9 +127,26 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
+
+  function syncPlanPills() {
+    const claudeOn = claudePillVisible();
+    const codexOn = codexPillVisible();
+    claudePill.el.style.display = claudeOn ? "" : "none";
+    codexPill.el.style.display = codexOn ? "" : "none";
+    planPills.classList.toggle("on", claudeOn || codexOn);
+    // Both pills: the right side tightens so it still clears the screen edge.
+    headerActions.classList.toggle("both-plans", claudeOn && codexOn);
+    if (claudeOn) claudePill.sync();
+    if (codexOn) codexPill.sync();
+    // Codex is asked when its pill comes into view (stale answers only).
+    const shown = codexOn && State.mode === "expanded";
+    if (shown && !codexShown) refreshCodexPlanUsage();
+    codexShown = shown;
+  }
 }
 
 // ── Overview ──────────────────────────────────────────────────────────────────
@@ -138,6 +164,9 @@ function buildOverview(actions: ViewActions): ViewHost {
   const left = card(null, leftBody, jump);
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
+  // Opened from a plan pill in the header: stands in for the left card.
+  const plan = new PlanCard();
+  let planTimer: number | null = null;
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -147,7 +176,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | null = null;
+  let mode: "ticker" | "card" | "plan" | null = null;
   let cardKey = "";
 
   const hooks: IntegrationCardHooks = {
@@ -166,6 +195,20 @@ function buildOverview(actions: ViewActions): ViewHost {
     },
     openSettings: () => actions.openSettingsWindow(),
   };
+
+  /** The countdowns move every 30 s while a card is open, and only then. */
+  function syncPlanTimer(open: boolean) {
+    const stop = () => {
+      if (planTimer != null) window.clearInterval(planTimer);
+      planTimer = null;
+    };
+    if (!open) return stop();
+    if (planTimer != null) return;
+    planTimer = window.setInterval(() => {
+      if (planCardOpen() && State.mode === "expanded") State.notify();
+      else stop();
+    }, 30_000);
+  }
 
   return {
     el,
@@ -187,7 +230,21 @@ function buildOverview(actions: ViewActions): ViewHost {
       // other pill shows its own card, exactly like IntegrationCardView.
       const sessionActive = task != null && hasSessionTicker(task);
 
-      if (task && sessionActive) {
+      const planOpen = planCardOpen();
+      if (mode === "plan" && !planOpen) {
+        mode = null;
+        cardKey = "";
+      }
+      syncPlanTimer(planOpen);
+
+      if (planOpen) {
+        if (mode !== "plan") {
+          clear(leftBody);
+          leftBody.append(plan.el);
+          mode = "plan";
+        }
+        plan.sync();
+      } else if (task && sessionActive) {
         if (mode !== "ticker") {
           clear(leftBody);
           leftBody.append(tickerBody);
@@ -224,7 +281,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
-      jump.style.display = detailOpen ? "none" : "";
+      jump.style.display = detailOpen || mode === "plan" ? "none" : "";
 
       const others = State.otherTasks.slice(0, 4);
       const pillKey = others.map((t) => `${t.id}:${t.pillBadge ?? ""}`).join("|");

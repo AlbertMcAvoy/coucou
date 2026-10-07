@@ -18,7 +18,10 @@
 //!   in its terminal exactly as if Coucou were not installed.
 //!
 //! Usage: `coucou-hook [--agent <name>] [<EventName>]` (the event name is also
-//! read from the JSON; `--agent` is absent for Claude Code).
+//! read from the JSON; `--agent` is absent for Claude Code), or
+//! `coucou-hook --statusline` as Claude Code's status line command (plan usage,
+//! see statusline.rs): it passes the plan limits on and runs the status line the
+//! user had before, so that keeps working.
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
@@ -42,6 +45,8 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "tool_output", "transcript_pa
 /// Longest string forwarded for any single field; the island truncates to far
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
+
+mod statusline;
 
 #[cfg(windows)]
 mod win;
@@ -84,6 +89,9 @@ struct Event {
 }
 
 fn main() {
+    if std::env::args().skip(1).any(|a| a == "--statusline") {
+        statusline::run();
+    }
     let args = args();
     let mut raw = Vec::new();
     let _ = std::io::stdin().read_to_end(&mut raw);

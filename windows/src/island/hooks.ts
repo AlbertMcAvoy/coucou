@@ -11,6 +11,8 @@ import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
+import { parseClaudePlan, restorePlanUsage } from "../core/plan";
+import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -61,6 +63,8 @@ interface HookPayload {
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
   term_editor?: string;
+  /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
+  rate_limits?: unknown;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -192,10 +196,20 @@ function clearSession(id: string) {
 }
 
 export function registerHookHandlers(island: Island) {
+  // The last plan numbers seen survive a restart, as on the Mac.
+  State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
 }
 
 function handleHook(island: Island, payload: HookPayload) {
+  // Account-wide numbers from the status line relay, not part of any session:
+  // keep the latest, nothing else (no reveal, no sound), paused or not.
+  if (payload.hook_event_name === "StatusLine") {
+    const usage = parseClaudePlan(payload.rate_limits);
+    if (usage) setClaudePlanUsage(usage);
+    return;
+  }
+
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,
