@@ -3255,6 +3255,10 @@ def main():
             i += 1
     if agent:
         payload.setdefault('coucou_agent', agent)
+    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
+    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
+    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
+        payload['coucou_agent'] = 'claude-desktop'
 
     # Enrich with terminal context
     env = os.environ
@@ -3554,6 +3558,10 @@ def main():
             i += 1
     if agent:
         payload.setdefault('coucou_agent', agent)
+    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
+    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
+    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
+        payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
