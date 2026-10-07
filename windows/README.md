@@ -21,13 +21,18 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 
 ## Install
 
-The downloadable installer is **temporarily unavailable**. Microsoft Defender
-wrongly flags the unsigned installer as malware (`Trojan:Win32/Wacatac.H!ml`, a
-machine-learning false positive). A report is under review at Microsoft, and the
-installer will be published again once it is cleared and code-signed.
+Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)**
+(Windows Installer) or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)**,
+always the newest version, and run it. It installs for the current user only — no admin prompt.
 
-Until then, [build it yourself](#build-it-yourself): it takes a few minutes and
-installs for the current user only — no admin prompt.
+The installer is not code-signed yet, so Windows SmartScreen may say "Windows
+protected your PC": click **More info → Run anyway**. Microsoft Defender once
+flagged the installer by mistake (`Trojan:Win32/Wacatac.H!ml`, a machine-learning
+false positive); Microsoft reviewed it and removed the detection. If Defender
+still blocks it on your PC, update its definitions (`Update-MpSignature` in
+PowerShell) and try again.
+
+You can also [build it yourself](#build-it-yourself).
 
 ## Using it
 
