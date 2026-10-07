@@ -43,10 +43,13 @@ installs for the current user only — no admin prompt.
 | Click the small island | It opens |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
+| Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
+| Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
+| On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
-| Tray icon | Open, Weekly recap, Settings…, Pause, Quit |
+| Tray icon | Open, Weekly recap, Wardrobe…, Settings…, Pause, Quit |
 | `Ctrl+Alt+Space` | Opens the chat, from any app |
 | `Ctrl+Alt+A` | Jumps to the waiting permission or question |
 | `Ctrl+Alt+T` | Brings the session's window forward ("Open terminal") |
@@ -92,6 +95,13 @@ it for later, fold it with the **⌃** in its corner (or `Esc` in the island): t
 island shrinks to its compact size and stays on screen, nothing is answered, and
 opening it again shows the card. **Open terminal** brings the window the session
 runs in to the front.
+
+When Mochi lives on the desktop, he flies back to the island with a permission
+request or a question and returns to his spot once you have answered; he does a
+little jump when a task finishes, and dozes off when nothing has happened for
+two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
+polling, a few frames a second. He remembers his spot between launches; if it
+was on a display that is no longer connected, he stays in the island.
 
 **Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
 session ticker with its **+N −M** lines; click it for the diff. Same limits as the
@@ -263,7 +273,7 @@ Installing is optional — `target/release/coucou.exe` runs on its own. There is
 window in the taskbar and no console: the island at the top of the screen and the
 Mochi in the notification area are the whole app, and Quit lives in its menu.
 
-The 28 sounds are the macOS app's own files; they are never duplicated in this
+The 29 sounds are the macOS app's own files; they are never duplicated in this
 folder. The path is declared once, in `SOUNDS_DIR` at the top of
 `vite.config.ts` — when they move to `shared/sounds/`, change that one line.
 
@@ -279,6 +289,7 @@ npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
 windows/
   src/                 island front end (TypeScript, no framework)
     mochi/             Mochi and the launch greeting, in Canvas 2D
+    desktop/           Mochi's own little window, when he lives on the desktop
     island/            state machine, hooks, integrations
     views/             every island view
     settings/          the settings window
@@ -390,8 +401,9 @@ own window.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
   Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
-  terminal" here. Not in this version: sending Mochi to the desktop, attaching
-  the front window (their ids are kept for later), moving through a card's
+  terminal" here. Not in this version: sending Mochi to the desktop from the
+  keyboard (drag him out instead) and attaching the front window (their ids are
+  kept for later), moving through a card's
   list (`⌘↑` `⌘↓` `⌘O`) and the diff (`⌘E`). The island only reads its own
   shortcuts while it has the keyboard: in the chat, or after a global shortcut
   opened it. **Go to alert** brings up any agent's waiting card on its own pill;
@@ -412,6 +424,14 @@ own window.
     leaves to the image. A turn cut short by the session ending still counts.
   - Tray → Pause doesn't stop the history (it stays on the machine anyway);
     switch it off in Settings → General.
+- The wardrobe opens with a right-click on Mochi, from the tray menu, or with
+  its global shortcut (`Ctrl+Alt+G` by default). In the compact island a tall hat
+  is cut by the top edge of the screen, as it is by the notch on a Mac.
+- Mochi on the desktop doesn't dance: there is no music integration to dance
+  to. Dropping him on a window doesn't attach it to the chat, and the Mac's
+  ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
+  sleeps, the transparent square around him (120 px) takes the first mouse
+  move, which wakes him and gives the rest back to the desktop.
 
 ## Linux
 
@@ -452,7 +472,14 @@ What changes on Linux:
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
-  gives no app the cursor position anywhere else.
+  gives no app the cursor position anywhere else. On the desktop, likewise,
+  they follow it only while it is over him, and "the cursor is far away" (so
+  he may fall asleep) means it hasn't been over him for a few seconds.
+- **Mochi on the desktop** is a layer-shell surface on the island's display
+  (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
+  that display; on X11 it is an ordinary always-on-top window that goes
+  anywhere. **GNOME on Wayland** has no layer-shell and lets no app place its
+  own window, so there Mochi can't leave the island: dragging him does nothing.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user. Every other agent uses the same relay, single-quoted

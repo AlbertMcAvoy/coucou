@@ -25,6 +25,7 @@ async function main() {
   island.applySettings();
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();
+  await island.desktop.init();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
@@ -49,6 +50,10 @@ async function main() {
       case "recap":
         setPaused(false);
         void Recap.open(island);
+        break;
+      case "wardrobe":
+        setPaused(false);
+        island.alert("wardrobe");
         break;
       case "pause":
         setPaused(!State.paused);

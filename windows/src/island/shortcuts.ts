@@ -24,6 +24,8 @@ export interface ShortcutHost {
   setPinned(on: boolean): void;
   /** Gives the island the keyboard, so the in-island keys work (Mac: makeKey). */
   takeKeyboard(): void;
+  /** The wardrobe from any state, or back if it is open (Island.wardrobeAnywhere). */
+  wardrobeAnywhere(): void;
 }
 
 function focusPill(host: ShortcutHost, id: string | null, open: boolean) {
@@ -153,6 +155,12 @@ function inTextField(target: EventTarget | null): boolean {
 
 export function registerShortcutHandlers(host: ShortcutHost, resume: () => void) {
   void onEvent<string>("shortcut", (action) => runGlobalShortcut(host, action, resume));
+  // The wardrobe shortcut comes as its own event (shortcuts.rs): it opens the
+  // wardrobe (mochi/wardrobe.ts, views/wardrobe.ts), or closes it again.
+  void onEvent<null>("open-wardrobe", () => {
+    resume();
+    host.wardrobeAnywhere();
+  });
 
   // Capture phase: the chat field stops its own key events from bubbling.
   window.addEventListener(

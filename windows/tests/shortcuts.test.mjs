@@ -247,6 +247,7 @@ const host = {
   emote: (e) => did.push(`emote:${e}`),
   setPinned: (on) => did.push(`pin:${on}`),
   takeKeyboard: () => did.push("keyboard"),
+  wardrobeAnywhere: () => did.push("wardrobe"),
 };
 const resume = () => did.push("resume");
 // The island listens on `window`, which here is the bare global object.
@@ -267,6 +268,11 @@ beforeEach(() => {
   State.chatHistory = [];
   State.settings = { ...DEFAULT_SETTINGS };
   State.loadIntegrationTasks();
+});
+
+test("the wardrobe shortcut's own event opens the wardrobe", () => {
+  emit("open-wardrobe", null);
+  assert.deepEqual(did, ["resume", "wardrobe"]);
 });
 
 test("a global shortcut arrives as an event and opens the chat", () => {

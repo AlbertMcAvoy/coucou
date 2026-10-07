@@ -10,6 +10,7 @@ import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
+import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -125,6 +126,16 @@ export interface Settings {
   customUrl: string;
   /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
   shortcuts: Bindings;
+  /**
+   * Mochi's outfit: "auto" (dresses for the season), "none" or an outfit id.
+   * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
+   */
+  mochiOutfit: string;
+  /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
+  desktopMochi?: {
+    onDesktop: boolean;
+    spot: { x: number; y: number; space: string } | null;
+  };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -149,6 +160,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lmstudioUrl: "",
   customUrl: "",
   shortcuts: {},
+  mochiOutfit: DEFAULT_OUTFIT,
 };
 
 type Listener = () => void;
@@ -203,6 +215,14 @@ class AppState {
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
+  /**
+   * Mochi is out of the island — on the desktop, flying, or being dragged
+   * there — so the island's own Mochi is hidden (AppState.mochiOnDesktop).
+   */
+  mochiOnDesktop = false;
+
+  /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
+  wardrobePreview: Outfit | null = null;
 
   lastActivity = performance.now();
 

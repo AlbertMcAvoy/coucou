@@ -3,7 +3,7 @@
 // `npm run dev` alone.
 
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
@@ -162,6 +162,7 @@ export const Bridge = {
   shortcutsStatus: () => call<ShortcutsReport>("shortcuts_status"),
   /** Lets go of every global shortcut while Settings records a new one. */
   shortcutsSuspend: (suspended: boolean) => call<void>("shortcuts_suspend", { suspended }),
+
   // ── Weekly recap ──────────────────────────────────────────────────────────
   /** Turns and decisions from `since` (Unix seconds) on, plus the recap prefs. */
   recapHistory: (since: number) => call<RecapHistory>("recap_history", { since: Math.floor(since) }),
@@ -175,6 +176,25 @@ export const Bridge = {
   recapSavePng: (data: string, week: string) => callOrThrow<string>("recap_save_png", { data, week }),
   /** Opens the folder of the image saved last. */
   recapRevealSaved: () => call<void>("recap_reveal_saved"),
+
+  // ── Mochi on the desktop (src-tauri/src/desktop.rs) ───────────────────────
+  desktopInfo: () => call<DesktopInfo>("desktop_mochi_info"),
+  /** Dragged out of the island: (x, y) is the pointer in island-window coordinates. */
+  desktopPickUp: (x: number, y: number) => call<boolean>("desktop_mochi_pick_up", { x, y }),
+  /** Linux: the pointer moved during that drag (Windows carries him from Rust). */
+  desktopCarry: (x: number, y: number) => call<void>("desktop_mochi_carry", { x, y }),
+  desktopCarryEnd: (x: number, y: number) => call<void>("desktop_mochi_carry_end", { x, y }),
+  /** A drag started on the desktop Mochi; resolves to his top-left corner. */
+  desktopDragBegin: () => call<[number, number] | null>("desktop_mochi_drag_begin"),
+  /** X11: top-left corner, physical pixels. */
+  desktopDragMove: (x: number, y: number) => call<void>("desktop_mochi_drag_move", { x, y }),
+  desktopDragEnd: (x: number, y: number) => call<void>("desktop_mochi_drag_end", { x, y }),
+  /** From the island to his spot. False: no spot on any connected display. */
+  desktopFlyOut: () => call<boolean>("desktop_mochi_fly_out"),
+  /** To the island, then hidden. `forget`: he lives in the island again. */
+  desktopFlyHome: (forget: boolean) => call<boolean>("desktop_mochi_fly_home", { forget }),
+  /** Asleep, the cursor poll stops. */
+  desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
 };
 
 export type ShortcutStatus =
@@ -187,6 +207,25 @@ export interface ShortcutsReport {
   blocked: string | null;
   /** `<executable> --shortcut`: append an action id for a desktop shortcut. */
   command: string;
+}
+
+/** How the desktop Mochi's window works here (platform::DesktopMode). */
+export type DesktopMode = "poll" | "window" | "layer" | "off";
+
+export interface DesktopInfo {
+  mode: DesktopMode;
+  /** He was on the desktop when the app last quit. */
+  onDesktop: boolean;
+}
+
+/** An event for one window only (island ⇄ desktop Mochi). Never throws. */
+export async function emitToWindow(label: string, event: string, payload?: unknown) {
+  if (!IS_TAURI) return;
+  try {
+    await emitTo(label, event, payload);
+  } catch (err) {
+    console.error(`[coucou] emit ${event} failed`, err);
+  }
 }
 
 export interface IntegrationUpdate {

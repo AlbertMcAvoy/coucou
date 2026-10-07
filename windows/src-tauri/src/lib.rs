@@ -4,8 +4,9 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
-mod config_file;
 mod codex_plan;
+mod config_file;
+mod desktop;
 mod files;
 mod github;
 mod hooks;
@@ -83,9 +84,13 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
-        *current = settings.clone();
+        // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
+        let mut settings = settings.clone();
+        settings.desktop_mochi = current.desktop_mochi.clone();
+        *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
+    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
@@ -517,7 +522,7 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.
@@ -659,12 +664,24 @@ pub fn run() {
             recap::recap_clear,
             recap::recap_save_png,
             recap::recap_reveal_saved,
+            desktop::desktop_mochi_info,
+            desktop::desktop_mochi_pick_up,
+            desktop::desktop_mochi_carry,
+            desktop::desktop_mochi_carry_end,
+            desktop::desktop_mochi_drag_begin,
+            desktop::desktop_mochi_drag_move,
+            desktop::desktop_mochi_drag_end,
+            desktop::desktop_mochi_fly_out,
+            desktop::desktop_mochi_fly_home,
+            desktop::desktop_mochi_set_asleep,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
+            // Same rule for Mochi's desktop window.
+            desktop::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
