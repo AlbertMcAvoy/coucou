@@ -34,6 +34,17 @@ const DROPPED_FIELDS: &[&str] = &["tool_response", "transcript_path"];
 /// less than this anyway.
 const MAX_FIELD_LEN: usize = 2_000;
 
+/// The live diff needs the whole text of a file edit, once it has happened:
+/// PostToolUse of these tools keeps its edit strings far longer than the rest.
+const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
+/// The `tool_input` keys holding the text being replaced or written.
+const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+/// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
+const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
+/// For all edit strings of one event together, so the line stays well under the
+/// 1 MiB the app reads from the pipe even once JSON-escaped.
+const MAX_DIFF_TOTAL: usize = 512 * 1024;
+
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
@@ -161,31 +172,99 @@ fn read_event() -> Option<(String, String)> {
         }
     }
 
-    truncate_strings(&mut payload);
+    truncate_payload(&mut payload, &event);
 
     let mut line = payload.to_string();
     line.push('\n');
     Some((line, event))
 }
 
+/// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
+/// strings of a finished Edit / MultiEdit / Write, which the live diff needs
+/// whole. If even those had to be cut, `coucou_diff_truncated` tells the island
+/// not to show counts it cannot trust.
+fn truncate_payload(payload: &mut serde_json::Value, event: &str) {
+    let keeps_diff = event == "PostToolUse"
+        && payload
+            .get("tool_name")
+            .and_then(|v| v.as_str())
+            .is_some_and(|tool| DIFF_TOOLS.contains(&tool));
+    let input = if keeps_diff {
+        payload.as_object_mut().and_then(|map| map.remove("tool_input"))
+    } else {
+        None
+    };
+
+    truncate_strings(payload);
+
+    if let Some(mut input) = input {
+        let mut budget = MAX_DIFF_TOTAL;
+        let mut cut_any = false;
+        cap_diff_strings(&mut input, &mut budget, &mut cut_any);
+        if let Some(map) = payload.as_object_mut() {
+            map.insert("tool_input".into(), input);
+            if cut_any {
+                map.insert("coucou_diff_truncated".into(), serde_json::Value::Bool(true));
+            }
+        }
+    }
+}
+
+/// `tool_input` of a diff tool: edit strings share MAX_DIFF_TOTAL, each capped at
+/// MAX_DIFF_FIELD_LEN; any other string gets the ordinary cap.
+fn cap_diff_strings(value: &mut serde_json::Value, budget: &mut usize, cut_any: &mut bool) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, v) in map.iter_mut() {
+                match v {
+                    serde_json::Value::String(s) if DIFF_FIELDS.contains(&key.as_str()) => {
+                        let limit = MAX_DIFF_FIELD_LEN.min(*budget);
+                        if cut(s, limit) {
+                            *cut_any = true;
+                        }
+                        *budget = budget.saturating_sub(s.len());
+                    }
+                    _ => cap_diff_strings(v, budget, cut_any),
+                }
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                cap_diff_strings(item, budget, cut_any);
+            }
+        }
+        serde_json::Value::String(s) => {
+            cut(s, MAX_FIELD_LEN);
+        }
+        _ => {}
+    }
+}
+
 /// Caps every string in the payload. A single Write can carry a whole file.
 fn truncate_strings(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::String(s) => {
-            if s.len() > MAX_FIELD_LEN {
-                // Cut on a char boundary; a lone byte index can split UTF-8.
-                let mut end = MAX_FIELD_LEN;
-                while end > 0 && !s.is_char_boundary(end) {
-                    end -= 1;
-                }
-                s.truncate(end);
-                s.push('…');
-            }
+            cut(s, MAX_FIELD_LEN);
         }
         serde_json::Value::Array(items) => items.iter_mut().for_each(truncate_strings),
         serde_json::Value::Object(map) => map.values_mut().for_each(truncate_strings),
         _ => {}
     }
+}
+
+/// Shortens `s` to at most `max` bytes plus an ellipsis; true if it was cut.
+fn cut(s: &mut String, max: usize) -> bool {
+    if s.len() <= max {
+        return false;
+    }
+    // Cut on a char boundary; a lone byte index can split UTF-8.
+    let mut end = max;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    s.truncate(end);
+    s.push('…');
+    true
 }
 
 /// Connect, send, and — for a permission request — wait for the island's word.
@@ -252,5 +331,60 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn a_finished_edit_keeps_its_text_whole_for_the_live_diff() {
+        let big = "line\n".repeat(4_000); // 20 KB, well past MAX_FIELD_LEN
+        let mut v = serde_json::json!({
+            "tool_name": "Edit",
+            "tool_input": { "file_path": "/p/a.ts", "old_string": big, "new_string": big },
+            "cwd": "x".repeat(4_000),
+        });
+        truncate_payload(&mut v, "PostToolUse");
+        assert_eq!(v["tool_input"]["old_string"].as_str().unwrap().len(), big.len());
+        assert_eq!(v["tool_input"]["new_string"].as_str().unwrap().len(), big.len());
+        // Everything else keeps the ordinary cap, and nothing says "cut".
+        assert!(v["cwd"].as_str().unwrap().len() <= MAX_FIELD_LEN + 4);
+        assert!(v.get("coucou_diff_truncated").is_none());
+
+        let mut multi = serde_json::json!({
+            "tool_name": "MultiEdit",
+            "tool_input": { "edits": [{ "old_string": big, "new_string": "x" }] },
+        });
+        truncate_payload(&mut multi, "PostToolUse");
+        assert_eq!(multi["tool_input"]["edits"][0]["old_string"].as_str().unwrap().len(), big.len());
+    }
+
+    #[test]
+    fn edits_are_still_capped_before_they_happen_and_for_other_tools() {
+        let big = "é".repeat(4_000);
+        for (event, tool) in [("PreToolUse", "Edit"), ("PermissionRequest", "Write"), ("PostToolUse", "Bash")] {
+            let mut v = serde_json::json!({ "tool_name": tool, "tool_input": { "content": big } });
+            truncate_payload(&mut v, event);
+            assert!(v["tool_input"]["content"].as_str().unwrap().len() <= MAX_FIELD_LEN + 4, "{event} {tool}");
+        }
+    }
+
+    #[test]
+    fn an_edit_beyond_the_budget_is_cut_and_flagged() {
+        let huge = "x".repeat(MAX_DIFF_FIELD_LEN + 10);
+        let mut v = serde_json::json!({
+            "tool_name": "Write",
+            "tool_input": { "file_path": "/p/big.txt", "content": huge },
+        });
+        truncate_payload(&mut v, "PostToolUse");
+        assert!(v["tool_input"]["content"].as_str().unwrap().len() <= MAX_DIFF_FIELD_LEN + 4);
+        assert_eq!(v["coucou_diff_truncated"], serde_json::Value::Bool(true));
+
+        // Together, the edit strings never pass the shared budget.
+        let half = "y".repeat(MAX_DIFF_FIELD_LEN - 1);
+        let edits: Vec<_> = (0..4)
+            .map(|_| serde_json::json!({ "old_string": half, "new_string": half }))
+            .collect();
+        let mut multi = serde_json::json!({ "tool_name": "MultiEdit", "tool_input": { "edits": edits } });
+        truncate_payload(&mut multi, "PostToolUse");
+        assert!(multi.to_string().len() < MAX_DIFF_TOTAL + 64 * 1024);
+        assert_eq!(multi["coucou_diff_truncated"], serde_json::Value::Bool(true));
     }
 }
