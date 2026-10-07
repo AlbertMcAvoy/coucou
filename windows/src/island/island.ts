@@ -20,6 +20,8 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { DesktopLink } from "./desktop";
+import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 
 const BOT_OVERHANG = 40;
 /** Extra canvas on each side of Mochi, for the witch hat's brim and the Santa hat's tip. */
@@ -39,6 +41,8 @@ const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 :
 
 export class Island {
   readonly fsm = new IslandStateMachine();
+  /** Mochi on the desktop: his life cycle and the drag out of the island. */
+  readonly desktop: DesktopLink;
 
   private root: HTMLElement;
   private islandEl!: HTMLElement;
@@ -91,12 +95,20 @@ export class Island {
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
 
+  /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
+  private botPress: { x: number; y: number } | null = null;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
+    this.desktop = new DesktopLink({
+      reveal: () => this.reveal(),
+      wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
+      dizzyFromDesktop: () => this.handleDizzy(),
+    });
     this.build();
     this.wireFsm();
     this.wireInput();
@@ -245,6 +257,8 @@ export class Island {
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.onTransition = (from, to) => {
+      // The greeting is over, however it ended: back to his desktop spot.
+      if (from === "coucou" && to !== "coucou") this.desktop.launch();
       switch (to) {
         case "hidden":
           this.setMode("hidden");
@@ -360,6 +374,19 @@ export class Island {
     if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
     if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
     else this.setView("wardrobe");
+  }
+
+  /**
+   * Right-click on the desktop Mochi (macOS openWardrobeFromDesktop): opens the
+   * wardrobe from any state, or goes back if it is already open.
+   */
+  wardrobeFromDesktop() {
+    if (State.mode === "expanded" && State.view === "wardrobe") {
+      this.setView(State.defaultView());
+      return;
+    }
+    if (State.paused) return;
+    this.alert("wardrobe");
   }
 
   /** An alert stopped waiting for an answer: let the island auto-close again. */
@@ -562,6 +589,10 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      // A press on Mochi may become a drag out to the desktop.
+      if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
+        this.botPress = { x: e.clientX, y: e.clientY };
+      }
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
@@ -582,6 +613,29 @@ export class Island {
     // else (the chat field) the webview keeps its own menu.
     this.islandEl.addEventListener("contextmenu", (e) => {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
+    });
+
+    // Dragging Mochi out of the island puts him on the desktop.
+    window.addEventListener("mousemove", (e) => {
+      if (this.desktop.carrying) {
+        this.desktop.carry(e.clientX, e.clientY);
+        return;
+      }
+      const press = this.botPress;
+      if (!press) return;
+      if (!(e.buttons & 1)) {
+        this.botPress = null;
+        return;
+      }
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= DRAG_THRESHOLD) return;
+      this.botPress = null;
+      if (!this.canDragOut()) return;
+      this.cancelBotHover();
+      this.desktop.pickUp(e.clientX, e.clientY);
+    });
+    window.addEventListener("mouseup", (e) => {
+      this.botPress = null;
+      if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
     window.addEventListener("keydown", (e) => {
@@ -654,7 +708,15 @@ export class Island {
     this.ensureRunning();
   }
 
+  /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
+  private canDragOut(): boolean {
+    if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
+    return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
+  }
+
   private isBotHit(x: number, y: number): boolean {
+    // Out on the desktop, the island's Mochi is invisible: nothing to hit.
+    if (State.mochiOnDesktop) return false;
     const rect = this.islandRect();
     const cx = rect.x + this.botCx.value;
     const cy = rect.y + this.botCy.value;
@@ -690,7 +752,7 @@ export class Island {
   }
 
   /** Three slaps → dizzy + confused view for 3.3 s, then back. */
-  private handleDizzy() {
+  handleDizzy() {
     this.prevViewBeforeConfused = State.view;
     State.stateOverride = "dizzy";
     this.engine.setState("dizzy");
@@ -790,11 +852,13 @@ export class Island {
     this.botSize.target = p.diameter / 0.6;
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
-    // The drop canvas draws its own Mochi; two of them would overlap.
-    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive;
+    // The drop canvas draws its own Mochi; two of them would overlap. Out on the
+    // desktop, he isn't here at all.
+    const away = State.mochiOnDesktop;
+    const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
-    if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive) {
+    if (State.mode === "expanded" && State.view !== "uploading" && !greetingActive && !this.uploadActive && !away) {
       const d = p.diameter;
       const color = botGlowColor(State.effectiveState);
       this.botGlow.style.display = "block";
