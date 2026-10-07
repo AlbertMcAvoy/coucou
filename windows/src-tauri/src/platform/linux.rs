@@ -51,6 +51,38 @@ pub fn local_dir() -> PathBuf {
     xdg("XDG_DATA_HOME", ".local/share").join("coucou")
 }
 
+/// Where a saved image goes, best first: the XDG pictures folder named in
+/// ~/.config/user-dirs.dirs, then ~/Pictures, ~/Downloads and the home folder.
+/// The caller takes the first one that exists.
+pub fn picture_dirs() -> Vec<PathBuf> {
+    let home = home_dir();
+    let mut dirs = Vec::new();
+    let user_dirs = xdg("XDG_CONFIG_HOME", ".config").join("user-dirs.dirs");
+    if let Ok(text) = std::fs::read_to_string(user_dirs) {
+        if let Some(dir) = xdg_user_dir(&text, "XDG_PICTURES_DIR", &home) {
+            dirs.push(dir);
+        }
+    }
+    dirs.push(home.join("Pictures"));
+    dirs.push(home.join("Downloads"));
+    dirs.push(home);
+    dirs
+}
+
+/// `XDG_PICTURES_DIR="$HOME/Pictures"` → /home/me/Pictures. Only the two forms
+/// xdg-user-dirs writes are understood: "$HOME/…" and an absolute path.
+fn xdg_user_dir(text: &str, key: &str, home: &Path) -> Option<PathBuf> {
+    let line = text.lines().map(str::trim).find(|l| l.starts_with(key))?;
+    let value = line.strip_prefix(key)?.trim_start().strip_prefix('=')?.trim();
+    let value = value.strip_prefix('"')?.strip_suffix('"')?;
+    let path = match value.strip_prefix("$HOME") {
+        Some(rest) => home.join(rest.trim_start_matches('/')),
+        None => PathBuf::from(value),
+    };
+    // "$HOME/" alone means "no pictures folder", by the spec.
+    (path.is_absolute() && path != home).then_some(path)
+}
+
 /// Environment the webview must inherit, set before any thread or process
 /// starts.
 ///
@@ -343,5 +375,18 @@ mod tests {
         ensure_private_dir(&dir).unwrap();
         assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_pictures_folder_comes_from_user_dirs() {
+        let home = Path::new("/home/me");
+        let text = "# written by xdg-user-dirs-update\nXDG_DESKTOP_DIR=\"$HOME/Desktop\"\nXDG_PICTURES_DIR=\"$HOME/Images\"\n";
+        assert_eq!(xdg_user_dir(text, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/home/me/Images")));
+        let absolute = "XDG_PICTURES_DIR=\"/data/pics\"";
+        assert_eq!(xdg_user_dir(absolute, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/data/pics")));
+        // "$HOME/" means the folder is disabled; relative paths are not paths.
+        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"$HOME/\"", "XDG_PICTURES_DIR", home), None);
+        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
+        assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
     }
 }
