@@ -961,6 +961,80 @@ fn gitlab_involved(authored: &[Value], assigned: &[Value], reviewing: &[Value]) 
     items
 }
 
+/// Lines of detail kept per piece of news: a burst of activity is not worth more.
+const GITLAB_CHANGES_KEEP: usize = 8;
+
+/// Markdown and HTML as one plain line: tags gone, `[text](url)` as its text,
+/// the emphasis marks dropped, whitespace squeezed, cut at 80 characters.
+fn gitlab_plain(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while !rest.is_empty() {
+        if let Some(tag) = rest.strip_prefix('<').and_then(|r| r.find('>').map(|end| end + 2)) {
+            // A tag: replaced by a space, so <li>a</li><li>b</li> doesn't glue.
+            out.push(' ');
+            rest = &rest[tag..];
+        } else if let Some(link) = rest.strip_prefix('[').and_then(|r| {
+            let close = r.find("](")?;
+            let end = r[close..].find(')')? + close;
+            Some((&r[..close], end + 2))
+        }) {
+            out.push_str(link.0);
+            rest = &rest[link.1..];
+        } else {
+            let c = rest.chars().next().unwrap();
+            if !matches!(c, '*' | '`' | '~') {
+                out.push(c);
+            }
+            rest = &rest[c.len_utf8()..];
+        }
+    }
+    let line = out.split_whitespace().collect::<Vec<_>>().join(" ");
+    if line.chars().count() > 80 { format!("{}…", line.chars().take(79).collect::<String>()) } else { line }
+}
+
+/// What a note on an MR says happened, as one line. A comment gives its first
+/// words; a system note says it itself ("approved this merge request", "changed
+/// title from A to B"), and commits pushed read as their messages, not hashes.
+fn gitlab_note_text(note: &Value) -> Option<String> {
+    let body = s(note, "body");
+    if body.trim().is_empty() {
+        return None;
+    }
+    if !note["system"].as_bool().unwrap_or(false) {
+        return Some(format!("Comment: “{}”", gitlab_plain(&body)));
+    }
+    // "added 2 commits\n\n<ul><li>abc1234 - Fix login</li>…</ul>\n\n[Compare…](…)"
+    if body.starts_with("added ") && body.contains("<li>") {
+        let head = body.lines().next().unwrap_or("");
+        let messages: Vec<String> = body
+            .split("<li>")
+            .skip(1)
+            .filter_map(|li| li.split("</li>").next())
+            .map(|li| gitlab_plain(li.split_once(" - ").map(|(_, m)| m).unwrap_or(li)))
+            .filter(|m| !m.is_empty())
+            .collect();
+        let more = if messages.len() > 3 { ", …" } else { "" };
+        let shown = messages.iter().take(3).cloned().collect::<Vec<_>>().join(", ");
+        return Some(gitlab_plain(&format!("{head}: {shown}{more}")));
+    }
+    Some(gitlab_plain(body.lines().next().unwrap_or("")))
+}
+
+/// A failed pipeline's failed jobs, as the lines under its news: "test: unit
+/// failed". The stage is left out when the job is named after it.
+fn gitlab_failed_jobs(jobs: &[Value]) -> Vec<Value> {
+    jobs.iter()
+        .filter(|j| s(j, "status") == "failed" || s(j, "status").is_empty())
+        .map(|j| {
+            let (name, stage) = (s(j, "name"), s(j, "stage"));
+            let text = if stage.is_empty() || stage == name { format!("{name} failed") } else { format!("{stage}: {name} failed") };
+            json!({ "text": text, "by": "" })
+        })
+        .take(GITLAB_CHANGES_KEEP)
+        .collect()
+}
+
 /// The involved MRs updated since the last poll: their discussion says what
 /// happened. An MR seen for the first time is not one — its to-do tells it —
 /// and nothing is before the first answer.
@@ -1018,7 +1092,13 @@ fn gitlab_fresh(
             }
             let verb = if ok { "Pipeline passed" } else { "Pipeline failed" };
             let label = format!("{verb}: {project} · {}", p["ref"].as_str().unwrap_or(""));
-            fresh.push(news(label, p["url"].as_str().unwrap_or("").to_string(), ok, None, None));
+            let mut item = news(label, p["url"].as_str().unwrap_or("").to_string(), ok, None, None);
+            // Which jobs failed is asked for afterwards (`poll_gitlab`): this
+            // says which pipeline to ask about.
+            if !ok {
+                item["pipeline"] = json!({ "id": id, "projectId": p["projectId"] });
+            }
+            fresh.push(item);
         }
     }
     if projects_answer.is_some() {
@@ -1045,7 +1125,15 @@ fn gitlab_fresh(
         let mr = (s(t, "target_type") == "MergeRequest").then(|| target.get("id").and_then(Value::as_i64)).flatten();
         let is_new = memory.todo_max.is_some_and(|seen| id > seen);
         if is_new && !(action == "build_failed" && failed_projects.contains(&project)) {
-            fresh.push(news(format!("{kind}: {title}"), url.clone(), ok, Some(id), mr));
+            let mut item = news(format!("{kind}: {title}"), url.clone(), ok, Some(id), mr);
+            // A mention or a review carries what was written; an assignment's
+            // body is only the title again.
+            let body = gitlab_plain(&s(t, "body"));
+            if !body.is_empty() && body != gitlab_plain(&title) {
+                let by = t.get("author").map(|a| s(a, "name")).unwrap_or_default();
+                item["changes"] = json!([{ "text": format!("“{body}”"), "by": by }]);
+            }
+            fresh.push(item);
         }
         todo_items.push(json!({
             "id": id,
@@ -1116,7 +1204,18 @@ fn gitlab_fresh(
             let verb = if commented { "Comment by" } else { "Updated by" };
             let title = mr["title"].as_str().unwrap_or("");
             let url = mr["url"].as_str().unwrap_or("").to_string();
-            fresh.push(news(format!("{verb} {name}: {title}"), url, true, None, Some(id)));
+            // What they did, oldest first (the notes come newest first).
+            let mut changes: Vec<Value> = Vec::new();
+            for n in others.iter().rev() {
+                let Some(text) = gitlab_note_text(n) else { continue };
+                if changes.len() < GITLAB_CHANGES_KEEP && !changes.iter().any(|c| c["text"] == text.as_str()) {
+                    let by = n.get("author").map(|a| s(a, "name")).unwrap_or_default();
+                    changes.push(json!({ "text": text, "by": by }));
+                }
+            }
+            let mut item = news(format!("{verb} {name}: {title}"), url, true, None, Some(id));
+            item["changes"] = json!(changes);
+            fresh.push(item);
         }
         // An updated MR whose discussion wasn't read this time (more than
         // GITLAB_ACTIVITY_CHECKS changed, or the request failed) keeps its old
@@ -1250,6 +1349,7 @@ async fn poll_gitlab(app: AppHandle) {
         };
         pipelines.push(json!({
             "id": p.get("id").and_then(Value::as_i64).unwrap_or(0),
+            "projectId": pid,
             "project": name,
             "ref": s(&p, "ref"),
             "status": s(&p, "status"),
@@ -1260,19 +1360,37 @@ async fn poll_gitlab(app: AppHandle) {
     // ISO-8601 in UTC sorts as text.
     pipelines.sort_by(|a, b| b["updatedAt"].as_str().cmp(&a["updatedAt"].as_str()));
 
-    let mut memory = GITLAB.lock().unwrap();
-    let (fresh, todo_items) = gitlab_fresh(
-        &mut memory, &projects_answer, &pipelines, &todos_answer, &authored_answer, &approvers,
-        &involved_answer, &activity, &username,
-    );
+    // In a block of its own: the lock must be gone before the requests below.
+    let (mut fresh, todo_items) = {
+        let mut memory = GITLAB.lock().unwrap();
+        gitlab_fresh(
+            &mut memory, &projects_answer, &pipelines, &todos_answer, &authored_answer, &approvers,
+            &involved_answer, &activity, &username,
+        )
+    };
+
+    // Which jobs failed, for each pipeline failure in the news: one request
+    // each, only then. Without it the news still goes out, just without them.
+    for item in &mut fresh {
+        let (Some(pipeline), Some(project)) = (item["pipeline"]["id"].as_i64(), item["pipeline"]["projectId"].as_i64())
+        else {
+            continue;
+        };
+        if let Some(jobs) = list(format!("projects/{project}/pipelines/{pipeline}/jobs?scope=failed&per_page=20")).await {
+            item["changes"] = json!(gitlab_failed_jobs(&jobs));
+        }
+    }
 
     // News for the card: the fresh items first, then what is still recent.
-    let cutoff = now_ms() as i64 - GITLAB_NEWS_FOR_MS;
-    let mut kept: Vec<Value> = fresh.clone();
-    kept.extend(memory.news.iter().filter(|n| n["at"].as_i64().unwrap_or(0) >= cutoff).cloned());
-    kept.truncate(GITLAB_NEWS_KEEP);
-    memory.news = kept.clone();
-    drop(memory);
+    let kept = {
+        let mut memory = GITLAB.lock().unwrap();
+        let cutoff = now_ms() as i64 - GITLAB_NEWS_FOR_MS;
+        let mut kept: Vec<Value> = fresh.clone();
+        kept.extend(memory.news.iter().filter(|n| n["at"].as_i64().unwrap_or(0) >= cutoff).cloned());
+        kept.truncate(GITLAB_NEWS_KEEP);
+        memory.news = kept.clone();
+        kept
+    };
 
     // One notification for the lot: the label says it, the detail lists it.
     let event = (!fresh.is_empty()).then(|| {
@@ -1604,5 +1722,77 @@ mod gitlab_tests {
         let more = Some((1..=6).map(|i| todo(i, "mentioned", "x")).collect::<Vec<_>>());
         let (fresh, _) = without_involved(&mut m, &None, &[], &more, &None, &none);
         assert_eq!(labels(&fresh), vec!["Mentioned: MR 6".to_string()]);
+    }
+
+    fn texts(item: &Value) -> Vec<String> {
+        item["changes"].as_array().unwrap().iter().map(|c| c["text"].as_str().unwrap().to_string()).collect()
+    }
+
+    #[test]
+    fn notes_read_as_what_was_done() {
+        let note = |body: &str, system: bool| json!({ "body": body, "system": system });
+        let text = |n: Value| gitlab_note_text(&n).unwrap();
+        assert_eq!(text(note("Looks **good**, see [the doc](https://x/y).\n\nThanks!", false)),
+            "Comment: “Looks good, see the doc. Thanks!”");
+        assert_eq!(text(note("approved this merge request", true)), "approved this merge request");
+        assert_eq!(text(note("changed title from **Fix login** to **Fix the login loop**", true)),
+            "changed title from Fix login to Fix the login loop");
+        let commits = "added 2 commits\n\n<ul><li>3f2a1b9c - Fix the redirect</li><li>9c8b7a6d - Update the tests</li></ul>\n\n[Compare with previous version](/g/p/-/merge_requests/3/diffs?diff_id=1)";
+        assert_eq!(text(note(commits, true)), "added 2 commits: Fix the redirect, Update the tests");
+        assert!(gitlab_note_text(&note("  ", false)).is_none());
+    }
+
+    #[test]
+    fn an_updated_mr_lists_what_others_did_oldest_first() {
+        let mut m = GitlabMemory::default();
+        let none = std::collections::HashMap::new();
+        let at = |t: &str| format!("2026-10-07T{t}:00Z");
+        let note = |by: &str, at: &str, body: &str, system: bool| {
+            json!({ "author": { "username": by, "name": by.to_uppercase() }, "created_at": at, "body": body, "system": system })
+        };
+        let first = gitlab_involved(&[], &[], &[open_mr(1, "Login", &at("10:00"))]);
+        gitlab_fresh(&mut m, &None, &[], &None, &None, &none, &Some(first), &Default::default(), "me");
+        let later = gitlab_involved(&[], &[], &[open_mr(1, "Login", &at("10:05"))]);
+        let activity = [(1, vec![
+            note("bob", &at("10:05"), "Ship it", false),
+            note("me", &at("10:04"), "Done", false),
+            note("ada", &at("10:03"), "approved this merge request", true),
+            note("ada", &at("10:02"), "approved this merge request", true),
+        ])].into();
+        let (fresh, _) = gitlab_fresh(&mut m, &None, &[], &None, &None, &none, &Some(later), &activity, "me");
+        assert_eq!(texts(&fresh[0]), vec!["approved this merge request", "Comment: “Ship it”"],
+            "oldest first, told once, the user's own comment left out");
+        assert_eq!(fresh[0]["changes"][1]["by"], "BOB");
+    }
+
+    #[test]
+    fn a_mention_carries_what_was_written() {
+        let mut m = GitlabMemory::default();
+        let none = Default::default();
+        let with_body = |id: i64, action: &str, body: &str| {
+            let mut t = todo(id, action, "web");
+            t["body"] = json!(body);
+            t["author"] = json!({ "name": "Ada" });
+            t
+        };
+        without_involved(&mut m, &None, &[], &Some(vec![]), &None, &none);
+        let (fresh, _) = without_involved(&mut m, &None, &[], &Some(vec![
+            with_body(1, "mentioned", "@me could you look at the **cache** part?"),
+            with_body(2, "assigned", "MR 2"),
+        ]), &None, &none);
+        assert_eq!(texts(&fresh[0]), vec!["“@me could you look at the cache part?”"]);
+        assert!(fresh[1].get("changes").is_none(), "an assignment's body is the title again");
+    }
+
+    #[test]
+    fn a_failed_pipeline_names_its_failed_jobs() {
+        let jobs = vec![
+            json!({ "name": "unit", "stage": "test", "status": "failed" }),
+            json!({ "name": "lint", "stage": "lint", "status": "failed" }),
+        ];
+        let lines: Vec<String> = gitlab_failed_jobs(&jobs).iter().map(|l| l["text"].as_str().unwrap().to_string()).collect();
+        assert_eq!(lines, vec!["test: unit failed", "lint failed"]);
+        let long = format!("<p>{}</p>", "word ".repeat(30));
+        assert_eq!(gitlab_plain(&long).chars().count(), 80);
     }
 }
