@@ -710,8 +710,14 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title news-title" });
   const more = h("div", { class: "news-more" });
   let url = "";
+  // Only news that carries what changed has details to unfold.
+  const details = btn(tl("Details"), "secondary", () => {
+    detailsFor = "integration_gitlab";
+    actions.setView("news-details");
+  });
   const row = h("div", { class: "actions" },
     btn(tl("Open"), "primary", () => actions.openUrl(url)),
+    details,
     btn(tl("OK"), "secondary", () => actions.collapse()),
   );
   const box = card("green", stack(116, 16, who, title, more, row));
@@ -719,12 +725,10 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
-      const info = State.integrations.integration_gitlab;
-      const fresh = (Array.isArray(info?.data?.fresh) ? info.data.fresh : []) as {
-        label?: string; url?: string; success?: boolean;
-      }[];
+      const fresh = freshNews("integration_gitlab");
       const bad = fresh.some((n) => n.success === false);
       box.style.setProperty("--wash", washRGBA(bad ? "red" : "green"));
+      details.style.display = fresh.some((n) => (n.changes?.length ?? 0) > 0) ? "" : "none";
       const task = State.tasks.find((t) => t.id === "integration_gitlab") ?? null;
       clear(who);
       who.append(agentWho(task, fresh.length > 1 ? `${fresh.length} updates` : "GitLab update"));
@@ -734,6 +738,71 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
       // A 160 px card holds the title and one more line; "N updates" above
       // already says how many there are, and the card on the pill lists them.
       if (fresh[1]) more.append(h("div", { text: fresh[1].label ?? "" }));
+    },
+  };
+}
+
+interface NewsItem {
+  label?: string;
+  url?: string;
+  success?: boolean;
+  /** What changed behind the news, when the integration says. */
+  changes?: { text?: string; by?: string }[];
+}
+
+/** An integration's news from its last poll: what its notification is about. */
+function freshNews(id: string): NewsItem[] {
+  const fresh = State.integrations[id]?.data?.fresh;
+  return Array.isArray(fresh) ? (fresh as NewsItem[]) : [];
+}
+
+/** Whose news the details card shows: the card that opened it. */
+let detailsFor = "";
+
+/** The integration whose unfolded news is on screen, for Mochi's colour. */
+export const newsDetailsFor = () => detailsFor;
+
+/**
+ * The news card unfolded, taller: every piece of news, and under each what
+ * changed — what someone said or did on an MR, the jobs a pipeline failed on.
+ * A title opens its page; Back returns to the card.
+ */
+function buildNewsDetails(actions: ViewActions): ViewHost {
+  const who = h("div");
+  const list = h("div", { class: "news-details" });
+  const row = h("div", { class: "actions" },
+    btn(tl("Back"), "secondary", () => actions.setView("gitlab")),
+    btn(tl("OK"), "primary", () => actions.collapse()),
+  );
+  const box = card("green", stack(116, 16, who, list, row));
+  let drawn = "";
+  return {
+    el: h("div", { class: "view" }, box),
+    sync() {
+      const fresh = freshNews(detailsFor);
+      // Rebuilt only when the news changes, so a scrolled list stays put.
+      const key = detailsFor + JSON.stringify(fresh);
+      if (key === drawn) return;
+      drawn = key;
+      const task = State.tasks.find((t) => t.id === detailsFor) ?? null;
+      clear(who);
+      who.append(agentWho(task, fresh.length === 1 ? "1 update" : `${fresh.length} updates`));
+      clear(list);
+      for (const n of fresh) {
+        list.append(h("div", { class: "news-item" },
+          h("button", {
+            class: "news-item-title",
+            title: t("Open"),
+            text: n.label ?? "",
+            onclick: () => actions.openUrl(n.url ?? ""),
+          }),
+          ...(n.changes ?? []).map((c) => h("div", {
+            class: "news-change",
+            title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
+            text: c.text ?? "",
+          })),
+        ));
+      }
     },
   };
 }
@@ -853,6 +922,7 @@ export function buildViews(
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("gitlab", buildGitlabNews(actions));
+  map.set("news-details", buildNewsDetails(actions));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
