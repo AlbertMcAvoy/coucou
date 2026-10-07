@@ -290,15 +290,32 @@ function buildEmpty(actions: ViewActions): ViewHost {
 
 // ── Approval ──────────────────────────────────────────────────────────────────
 
+/** How long a fresh permission card ignores clicks on its buttons. */
+const CLICK_GUARD_MS = 600;
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
   const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
   let rowKey = "";
+  // The card pops up under a cursor that was busy with something else: a click
+  // meant for the window underneath must not land on Allow. Clicks in the first
+  // moments after a new request appears are ignored.
+  let shownFor: string | null = null;
+  let shownAt = 0;
+  const guarded = (d: "allow" | "deny") => () => {
+    if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+    actions.decide(d);
+  };
   return {
     el,
     sync() {
+      const req = State.pendingApproval?.requestId ?? null;
+      if (req !== shownFor) {
+        shownFor = req;
+        shownAt = performance.now();
+      }
       clear(who);
       who.append(agentWho(State.focusTask, "needs permission"));
       // The whole point of approving here rather than in the terminal: this line
@@ -312,8 +329,8 @@ function buildApproval(actions: ViewActions): ViewHost {
       rowKey = "built";
       clear(row);
       row.append(
-        btn("Deny", "secondary", () => actions.decide("deny"), "N"),
-        btn("Allow", "primary", () => actions.decide("allow"), "Y"),
+        btn("Deny", "secondary", guarded("deny"), "N"),
+        btn("Allow", "primary", guarded("allow"), "Y"),
       );
     },
   };

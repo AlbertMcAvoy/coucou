@@ -50,6 +50,9 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
 
+  /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
+  listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
+
   openUrl: (url: string) => call<void>("open_url", { url }),
 
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */

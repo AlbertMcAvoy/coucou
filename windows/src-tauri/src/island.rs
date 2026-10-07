@@ -114,9 +114,51 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
-/// The display the island lives on: the primary one, or the one under the cursor.
+/// A display's logical origin, the key `at:<x>,<y>` preferences are matched on.
+/// Names are no good for that: two monitors of the same model share one.
+fn logical_origin(m: &Monitor) -> (i32, i32) {
+    let scale = m.scale_factor();
+    let p = m.position();
+    ((p.x as f64 / scale).round() as i32, (p.y as f64 / scale).round() as i32)
+}
+
+/// One entry of the "Island lives on" list in Settings.
+#[derive(Serialize, Clone)]
+pub struct MonitorChoice {
+    pub key: String,
+    pub label: String,
+}
+
+pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
+    let Ok(monitors) = app.available_monitors() else { return Vec::new() };
+    monitors
+        .iter()
+        .map(|m| {
+            let (x, y) = logical_origin(m);
+            let scale = m.scale_factor();
+            let s = m.size();
+            let w = (s.width as f64 / scale).round();
+            let h = (s.height as f64 / scale).round();
+            let name = m.name().cloned().unwrap_or_else(|| "Display".into());
+            MonitorChoice { key: format!("at:{x},{y}"), label: format!("{name} — {w}×{h} at {x},{y}") }
+        })
+        .collect()
+}
+
+/// The display the island lives on: a chosen one, the primary one, or the one
+/// under the cursor.
 fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
+    if let Some((x, y)) = pref
+        .strip_prefix("at:")
+        .and_then(|r| r.split_once(','))
+        .and_then(|(x, y)| Some((x.trim().parse::<i32>().ok()?, y.trim().parse::<i32>().ok()?)))
+    {
+        // Unplugged or rearranged since: fall back to the primary display.
+        if let Some(m) = monitors.iter().find(|m| logical_origin(m) == (x, y)) {
+            return Some(m.clone());
+        }
+    }
     if pref == "cursor" {
         if let Some((cx, cy)) = cursor_physical() {
             if let Some(m) = monitors.iter().find(|m| monitor_contains(m, cx, cy)) {
@@ -172,6 +214,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    let (lx, ly) = logical_origin(&m);
+    platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);

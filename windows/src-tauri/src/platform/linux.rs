@@ -200,6 +200,7 @@ mod layer {
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
+        pub fn gtk_layer_set_monitor(window: *mut GtkWindow, monitor: *mut gtk::gdk::ffi::GdkMonitor);
     }
 }
 
@@ -366,6 +367,30 @@ fn start_pointer_watch() {
         }
         gtk::glib::ControlFlow::Continue
     });
+}
+
+/// Puts the layer surface on the display whose logical origin is (`x`, `y`).
+///
+/// A layer surface ignores `set_position`: without an explicit output the
+/// compositor maps it on whichever display has focus at that moment, so on a
+/// multi-monitor Hyprland or Sway desktop the island wandered from one screen
+/// to the other every time it was remapped. A no-op for a regular window, which
+/// `set_position` already places.
+pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed) {
+        return;
+    }
+    let Ok(gw) = win.gtk_window() else { return };
+    let display = gw.display();
+    let monitor = (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| {
+            let g = m.geometry();
+            g.x() == x && g.y() == y
+        });
+    let Some(monitor) = monitor else { return };
+    let mon_ptr: *mut gtk::gdk::ffi::GdkMonitor = monitor.to_glib_none().0;
+    unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
 /// Temporarily allow keyboard focus so a text field inside the island can be

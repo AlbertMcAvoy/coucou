@@ -127,6 +127,12 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     island::apply_geometry(&app, &pref, collapsed);
 }
 
+/// The displays the island can be pinned to, for Settings.
+#[tauri::command]
+fn list_monitors(app: AppHandle) -> Vec<island::MonitorChoice> {
+    island::monitor_choices(&app)
+}
+
 #[tauri::command]
 fn open_url(url: String) {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
@@ -386,6 +392,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            list_monitors,
             open_url,
             open_in_vscode,
             quit_app,
