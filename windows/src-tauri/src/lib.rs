@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod desktop;
 mod files;
 mod hooks;
 mod integrations;
@@ -65,9 +66,13 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
-        *current = settings.clone();
+        // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
+        let mut settings = settings.clone();
+        settings.desktop_mochi = current.desktop_mochi.clone();
+        *current = settings;
         (screen_changed, autostart_changed)
     };
+    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
@@ -301,7 +306,7 @@ fn log_line(message: String) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.
@@ -403,12 +408,24 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            desktop::desktop_mochi_info,
+            desktop::desktop_mochi_pick_up,
+            desktop::desktop_mochi_carry,
+            desktop::desktop_mochi_carry_end,
+            desktop::desktop_mochi_drag_begin,
+            desktop::desktop_mochi_drag_move,
+            desktop::desktop_mochi_drag_end,
+            desktop::desktop_mochi_fly_out,
+            desktop::desktop_mochi_fly_home,
+            desktop::desktop_mochi_set_asleep,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
+            // Same rule for Mochi's desktop window.
+            desktop::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);

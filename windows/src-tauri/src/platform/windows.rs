@@ -233,3 +233,31 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
+
+// ── Desktop Mochi window ──────────────────────────────────────────────────────
+
+/// Windows places a window wherever it is asked, and the cursor poll is there.
+pub fn desktop_mode() -> super::DesktopMode {
+    super::DesktopMode::Poll
+}
+
+/// Same window styles as the island: never takes focus, never in Alt-Tab (it
+/// is created without a taskbar button).
+pub fn prepare_desktop_window(win: &WebviewWindow, _mode: super::DesktopMode) -> bool {
+    make_non_activating(win);
+    true
+}
+
+/// The cursor poll toggles WS_EX_TRANSPARENT from the body hit test instead.
+pub fn set_desktop_shape(_win: &WebviewWindow, _shape: super::MouseShape) {}
+
+/// Layer-shell only (Linux).
+pub fn set_layer_margins(_win: &WebviewWindow, _x: f64, _y: f64) {}
+
+/// Layer-shell only (Linux).
+pub fn set_layer_overlay(_win: &WebviewWindow, _on: bool) {}
+
+/// Layer-shell only (Linux): the logical size of the display the island is on.
+pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<(f64, f64)> {
+    None
+}

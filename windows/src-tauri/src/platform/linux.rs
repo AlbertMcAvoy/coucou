@@ -167,8 +167,12 @@ mod layer {
     use gtk::ffi::GtkWindow;
     use std::os::raw::{c_char, c_int};
 
+    pub const LAYER_TOP: c_int = 2;
     pub const LAYER_OVERLAY: c_int = 3;
+    pub const EDGE_LEFT: c_int = 0;
+    pub const EDGE_RIGHT: c_int = 1;
     pub const EDGE_TOP: c_int = 2;
+    pub const EDGE_BOTTOM: c_int = 3;
     pub const KEYBOARD_NONE: c_int = 0;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
 
@@ -179,9 +183,16 @@ mod layer {
         pub fn gtk_layer_set_namespace(window: *mut GtkWindow, name_space: *const c_char);
         pub fn gtk_layer_set_layer(window: *mut GtkWindow, layer: c_int);
         pub fn gtk_layer_set_anchor(window: *mut GtkWindow, edge: c_int, anchor: c_int);
+        pub fn gtk_layer_set_margin(window: *mut GtkWindow, edge: c_int, margin: c_int);
+        pub fn gtk_layer_set_monitor(window: *mut GtkWindow, monitor: *mut gtk::gdk::ffi::GdkMonitor);
         pub fn gtk_layer_set_exclusive_zone(window: *mut GtkWindow, zone: c_int);
         pub fn gtk_layer_set_keyboard_mode(window: *mut GtkWindow, mode: c_int);
     }
+}
+
+/// COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
+fn layer_shell_wanted() -> bool {
+    std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true)
 }
 
 /// True once the island window is a layer-shell surface.
@@ -210,8 +221,7 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 /// up to the window manager.
 pub fn make_non_activating(win: &WebviewWindow) {
     let Ok(gw) = win.gtk_window() else { return };
-    // COUCOU_LAYER_SHELL=0 is the way out on a compositor where it misbehaves.
-    let wanted = std::env::var("COUCOU_LAYER_SHELL").map(|v| v != "0").unwrap_or(true);
+    let wanted = layer_shell_wanted();
     let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
     if !wanted || !supported || gw.is_realized() {
         let why = if !wanted {
@@ -298,6 +308,174 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
             gdk_window.input_shape_combine_region(&region, 0, 0);
         }
     }
+}
+
+// ── Desktop Mochi window ──────────────────────────────────────────────────────
+//
+// Where the window may go decides everything here:
+//   * X11 places any window where it is asked: an ordinary always-on-top
+//     window, moved with set_position;
+//   * a layer-shell compositor won't move a toplevel, but anchors a layer
+//     surface wherever its margins say, on the island's display;
+//   * GNOME on Wayland has neither, so the feature is off there.
+// In every case the input region is Mochi's body, so clicks anywhere else go
+// to the desktop underneath without any cursor polling.
+
+/// Which of the three applies. Must run on the GTK main thread.
+pub fn desktop_mode() -> super::DesktopMode {
+    use gtk::glib::prelude::ObjectExt;
+    let wayland = gtk::gdk::Display::default()
+        .map(|d| d.type_().name().contains("Wayland"))
+        .unwrap_or(false);
+    let layer = layer_shell_wanted() && unsafe { layer::gtk_layer_is_supported() } != 0;
+    if layer {
+        super::DesktopMode::Layer
+    } else if !wayland {
+        super::DesktopMode::Window
+    } else {
+        super::DesktopMode::Off
+    }
+}
+
+/// The input shape last asked for the desktop Mochi, re-applied on every map.
+static MOCHI_SHAPE: Mutex<super::MouseShape> = Mutex::new(super::MouseShape::Empty);
+
+/// Sets the window up for `mode` before it is ever shown. False means it can't
+/// be used (a layer surface can't be made from a window already shown).
+pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
+    let Ok(gw) = win.gtk_window() else { return false };
+    gw.set_accept_focus(false);
+    match mode {
+        super::DesktopMode::Layer => {
+            if gw.is_realized() {
+                crate::log::line("desktop Mochi: window already shown, no layer surface");
+                return false;
+            }
+            gw.set_titlebar(None::<&gtk::Widget>);
+            let ptr = gtk_window_ptr(&gw);
+            unsafe {
+                layer::gtk_layer_init_for_window(ptr);
+                layer::gtk_layer_set_namespace(ptr, c"coucou-mochi".as_ptr());
+                // Above windows, below fullscreen video — like a floating panel.
+                layer::gtk_layer_set_layer(ptr, layer::LAYER_TOP);
+                layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
+                layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, 1);
+                // -1: margins count from the display's corner, panels or not,
+                // the same origin the island uses.
+                layer::gtk_layer_set_exclusive_zone(ptr, -1);
+                layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+            }
+            // Same first-frame problem as the island (see make_non_activating).
+            let remapped = std::cell::Cell::new(false);
+            gw.connect_map_event(move |w, _| {
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                if !remapped.replace(true) {
+                    let w = w.clone();
+                    gtk::glib::idle_add_local_once(move || {
+                        w.hide();
+                        w.show_all();
+                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock().unwrap());
+                    });
+                }
+                gtk::glib::Propagation::Proceed
+            });
+            true
+        }
+        super::DesktopMode::Window => {
+            gw.connect_map_event(|w, _| {
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                gtk::glib::Propagation::Proceed
+            });
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Which part of the desktop Mochi takes the mouse. Main thread.
+pub fn set_desktop_shape(win: &WebviewWindow, shape: super::MouseShape) {
+    *MOCHI_SHAPE.lock().unwrap() = shape;
+    let Ok(gw) = win.gtk_window() else { return };
+    apply_mouse_shape(&gw, shape);
+}
+
+fn apply_mouse_shape(gw: &impl IsA<gtk::Widget>, shape: super::MouseShape) {
+    use gtk::cairo::{RectangleInt, Region};
+    if shape == super::MouseShape::Whole {
+        gw.input_shape_combine_region(None);
+        return;
+    }
+    let Some(gdk_window) = gw.window() else { return };
+    match shape {
+        super::MouseShape::Whole => {}
+        super::MouseShape::Empty => {
+            let region = Region::create_rectangle(&RectangleInt::new(0, 0, 0, 0));
+            gdk_window.input_shape_combine_region(&region, 0, 0);
+        }
+        super::MouseShape::Disc { cx, cy, r } => {
+            // A region is made of rectangles: stack 2 px rows into a disc.
+            let region = Region::create_rectangle(&RectangleInt::new(0, 0, 0, 0));
+            let mut y = (cy - r).floor();
+            while y < cy + r {
+                let mid = y + 1.0 - cy;
+                let half = (r * r - mid * mid).max(0.0).sqrt();
+                let row = RectangleInt::new(
+                    (cx - half).floor() as i32,
+                    y as i32,
+                    (2.0 * half).ceil() as i32,
+                    2,
+                );
+                let _ = region.union_rectangle(&row);
+                y += 2.0;
+            }
+            gdk_window.input_shape_combine_region(&region, 0, 0);
+        }
+    }
+}
+
+/// Layer surface only: puts the top-left corner at (x, y), logical pixels from
+/// the display's corner. Main thread.
+pub fn set_layer_margins(win: &WebviewWindow, x: f64, y: f64) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let ptr = gtk_window_ptr(&gw);
+    unsafe {
+        layer::gtk_layer_set_margin(ptr, layer::EDGE_LEFT, x.round() as i32);
+        layer::gtk_layer_set_margin(ptr, layer::EDGE_TOP, y.round() as i32);
+    }
+}
+
+/// Layer surface only: `on` stretches it over the whole display — how a drag
+/// gets exact pointer positions on Wayland, where a surface that moves under
+/// the pointer can't tell where it is — and `off` folds it back to Mochi's
+/// size in the corner. Main thread.
+pub fn set_layer_overlay(win: &WebviewWindow, on: bool) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let ptr = gtk_window_ptr(&gw);
+    unsafe {
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_RIGHT, on as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_BOTTOM, on as i32);
+        if on {
+            layer::gtk_layer_set_margin(ptr, layer::EDGE_LEFT, 0);
+            layer::gtk_layer_set_margin(ptr, layer::EDGE_TOP, 0);
+        }
+    }
+}
+
+/// Layer surface only: puts the desktop Mochi on the island's display and
+/// returns that display's logical size. Main thread.
+pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f64, f64)> {
+    let island_gw = island.gtk_window().ok()?;
+    let display = gtk::gdk::Display::default()?;
+    let monitor = island_gw
+        .window()
+        .and_then(|w| display.monitor_at_window(&w))
+        .or_else(|| display.primary_monitor())
+        .or_else(|| display.monitor(0))?;
+    if let Ok(gw) = mochi.gtk_window() {
+        unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), monitor.to_glib_none().0) };
+    }
+    let g = monitor.geometry();
+    Some((g.width() as f64, g.height() as f64))
 }
 
 #[cfg(test)]
