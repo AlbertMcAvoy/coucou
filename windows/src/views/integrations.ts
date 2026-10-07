@@ -8,6 +8,8 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
+import { readActivity, readPulse, readStats } from "../core/github";
+import { githubDetail, githubPulseCard } from "./github";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -391,7 +393,7 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_resend":
       return arr(id, "emails").length > 0;
     case "integration_github":
-      return get(id).totalRepos != null;
+      return get(id).totalRepos != null || readPulse(get(id)) != null;
     case "integration_stripe":
       return info.loaded;
     case "integration_notion":
@@ -414,6 +416,17 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     return hooks.detailOpen ? vercelDetail(hooks.closeDetail) : vercelCard(hooks.openDetail);
   }
   if (!hasIntegrationData(task.id)) return idleCard(task, hooks.openSettings);
+
+  // With the pulse in, GitHub gets the Mac's richer card and its lists.
+  if (task.id === "integration_github") {
+    const d = get(task.id);
+    const pulse = readPulse(d);
+    if (pulse) {
+      return hooks.detailOpen
+        ? githubDetail(pulse, readStats(d), readActivity(d), hooks.closeDetail)
+        : githubPulseCard(pulse, readStats(d), readActivity(d), hooks.openDetail);
+    }
+  }
 
   switch (task.id) {
     case "integration_resend":
