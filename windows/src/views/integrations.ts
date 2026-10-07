@@ -319,17 +319,21 @@ function linkRow(accent: string, highlight: boolean, url: unknown, tip: string, 
 /** The news unfolded on a card, kept while the card is rebuilt. */
 const unfolded = new Set<string>();
 
+/** News stays highlighted this long; older news stays listed, plain. */
+const NEWS_HIGHLIGHT_MS = 30 * 60 * 1000;
+
 /**
- * One piece of news, highlighted in `accent`. With what changed attached, a
- * click unfolds those changes under it and the ↗ opens its page; without, a
- * click opens it.
+ * One piece of news, highlighted in `accent` while it is recent. With what
+ * changed attached, a click unfolds those changes under it and the ↗ opens its
+ * page; without, a click opens it.
  */
 function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
   const label = String(n.label ?? "");
+  const recent = Date.now() - Number(n.at ?? 0) < NEWS_HIGHLIGHT_MS;
   const url = typeof n.url === "string" ? n.url : "";
   const changes = Array.isArray(n.changes) ? (n.changes as { text?: string; by?: string }[]) : [];
   if (changes.length === 0) {
-    return [linkRow(accent, true, url, label,
+    return [linkRow(accent, recent, url, label,
       h("span", { class: "int-name", text: label }),
       h("span", { class: "int-ago", text: timeAgo(n.at) }),
     )];
@@ -344,7 +348,7 @@ function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
       if (url) void Bridge.openUrl(url);
     },
   }, svg(ICONS.arrowUpRight, 8));
-  const row = listRow(accent, true,
+  const row = listRow(accent, recent,
     h("span", { class: "int-chevron" }, svg(ICONS.chevronRight, 7, { stroke: 2.6 })),
     h("span", { class: "int-name", text: label }),
     h("span", { class: "int-ago", text: timeAgo(n.at) }),
@@ -374,8 +378,8 @@ function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
 
 /**
  * Five rows on screen and the rest a scroll away, most important first: the
- * news of the last half hour (highlighted), then the pending to-dos not already
- * told, then the open MRs the user is involved in.
+ * last ten pieces of news (highlighted for half an hour), then the pending
+ * to-dos not already told, then the open MRs the user is involved in.
  */
 function gitlabCard(): HTMLElement {
   const d = get("integration_gitlab");

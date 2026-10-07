@@ -407,6 +407,8 @@ own window.
   notification's Details, and a click on a piece of news in the pill, unfold
   what happened: the comment or what was done on an MR (commits pushed,
   approval, title changed…), what a mention said, the jobs a pipeline failed on.
+  The pill keeps the last ten pieces of news, details included, through a
+  restart too (in `%LOCALAPPDATA%\Coucou\news-gitlab.json`).
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
