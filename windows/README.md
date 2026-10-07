@@ -43,9 +43,10 @@ installs for the current user only — no admin prompt.
 | Click the small island | It opens |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
+| Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Esc` | Closes the island |
-| Tray icon | Open, Settings…, Pause, Quit |
+| Tray icon | Open, Wardrobe…, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
@@ -107,7 +108,7 @@ Installing is optional — `target/release/coucou.exe` runs on its own. There is
 window in the taskbar and no console: the island at the top of the screen and the
 Mochi in the notification area are the whole app, and Quit lives in its menu.
 
-The 28 sounds are the macOS app's own files; they are never duplicated in this
+The 29 sounds are the macOS app's own files; they are never duplicated in this
 folder. The path is declared once, in `SOUNDS_DIR` at the top of
 `vite.config.ts` — when they move to `shared/sounds/`, change that one line.
 
@@ -163,6 +164,9 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- The wardrobe opens with a right-click on Mochi or from the tray menu; the
+  Mac's keyboard shortcut for it isn't there. In the compact island a tall hat
+  is cut by the top edge of the screen, as it is by the notch on a Mac.
 
 ## Linux
 
