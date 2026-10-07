@@ -14,6 +14,8 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
+  /** "Cancel" on a dropped file: forgets it and goes back home. */
+  cancelDrop(): void;
   collapse(): void;
   setFocus(id: string): void;
   openTerminal(): void;

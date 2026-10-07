@@ -106,6 +106,7 @@ export class Island {
   private build() {
     const actions: ViewActions = {
       setView: (v) => this.setView(v),
+      cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       setFocus: (id) => {
         State.setFocus(id);
@@ -191,7 +192,7 @@ export class Island {
           : null;
         this.setView("prompt");
       },
-      cancel: () => this.setView(State.defaultView()),
+      cancel: () => this.discardDrop(),
     });
 
     this.clipEl = h(
@@ -406,11 +407,14 @@ export class Island {
 
     void Bridge.ingestFile(path)
       .then((file) => {
+        // Cancelled (or replaced by another drop) while the copy was running.
+        if (State.droppedFile?.path !== path) return;
         State.droppedFile = { name: file.name, path: file.path };
         State.promptContext = { kind: "file", name: file.name, path: file.path };
         State.notify();
       })
       .catch((err) => {
+        if (State.droppedFile?.path !== path) return;
         UploadSeq.deactivate();
         State.noteMessage = String(err).replace(/^Error:\s*/, "");
         this.engine.animateMorph(0);
@@ -418,6 +422,13 @@ export class Island {
         Sound.play("error");
         window.setTimeout(() => this.setView(State.defaultView()), 2400);
       });
+  }
+
+  /** "Cancel" on the dropped file: forget it, so the chat does not pick it up. */
+  private discardDrop() {
+    State.droppedFile = null;
+    State.promptContext = null;
+    this.setView(State.defaultView());
   }
 
   /**
@@ -836,8 +847,12 @@ export class Island {
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
 
-    this.contentEl.style.opacity = expanded && !greetingActive ? "1" : "0";
-    this.contentEl.style.pointerEvents = expanded && !greetingActive ? "auto" : "none";
+    const live = expanded && !greetingActive;
+    this.contentEl.style.opacity = live ? "1" : "0";
+    // While the drop sequence owns the body its buttons are painted on the canvas
+    // underneath, so only the header may keep taking clicks up here.
+    this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
+    this.header.el.style.pointerEvents = live ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
     this.header.sync();

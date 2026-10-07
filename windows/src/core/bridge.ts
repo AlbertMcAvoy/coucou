@@ -150,12 +150,70 @@ export interface DragDropPayload {
   paths?: string[];
 }
 
-/** Files dragged onto the island. Only reaches us when the window takes the mouse. */
+interface WebView2Bridge {
+  postMessageWithAdditionalObjects(message: unknown, objects: ArrayLike<unknown>): void;
+}
+
+/**
+ * Files dragged onto the island. Only reaches us when the window takes the mouse.
+ *
+ * On Windows WebView2 takes the drop itself, as in Edge — Tauri's drop handling
+ * never sees drags from the classic Explorer folder view (see
+ * src-tauri/src/webview_drop.rs). Enter/over/leave come straight from the page;
+ * the drop hands the File objects to Rust, which answers with their real paths
+ * as a `file-drag` event. Elsewhere (Linux) Tauri's own drag events still do it.
+ */
 export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   if (!IS_TAURI) return () => {};
-  return getCurrentWebview().onDragDropEvent((event) => {
-    handler(event.payload as DragDropPayload);
-  });
+  const webview = (window as unknown as { chrome?: { webview?: WebView2Bridge } }).chrome?.webview;
+  if (!webview) {
+    return getCurrentWebview().onDragDropEvent((event) => {
+      handler(event.payload as DragDropPayload);
+    });
+  }
+  const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files") ?? false;
+  // dragenter/dragleave fire for every element crossed; only the outermost pair counts.
+  let depth = 0;
+
+  const onEnter = (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    if (depth++ === 0) handler({ type: "enter" });
+  };
+  const onOver = (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    // Without this WebView2 refuses the drop — or navigates to the file.
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    handler({ type: "over" });
+  };
+  const onLeave = (e: DragEvent) => {
+    if (!hasFiles(e) || depth === 0) return;
+    if (--depth === 0) handler({ type: "leave" });
+  };
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    depth = 0;
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) {
+      handler({ type: "drop", paths: [] });
+      return;
+    }
+    webview.postMessageWithAdditionalObjects("coucou-file-drop", files);
+  };
+
+  window.addEventListener("dragenter", onEnter);
+  window.addEventListener("dragover", onOver);
+  window.addEventListener("dragleave", onLeave);
+  window.addEventListener("drop", onDrop);
+  const unlisten = await listen<DragDropPayload>("file-drag", (e) => handler(e.payload));
+  return () => {
+    window.removeEventListener("dragenter", onEnter);
+    window.removeEventListener("dragover", onOver);
+    window.removeEventListener("dragleave", onLeave);
+    window.removeEventListener("drop", onDrop);
+    unlisten();
+  };
 }
 
 export async function onEvent<T>(name: string, handler: (payload: T) => void) {
