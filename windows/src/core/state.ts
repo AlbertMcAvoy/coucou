@@ -2,6 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -92,6 +93,11 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /**
+   * Mochi's outfit: "auto" (dresses for the season), "none" or an outfit id.
+   * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
+   */
+  mochiOutfit: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  mochiOutfit: DEFAULT_OUTFIT,
 };
 
 type Listener = () => void;
@@ -139,6 +146,9 @@ class AppState {
   pendingApproval: ApprovalInfo | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
+
+  /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
+  wardrobePreview: Outfit | null = null;
 
   lastActivity = performance.now();
 

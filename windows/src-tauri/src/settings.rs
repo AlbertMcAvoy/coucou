@@ -23,6 +23,10 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// Mochi's outfit, picked in the wardrobe: "auto" (dresses for the
+    /// season), "none" or an outfit id — the Mac's raw values. The island reads
+    /// anything it doesn't know as "auto", so the value is stored as it comes.
+    pub mochi_outfit: String,
 }
 
 fn default_model() -> String {
@@ -46,6 +50,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            mochi_outfit: "auto".into(),
         }
     }
 }
@@ -306,7 +311,8 @@ mod tests {
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
-  "model": "some-model"
+  "model": "some-model",
+  "mochiOutfit": "witchHat"
 }"#;
 
     fn custom() -> Value {
@@ -394,6 +400,22 @@ mod tests {
         let mut expected = custom();
         expected["model"] = json!(crate::claude::DEFAULT_MODEL);
         assert_eq!(loaded, expected);
+    }
+
+    #[test]
+    fn a_file_from_before_the_wardrobe_dresses_mochi_for_the_seasons() {
+        let loaded = parse(&custom_with("mochiOutfit", None)).unwrap();
+        assert_eq!(loaded.mochi_outfit, "auto");
+        assert_eq!(loaded.model, "some-model");
+        assert!(!loaded.sound_enabled);
+    }
+
+    #[test]
+    fn an_outfit_this_build_does_not_know_is_kept_as_written() {
+        // A newer build may add outfits: the island shows "auto" for it, but
+        // the choice must survive a save made by this one.
+        let loaded = parse(&custom_with("mochiOutfit", Some(json!("topHat")))).unwrap();
+        assert_eq!(loaded.mochi_outfit, "topHat");
     }
 
     #[test]
@@ -632,6 +654,7 @@ mod tests {
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "mochiOutfit",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
