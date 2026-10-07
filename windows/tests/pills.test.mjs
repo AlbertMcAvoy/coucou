@@ -49,6 +49,7 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
   // Pills only Windows and Linux have, after the Mac's.
   const notOnMac = [
     ["integration_gitlab", "GitLab", "#FC6D26", "service", "Integration"],
+    ["integration_youtrack", "YouTrack", "#FF318C", "service", "Integration"],
   ];
   assert.deepEqual(
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
