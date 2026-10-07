@@ -94,16 +94,18 @@ type JsonChange = Box<dyn Fn(&Value) -> Result<Option<Value>, String>>;
 pub enum Agent {
     Gemini,
     Antigravity,
+    Cursor,
 }
 
 impl Agent {
-    pub const ALL: &'static [Agent] = &[Agent::Gemini, Agent::Antigravity];
+    pub const ALL: &'static [Agent] = &[Agent::Gemini, Agent::Antigravity, Agent::Cursor];
 
     /// The `--agent` name; the pill is `agent_<id>` (PillCatalog.swift).
     pub fn id(self) -> &'static str {
         match self {
             Agent::Gemini => "gemini",
             Agent::Antigravity => "antigravity",
+            Agent::Cursor => "cursor",
         }
     }
 
@@ -116,6 +118,7 @@ impl Agent {
         match self {
             Agent::Gemini => vec![home.join(".gemini").join("settings.json")],
             Agent::Antigravity => vec![home.join(".gemini").join("config").join("hooks.json")],
+            Agent::Cursor => vec![home.join(".cursor").join("hooks.json")],
         }
     }
 
@@ -149,6 +152,11 @@ impl Agent {
                 let block = antigravity_block(relay);
                 Box::new(move |v| antigravity_install(v, &block).map(Some))
             }
+            (Agent::Cursor, false) => Box::new(|v| groups_uninstall(v, "cursor").map(Some)),
+            (Agent::Cursor, true) => {
+                let command = relay.command(Shell::Cmd, "--agent cursor");
+                Box::new(move |v| cursor_install(v, &command).map(Some))
+            }
         }
     }
 
@@ -166,6 +174,7 @@ impl Agent {
         match self {
             Agent::Gemini => groups_have_ours(&json(), "gemini"),
             Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
+            Agent::Cursor => groups_have_ours(&json(), "cursor"),
         }
     }
 
@@ -185,6 +194,7 @@ impl Agent {
         match self {
             Agent::Gemini => "Gemini CLI",
             Agent::Antigravity => "Antigravity",
+            Agent::Cursor => "Cursor Agent",
         }
     }
 
@@ -193,6 +203,7 @@ impl Agent {
         match self {
             Agent::Gemini => "Start a new Gemini CLI session to pick the hooks up.",
             Agent::Antigravity => "Start a new Antigravity conversation to pick the hooks up.",
+            Agent::Cursor => "Restart Cursor to pick the hooks up.",
         }
     }
 }
@@ -449,6 +460,31 @@ fn antigravity_uninstall(root: &Value) -> Result<Value, String> {
     Ok(Value::Object(root))
 }
 
+// ── Cursor Agent — ~/.cursor/hooks.json ───────────────────────────────────────
+//
+// `{"version": 1, "hooks": {"<event>": [{"command": …}]}}`, camelCase events
+// (from #231, BeyondBirthday07). The relay maps them, turns a stop with
+// `status: "error"` into StopFailure, and prints nothing back: no permission is
+// ever given on Cursor's behalf. Every session lands on the one `agent_cursor`
+// pill.
+
+const CURSOR_EVENTS: &[&str] = &[
+    "sessionStart",
+    "sessionEnd",
+    "beforeSubmitPrompt",
+    "preToolUse",
+    "postToolUse",
+    "postToolUseFailure",
+    "stop",
+];
+
+fn cursor_install(root: &Value, command: &str) -> Result<Value, String> {
+    let events = CURSOR_EVENTS.iter().map(|e| (e.to_string(), json!({ "command": command })));
+    let mut root = groups_install(root, "cursor", events)?;
+    root.entry("version").or_insert(json!(1));
+    Ok(Value::Object(root))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -613,6 +649,30 @@ mod tests {
         assert_eq!(block["Stop"][0]["command"], format!("{WIN} --agent antigravity Stop"));
         let block = antigravity_block(&windows(WIN_SPACE));
         assert_eq!(block["Stop"][0]["command"], format!("\"{WIN_SPACE}\" --agent antigravity Stop"));
+    }
+
+    #[test]
+    fn cursor_uses_its_native_format_and_keeps_the_users_hooks() {
+        let existing = r#"{"version":1,"hooks":{"afterFileEdit":[{"command":"./format.sh"}],"stop":[{"command":"./notify.sh"}]}}"#;
+        let (home, installed, removed) = round_trip(Agent::Cursor, Some(existing));
+        assert_eq!(installed["version"], 1);
+        for event in CURSOR_EVENTS {
+            let last = installed["hooks"][event].as_array().unwrap().last().unwrap().clone();
+            assert!(last["command"].as_str().unwrap().ends_with("--agent cursor"), "{event}");
+        }
+        assert_eq!(installed["hooks"]["stop"][0]["command"], "./notify.sh");
+        assert_eq!(installed["hooks"]["afterFileEdit"][0]["command"], "./format.sh");
+        assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn a_new_cursor_file_gets_its_version() {
+        let after = cursor_install(&json!({}), "'x/coucou-hook' --agent cursor").unwrap();
+        assert_eq!(after["version"], 1);
+        // A version the user set is theirs.
+        let after = cursor_install(&json!({ "version": 2 }), "c").unwrap();
+        assert_eq!(after["version"], 2);
     }
 
     #[test]
