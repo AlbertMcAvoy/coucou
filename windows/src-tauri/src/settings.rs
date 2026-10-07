@@ -47,6 +47,9 @@ pub struct Settings {
     pub lmstudio_url: String,
     /// Any other OpenAI-compatible server; its key, if any, is in the keychain.
     pub custom_url: String,
+    /// Global shortcuts the user changed, by action id; the others keep their
+    /// default (see shortcuts.rs).
+    pub shortcuts: crate::shortcuts::Bindings,
 }
 
 fn default_model() -> String {
@@ -79,6 +82,7 @@ impl Default for Settings {
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
+            shortcuts: Default::default(),
         }
     }
 }
@@ -348,7 +352,8 @@ mod tests {
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
-  "customUrl": "https://llm.example.com"
+  "customUrl": "https://llm.example.com",
+  "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } }
 }"#;
 
     fn custom() -> Value {
@@ -457,6 +462,7 @@ mod tests {
             ("activeIntegrations", json!("integration_n8n")),
             ("mainPill", json!(["agent_cursor"])),
             ("screen", Value::Null),
+            ("shortcuts", json!("Ctrl+Alt+A")),
         ] {
             let loaded = parse(&custom_with(key, Some(wrong)))
                 .unwrap_or_else(|| panic!("a file with a bad {key} was thrown away"));
@@ -684,6 +690,7 @@ mod tests {
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",
+                "shortcuts",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

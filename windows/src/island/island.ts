@@ -8,7 +8,7 @@ import {
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
-  type IslandMode, type IslandViewName,
+  type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
@@ -391,6 +391,32 @@ export class Island {
     this.fsm.pinned = false;
     // The countdown the pin held back starts now, if the mouse is elsewhere.
     if (!this.wasInIsland) this.fsm.mouseLeft();
+  }
+
+  // ── Keyboard shortcuts (island/shortcuts.ts) ────────────────────────────────
+
+  emote(name: BotEmoteName) {
+    this.engine.triggerEmote(name);
+    this.ensureRunning();
+  }
+
+  /** Ctrl+P: keep the open island from folding away, or let it fold again. */
+  setPinned(on: boolean) {
+    State.isPinned = on;
+    this.fsm.pinned = on;
+    if (on) {
+      // The countdown bar reads the state machine's deadline, cleared with it.
+      this.fsm.cancelTimers();
+    } else if (!this.wasInIsland && this.fsm.state === "home") {
+      this.fsm.mouseLeft();
+    }
+    State.notify();
+  }
+
+  /** The island takes the keyboard, so its own shortcuts work (Mac: makeKey).
+   *  It gives it back when it closes, or when the chat is left. */
+  takeKeyboard() {
+    void Bridge.focusWindow(true);
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────

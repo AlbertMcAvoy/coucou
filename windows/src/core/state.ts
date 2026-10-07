@@ -9,6 +9,7 @@ import {
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
+import type { Bindings } from "./shortcuts";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -122,6 +123,8 @@ export interface Settings {
   ollamaUrl: string;
   lmstudioUrl: string;
   customUrl: string;
+  /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
+  shortcuts: Bindings;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -145,6 +148,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",
+  shortcuts: {},
 };
 
 type Listener = () => void;

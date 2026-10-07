@@ -19,7 +19,10 @@ use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
-use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+use ::windows::Win32::UI::Input::KeyboardAndMouse::{
+    GetAsyncKeyState, GetKeyboardLayoutList, MapVirtualKeyExW, ToUnicodeEx, HKL, MAPVK_VK_TO_VSC,
+    VK_CONTROL, VK_LBUTTON, VK_MENU, VK_SHIFT,
+};
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
     GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
@@ -446,4 +449,45 @@ pub fn open_claude_desktop() -> bool {
     let Some(base) = std::env::var_os("LOCALAPPDATA") else { return false };
     let exe = PathBuf::from(base).join("AnthropicClaude").join("claude.exe");
     exe.is_file() && Command::new(exe).spawn().is_ok()
+}
+
+// ── Global shortcuts ──────────────────────────────────────────────────────────
+
+/// RegisterHotKey works in every Windows session.
+pub fn global_shortcuts_blocked() -> Option<&'static str> {
+    None
+}
+
+/// The character Ctrl+Alt(+Shift)+`vk` types on one of the installed keyboard
+/// layouts, if any. Windows reads Ctrl+Alt as AltGr, so registering such a
+/// combination as a global shortcut would stop the user typing that character
+/// (AltGr+E is € on most European layouts, AltGr+A is ą in Polish).
+pub fn ctrl_alt_types(vk: u16, shift: bool) -> Option<String> {
+    let mut layouts = [HKL::default(); 32];
+    let count = unsafe { GetKeyboardLayoutList(Some(&mut layouts[..])) };
+    let count = usize::try_from(count).unwrap_or(0).min(layouts.len());
+
+    let mut state = [0u8; 256];
+    state[VK_CONTROL.0 as usize] = 0x80;
+    state[VK_MENU.0 as usize] = 0x80;
+    if shift {
+        state[VK_SHIFT.0 as usize] = 0x80;
+    }
+    for &layout in &layouts[..count] {
+        let scan = unsafe { MapVirtualKeyExW(u32::from(vk), MAPVK_VK_TO_VSC, Some(layout)) };
+        let mut buf = [0u16; 8];
+        // Flag 0x4: leave the keyboard state alone, so a dead key met here
+        // doesn't change what the user types next (Windows 10 1607 and later).
+        let n = unsafe { ToUnicodeEx(u32::from(vk), scan, &state, &mut buf, 0x4, Some(layout)) };
+        let typed = match n {
+            // A dead key (´ ^ ¨…) is still something the user types with it.
+            n if n < 0 => String::from_utf16_lossy(&buf[..1]),
+            0 => continue,
+            n => String::from_utf16_lossy(&buf[..(n as usize).min(buf.len())]),
+        };
+        if typed.chars().any(|c| !c.is_control()) {
+            return Some(typed);
+        }
+    }
+    None
 }

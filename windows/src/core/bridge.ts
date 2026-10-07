@@ -155,7 +155,25 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+
+  // ── Global shortcuts ──────────────────────────────────────────────────────
+  /** How each global shortcut went when Rust last registered them. */
+  shortcutsStatus: () => call<ShortcutsReport>("shortcuts_status"),
+  /** Lets go of every global shortcut while Settings records a new one. */
+  shortcutsSuspend: (suspended: boolean) => call<void>("shortcuts_suspend", { suspended }),
 };
+
+export type ShortcutStatus =
+  | "active" | "off" | "inUse" | "duplicate" | "invalid"
+  | "typesCharacter" | "unsupported" | "notPorted";
+
+export interface ShortcutsReport {
+  actions: { id: string; status: ShortcutStatus; typed?: string }[];
+  /** "wayland" or "no-display" when no global shortcut can be registered. */
+  blocked: string | null;
+  /** `<executable> --shortcut`: append an action id for a desktop shortcut. */
+  command: string;
+}
 
 export interface IntegrationUpdate {
   id: string;

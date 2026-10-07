@@ -21,6 +21,7 @@ mod platform;
 mod secrets;
 mod session_window;
 mod settings;
+mod shortcuts;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -76,12 +77,13 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed) = {
+    let (screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
+        let shortcuts_changed = current.shortcuts != settings.shortcuts;
         *current = settings.clone();
-        (screen_changed, autostart_changed)
+        (screen_changed, autostart_changed, shortcuts_changed)
     };
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
@@ -98,6 +100,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
+    if shortcuts_changed {
+        shortcuts::apply(&app, &settings.shortcuts);
+    }
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
 }
@@ -480,6 +485,26 @@ fn log_line(message: String) {
     log::line(format!("ui  {message}"));
 }
 
+// ── Global shortcuts ──────────────────────────────────────────────────────────
+
+/// How each global shortcut went: registered, taken by another app, and so on.
+#[tauri::command]
+fn shortcuts_status(app: AppHandle) -> shortcuts::Report {
+    shortcuts::status(&app)
+}
+
+/// Settings is recording a new combination: let go of ours meanwhile, so the
+/// keys reach the recorder instead of running an action. `false` takes them back.
+#[tauri::command]
+fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
+    if suspended {
+        shortcuts::suspend(&app);
+    } else {
+        let stored = shared.settings.lock().unwrap().shortcuts.clone();
+        shortcuts::apply(&app, &stored);
+    }
+}
+
 // ── Settings window ───────────────────────────────────────────────────────────
 
 /// WebView2 allows exactly one browser environment per app, and its options are
@@ -551,17 +576,31 @@ pub fn run() {
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
+    let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // `coucou --shortcut <action>`: what a desktop's own keyboard
+            // settings run where we can't listen for keys ourselves (Wayland).
+            match shortcuts::from_args(&argv) {
+                Some(action) => shortcuts::dispatch(app, action),
+                None => {
+                    let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
+                }
+            }
         }))
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None));
+    // Where no global shortcut can work, the plugin isn't even started.
+    if platform::global_shortcuts_blocked().is_none() {
+        builder = builder.plugin(shortcuts::plugin());
+    }
+
+    builder
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(shortcuts::Registry::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -604,6 +643,8 @@ pub fn run() {
             open_n8n,
             open_settings_window,
             set_paused,
+            shortcuts_status,
+            shortcuts_suspend,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -638,6 +679,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })
         .run(tauri::generate_context!())
