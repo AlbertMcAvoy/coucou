@@ -52,6 +52,24 @@ island with **Deny / Allow**, a question from Claude Code shows its options to
 pick from, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
 
+A permission card or a question stays until you answer it: the mouse leaving
+never folds it, it comes up even when the island is already open or another
+pill is in front, and the pill you were on comes back once you answer. To keep
+it for later, fold it with the **⌃** in its corner (or `Esc` in the island): the
+island shrinks to its compact size and stays on screen, nothing is answered, and
+opening it again shows the card. **Open terminal** brings the window the session
+runs in to the front.
+
+## Your pills
+
+**Settings… → Active pills** lists the tools you use, from the same catalog as
+the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
+which is always there and doesn't take a slot, then declare up to four more:
+agents (Gemini CLI, Copilot CLI, Muse Code, Claude Desktop), the Anthropic chat,
+and the services under **Integrations**. A pill fed by hooks says whether its
+hooks are installed, never asks for a key. A session on a pill you didn't
+declare still shows up, for as long as it runs.
+
 ## Claude Code
 
 <img src="screenshots/settings.png" width="562" alt="The settings window">
@@ -146,7 +164,8 @@ The relay (`coucou-hook.exe`) works with any tool that can run a command on hook
 | Claude Code | **Settings → Claude Code → Install hooks** | `%USERPROFILE%\.claude\settings.json` |
 | Gemini CLI | `--agent gemini` positional arg | `%USERPROFILE%\.gemini\settings.json` |
 | Antigravity | `--agent antigravity` positional arg | `%USERPROFILE%\.config\antigravity\hooks.json` |
-| Cursor | hooks installed automatically | `%USERPROFILE%\.claude\settings.json` |
+| Cursor | the Claude Code hooks: Claude Code in Cursor's terminal goes on the Cursor pill | `%USERPROFILE%\.claude\settings.json` |
+| Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | — |
 | Codex | `--agent codex` positional arg | `%USERPROFILE%\.codex\hooks.json` |
 | Copilot CLI | `--agent copilot` positional arg + camelCase events | `%USERPROFILE%\.copilot\hooks\coucou.json` |
 | Muse Code | `--agent muse` positional arg | `%USERPROFILE%\.config\muse\settings.json` |
@@ -154,15 +173,32 @@ The relay (`coucou-hook.exe`) works with any tool that can run a command on hook
 
 OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integration uses a plugin that calls `/bin/sh` with macOS-specific paths; the plugin installer lives in the Mac app only.
 
+A pill is **connected** when Coucou finds `coucou-hook --agent <name>` in the
+config file above (for Claude Code and Cursor: a SessionStart hook running
+Coucou's relay). Coucou only reads these files, each time the island opens.
+Permission requests get the island's card for Claude Code, in any terminal and
+in Cursor; other agents and Claude Desktop answer them in their own window.
+
 ## What's different from the Mac version
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
-- Not in this version: sending a file by email, dragging Mochi onto a window to
-  attach it as context, and jumping to a specific terminal window — "Open
-  terminal" opens the working folder in VS Code when `code` is on your `PATH`.
+- "Open terminal" finds the session's window by walking up from the relay's
+  process to the terminal or editor that runs it. A session in a classic
+  console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
+  ancestor — conhost owns that window — so its folder opens in VS Code instead,
+  as it does when `code` is on your `PATH` and nothing was found.
+- No global keyboard shortcuts yet: a waiting card is folded with its **⌃** or
+  `Esc` in the island, and reopened by clicking the island or Open in the tray.
+- Pills from the Mac catalog that have nothing behind them here are left out:
+  OpenCode, Amp, Hermes, Apple Music, Ollama and LM Studio. Google AI and OpenAI
+  can be declared but show "Coming soon": the chat here only talks to Anthropic.
+- Not in this version: sending a dropped file by email and dragging Mochi onto
+  a window to attach it as context. On the Mac, email goes through Resend or
+  Apple Mail's scripting; neither has a safe equivalent that attaches a file
+  here, and the drop card would need a third button it doesn't have.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 
 ## Linux
@@ -212,5 +248,8 @@ What changes on Linux:
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
 - What the Windows build leaves out, this one does too: sending a file by
-  email, dragging Mochi onto a window, and jumping to a specific terminal
-  window — "Open terminal" opens the folder in VS Code.
+  email and dragging Mochi onto a window.
+- **Open terminal** opens the folder in VS Code: Wayland lets no app bring
+  another app's window forward, and X11 would need a window-manager client this
+  build doesn't carry.
+- No **Claude Desktop** pill: the Claude app has no Linux build.
