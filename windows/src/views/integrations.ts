@@ -94,6 +94,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );
+  } else if (task.id === "agent_claude-desktop") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: "Open Claude",
+        onclick: () => void Bridge.openClaudeDesktop(),
+      }),
+    );
   } else if (task.id === "integration_n8n") {
     actions.append(
       h("button", {

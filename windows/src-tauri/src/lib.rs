@@ -10,6 +10,7 @@ mod log;
 mod pipe;
 mod platform;
 mod secrets;
+mod session_window;
 mod settings;
 mod tray;
 #[cfg(windows)]
@@ -173,6 +174,27 @@ fn open_in_vscode(path: Option<String>) -> bool {
         platform::reveal_folder(p);
     }
     false
+}
+
+/// "Open terminal": brings forward the terminal or editor window the session
+/// runs in, when it was found (Windows, see session_window.rs); otherwise opens
+/// the folder in VS Code, as before.
+#[tauri::command]
+fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
+        let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
+        if platform::focus_process_window(owner, folder) {
+            return true;
+        }
+    }
+    open_in_vscode(path)
+}
+
+/// The Claude Desktop pill's target: the Claude app (Windows only — it has no
+/// Linux build).
+#[tauri::command]
+fn open_claude_desktop() -> bool {
+    platform::open_claude_desktop()
 }
 
 #[tauri::command]
@@ -412,6 +434,8 @@ pub fn run() {
             list_monitors,
             open_url,
             open_in_vscode,
+            open_session,
+            open_claude_desktop,
             quit_app,
             hooks_status,
             agent_hooks_status,
