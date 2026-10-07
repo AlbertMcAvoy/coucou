@@ -44,8 +44,82 @@ mod unix;
 #[cfg(target_os = "linux")]
 use unix::connect;
 
+/// Normalize event names across agents (Claude Code, Gemini CLI, Antigravity)
+fn normalize_event(name: &str) -> String {
+    match name {
+        "BeforeTool" | "BeforeToolSelection" => "PreToolUse".to_string(),
+        "AfterTool" | "AfterModel" | "PostInvocation" => "PostToolUse".to_string(),
+        "BeforeAgent" | "PreInvocation" => "UserPromptSubmit".to_string(),
+        "AfterAgent" => "Stop".to_string(),
+        "startup" => "SessionStart".to_string(),
+        "exit" => "SessionEnd".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Normalize tool fields from Gemini CLI format (`toolCall: {name, args: {...}}`)
+/// into canonical `tool_name` and `tool_input`.
+fn normalize_tool_fields(map: &mut serde_json::Map<String, serde_json::Value>) {
+    if !map.contains_key("tool_name") {
+        let (extracted_name, extracted_input) = if let Some(tool) = map.get("toolCall").and_then(|t| t.as_object()) {
+            let name = tool.get("name").and_then(|n| n.as_str()).map(|n| n.to_string());
+            let input = if let Some(args) = tool.get("args").and_then(|a| a.as_object()) {
+                let mut input_map = serde_json::Map::new();
+                for (k, v) in args {
+                    let target_key = match k.as_str() {
+                        "CommandLine" => "command",
+                        "FilePath" => "file_path",
+                        "Path" => "path",
+                        "Url" => "url",
+                        "Query" => "query",
+                        "Pattern" => "pattern",
+                        other => other,
+                    };
+                    input_map.insert(target_key.into(), v.clone());
+                }
+                Some(input_map)
+            } else {
+                None
+            };
+            (name, input)
+        } else if let Some(name) = map.get("tool").and_then(|t| t.as_str()) {
+            (Some(name.to_string()), None)
+        } else {
+            (None, None)
+        };
+
+        if let Some(name) = extracted_name {
+            map.insert("tool_name".into(), serde_json::Value::String(name));
+        }
+        if let Some(input) = extracted_input {
+            if !map.contains_key("tool_input") {
+                map.insert("tool_input".into(), serde_json::Value::Object(input));
+            }
+        }
+    }
+
+    if !map.contains_key("session_id") {
+        let mut found_sid = None;
+        for key in &["conversationId", "conversation_id", "sessionId", "GEMINI_SESSION_ID"] {
+            if let Some(val) = map.get(*key).and_then(|v| v.as_str()) {
+                if !val.is_empty() {
+                    found_sid = Some(val.to_string());
+                    break;
+                }
+            }
+        }
+        if let Some(sid) = found_sid {
+            map.insert("session_id".into(), serde_json::Value::String(sid));
+        } else if let Ok(sid) = std::env::var("GEMINI_SESSION_ID") {
+            if !sid.is_empty() {
+                map.insert("session_id".into(), serde_json::Value::String(sid));
+            }
+        }
+    }
+}
+
 fn main() {
-    let Some((payload, event)) = read_event() else { std::process::exit(0) };
+    let Some((payload, event, agent)) = read_event() else { std::process::exit(0) };
 
     let waits_for_answer = event == "PermissionRequest";
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
@@ -65,6 +139,11 @@ fn main() {
             let _ = writeln!(out, "{json}");
             let _ = out.flush();
         }
+    } else if !waits_for_answer && (agent == "gemini" || agent == "antigravity") {
+        // Gemini CLI and Antigravity expect a JSON response on stdout ({})
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "{{}}");
+        let _ = out.flush();
     }
     // Nothing printed: Claude Code asks in the terminal, as if we were not here.
     std::process::exit(0);
@@ -86,8 +165,8 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
-/// Reads stdin and returns the payload to forward plus the event name.
-fn read_event() -> Option<(String, String)> {
+/// Reads stdin and returns the payload to forward plus the event name and agent.
+fn read_event() -> Option<(String, String, String)> {
     let mut raw = Vec::new();
     if std::io::stdin().read_to_end(&mut raw).is_err() || raw.is_empty() {
         return None;
@@ -118,14 +197,18 @@ fn read_event() -> Option<(String, String)> {
     // Which agent this hook was installed for. Absent means Claude Code,
     // so existing hook commands keep working unchanged.
     if !agent.is_empty() {
-        map.insert("coucou_agent".into(), serde_json::Value::String(agent));
+        map.insert("coucou_agent".into(), serde_json::Value::String(agent.clone()));
     }
-    let event = map
+
+    normalize_tool_fields(map);
+
+    let raw_event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
+    let event = normalize_event(&raw_event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
 
     for field in DROPPED_FIELDS {
@@ -138,7 +221,21 @@ fn read_event() -> Option<(String, String)> {
         .map(str::is_empty)
         .unwrap_or(true);
     if cwd_missing {
-        if let Ok(cwd) = std::env::current_dir() {
+        // Also check workspacePaths or workspace_roots (Gemini CLI)
+        let mut found_path = None;
+        for key in &["workspacePaths", "workspace_roots"] {
+            if let Some(arr) = map.get(*key).and_then(|v| v.as_array()) {
+                if let Some(first) = arr.first().and_then(|v| v.as_str()) {
+                    if !first.is_empty() {
+                        found_path = Some(first.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+        if let Some(p) = found_path {
+            map.insert("cwd".into(), serde_json::Value::String(p));
+        } else if let Ok(cwd) = std::env::current_dir() {
             map.insert(
                 "cwd".into(),
                 serde_json::Value::String(cwd.to_string_lossy().to_string()),
@@ -165,7 +262,7 @@ fn read_event() -> Option<(String, String)> {
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some((line, event))
+    Some((line, event, agent))
 }
 
 /// Caps every string in the payload. A single Write can carry a whole file.
@@ -252,5 +349,36 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn normalize_event_maps_gemini_events_to_canonical() {
+        assert_eq!(normalize_event("BeforeTool"), "PreToolUse");
+        assert_eq!(normalize_event("AfterTool"), "PostToolUse");
+        assert_eq!(normalize_event("BeforeAgent"), "UserPromptSubmit");
+        assert_eq!(normalize_event("AfterAgent"), "Stop");
+        assert_eq!(normalize_event("startup"), "SessionStart");
+        assert_eq!(normalize_event("exit"), "SessionEnd");
+        assert_eq!(normalize_event("PreToolUse"), "PreToolUse");
+    }
+
+    #[test]
+    fn normalize_tool_fields_extracts_gemini_tool_call() {
+        let mut map = serde_json::Map::new();
+        map.insert(
+            "toolCall".into(),
+            serde_json::json!({
+                "name": "Bash",
+                "args": {
+                    "CommandLine": "ls -la"
+                }
+            }),
+        );
+        map.insert("conversationId".into(), serde_json::json!("gemini-conv-123"));
+        normalize_tool_fields(&mut map);
+
+        assert_eq!(map.get("tool_name").unwrap(), "Bash");
+        assert_eq!(map.get("tool_input").unwrap()["command"], "ls -la");
+        assert_eq!(map.get("session_id").unwrap(), "gemini-conv-123");
     }
 }

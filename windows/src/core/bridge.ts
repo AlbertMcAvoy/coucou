@@ -73,6 +73,13 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Gemini CLI hooks ───────────────────────────────────────────────────────
+  geminiHooksStatus: () => call<HookStatus>("gemini_hooks_status"),
+  geminiHooksPreview: (install: boolean) =>
+    callOrThrow<HookPreview>("gemini_hooks_preview", { install }),
+  geminiHooksApply: (install: boolean, fingerprint: string) =>
+    callOrThrow<string>("gemini_hooks_apply", { install, fingerprint }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */

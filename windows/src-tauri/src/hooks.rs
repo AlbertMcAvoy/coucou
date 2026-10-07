@@ -237,6 +237,258 @@ fn current_fingerprint() -> String {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+pub fn gemini_settings_path() -> PathBuf {
+    platform::home_dir().join(".gemini").join("settings.json")
+}
+
+const GEMINI_EVENTS: &[(&str, &str, u64)] = &[
+    ("SessionStart", "SessionStart", 10000),
+    ("SessionEnd", "SessionEnd", 10000),
+    ("BeforeTool", "PreToolUse", 5000),
+    ("AfterTool", "PostToolUse", 5000),
+    ("BeforeAgent", "UserPromptSubmit", 5000),
+    ("AfterAgent", "Stop", 5000),
+];
+
+#[cfg(windows)]
+fn gemini_hook_command(event: &str) -> String {
+    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
+    format!("\"{exe}\" --agent gemini {event}")
+}
+
+#[cfg(unix)]
+fn gemini_hook_command(event: &str) -> String {
+    format!(
+        "{} --agent gemini {event}",
+        sh_quote(&settings::hook_exe_path().to_string_lossy())
+    )
+}
+
+fn read_gemini_settings() -> Result<Value, String> {
+    let path = gemini_settings_path();
+    match std::fs::read(&path) {
+        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
+        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+    }
+}
+
+fn read_gemini_settings_lossy() -> Value {
+    read_gemini_settings().unwrap_or_else(|_| json!({}))
+}
+
+fn gemini_entry_is_ours(entry: &Value) -> bool {
+    if let Some(cmd) = entry.get("command").and_then(Value::as_str) {
+        if cmd.contains(MARKER) && cmd.contains("--agent gemini") {
+            return true;
+        }
+    }
+    if let Some(inner) = entry.get("hooks").and_then(Value::as_array) {
+        if inner.iter().any(|h| {
+            h.get("command")
+                .and_then(Value::as_str)
+                .map(|c| c.contains(MARKER) && c.contains("--agent gemini"))
+                .unwrap_or(false)
+        }) {
+            return true;
+        }
+    }
+    false
+}
+
+fn remove_gemini_nb_hook_entries(groups: &[Value]) -> Vec<Value> {
+    let mut out = Vec::new();
+    for group in groups {
+        if let Some(cmd) = group.get("command").and_then(Value::as_str) {
+            if cmd.contains(MARKER) && cmd.contains("--agent gemini") {
+                continue;
+            }
+        }
+        if let Some(inner) = group.get("hooks").and_then(Value::as_array) {
+            let filtered: Vec<Value> = inner
+                .iter()
+                .filter(|h| {
+                    !h.get("command")
+                        .and_then(Value::as_str)
+                        .map(|c| c.contains(MARKER) && c.contains("--agent gemini"))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect();
+            if !filtered.is_empty() {
+                let mut updated = group.as_object().cloned().unwrap_or_default();
+                updated.insert("hooks".into(), Value::Array(filtered));
+                out.push(Value::Object(updated));
+            }
+        } else {
+            out.push(group.clone());
+        }
+    }
+    out
+}
+
+fn merged_gemini(existing: &Value) -> Result<Value, String> {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    if let Some(raw) = root.get("hooks") {
+        if !raw.is_object() {
+            return Err("~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou won't touch it.".into());
+        }
+    }
+    let mut hooks = root
+        .get("hooks")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_else(Map::new);
+
+    for (gemini_event, normalized_event, timeout) in GEMINI_EVENTS {
+        if let Some(raw) = hooks.get(*gemini_event) {
+            if !raw.is_array() {
+                return Err(format!(
+                    "~/.gemini/settings.json: \"hooks\"[\"{gemini_event}\"] has an unexpected type — Coucou won't touch it."
+                ));
+            }
+        }
+        let list = hooks
+            .get(*gemini_event)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let mut cleaned = remove_gemini_nb_hook_entries(&list);
+        cleaned.push(json!({
+            "matcher": "*",
+            "hooks": [{
+                "type": "command",
+                "command": gemini_hook_command(normalized_event),
+                "timeout": timeout,
+            }]
+        }));
+        hooks.insert((*gemini_event).to_string(), Value::Array(cleaned));
+    }
+
+    root.insert("hooks".into(), Value::Object(hooks));
+    Ok(Value::Object(root))
+}
+
+fn without_gemini_ours(existing: &Value) -> Result<Value, String> {
+    let mut root = existing.as_object().cloned().unwrap_or_default();
+    let Some(raw_hooks) = root.get("hooks") else {
+        return Ok(Value::Object(root));
+    };
+    let Some(hooks) = raw_hooks.as_object() else {
+        return Err("~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou won't touch it.".into());
+    };
+    let mut out = Map::new();
+    for (event, value) in hooks {
+        match value.as_array() {
+            Some(list) => {
+                let kept = remove_gemini_nb_hook_entries(list);
+                if !kept.is_empty() {
+                    out.insert(event.clone(), Value::Array(kept));
+                }
+            }
+            None => {
+                out.insert(event.clone(), value.clone());
+            }
+        }
+    }
+    if out.is_empty() {
+        root.remove("hooks");
+    } else {
+        root.insert("hooks".into(), Value::Object(out));
+    }
+    Ok(Value::Object(root))
+}
+
+fn gemini_backup_path() -> PathBuf {
+    let p = gemini_settings_path();
+    p.with_file_name(format!("settings.json.bak-{}", stamp()))
+}
+
+fn gemini_current_fingerprint() -> String {
+    match std::fs::read(gemini_settings_path()) {
+        Ok(bytes) => fingerprint(&bytes),
+        Err(_) => fingerprint(b""),
+    }
+}
+
+pub fn gemini_status() -> HookStatus {
+    let current = read_gemini_settings_lossy();
+    let installed = current
+        .get("hooks")
+        .and_then(Value::as_object)
+        .map(|hooks| {
+            hooks
+                .values()
+                .filter_map(Value::as_array)
+                .flatten()
+                .any(gemini_entry_is_ours)
+        })
+        .unwrap_or(false);
+    let hook_path = settings::hook_exe_path();
+    HookStatus {
+        installed,
+        settings_path: gemini_settings_path().to_string_lossy().to_string(),
+        hook_ready: hook_path.exists(),
+        hook_path: hook_path.to_string_lossy().to_string(),
+    }
+}
+
+pub fn gemini_preview(install: bool) -> Result<HookPreview, String> {
+    let current = read_gemini_settings()?;
+    let next = if install {
+        merged_gemini(&current)?
+    } else {
+        without_gemini_ours(&current)?
+    };
+    Ok(HookPreview {
+        diff: unified_diff(&pretty(&current), &pretty(&next)),
+        backup: gemini_backup_path().to_string_lossy().to_string(),
+        settings_path: gemini_settings_path().to_string_lossy().to_string(),
+        fingerprint: gemini_current_fingerprint(),
+    })
+}
+
+pub fn gemini_write(install: bool, fingerprint: &str) -> Result<String, String> {
+    let path = gemini_settings_path();
+    let dir = path.parent().unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+
+    let current = read_gemini_settings()?;
+    if gemini_current_fingerprint() != fingerprint {
+        return Err(format!(
+            "{} changed since the preview. Nothing was written — review the new diff.",
+            path.display()
+        ));
+    }
+
+    let backup = gemini_backup_path();
+    if path.exists() {
+        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
+    }
+
+    let next = if install {
+        merged_gemini(&current)?
+    } else {
+        without_gemini_ours(&current)?
+    };
+    let mut text = pretty(&next);
+    text.push('\n');
+
+    #[cfg(unix)]
+    let path = std::fs::canonicalize(&path).unwrap_or(path);
+
+    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
+    if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    if let Err(err) = std::fs::rename(&temp, &path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("write failed: {err}"));
+    }
+    Ok(backup.to_string_lossy().to_string())
+}
+
 pub fn status() -> HookStatus {
     let current = read_settings_lossy();
     let installed = current
@@ -571,6 +823,28 @@ mod tests {
 
         // And removing ours puts it back exactly as it was.
         let cleaned = without_ours(&after);
+        assert_eq!(cleaned, existing);
+    }
+
+    #[test]
+    fn merging_gemini_creates_groups_and_preserves_others() {
+        let existing = serde_json::json!({
+            "theme": "dark",
+            "hooks": {
+                "BeforeTool": [
+                    { "matcher": "other", "hooks": [{ "type": "command", "command": "custom.exe" }] }
+                ]
+            }
+        });
+
+        let after = merged_gemini(&existing).unwrap();
+        assert_eq!(after["theme"], "dark");
+        let before_tool = after["hooks"]["BeforeTool"].as_array().unwrap();
+        assert_eq!(before_tool.len(), 2);
+        assert!(before_tool[0]["matcher"] == "other");
+        assert!(gemini_entry_is_ours(&before_tool[1]));
+
+        let cleaned = without_gemini_ours(&after).unwrap();
         assert_eq!(cleaned, existing);
     }
 
