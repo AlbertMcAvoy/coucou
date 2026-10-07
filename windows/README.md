@@ -44,12 +44,20 @@ installs for the current user only — no admin prompt.
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
+
+**Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
+session ticker with its **+N −M** lines; click it for the diff. Same limits as the
+Mac: past 200 KB or 4 000 lines only the counts are kept, at most 50 diffs per
+session, and they are forgotten an hour after the last edit or when the session
+ends. When Claude finishes, the card keeps the first paragraph of its final
+answer on one line, still, until the next prompt.
 
 ## Claude Code
 
@@ -163,6 +171,12 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Live diff: the relay forwards an edit's text whole only once the edit is done
+  (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
+  shows its "Modifie · file" step without counts rather than wrong ones. The
+  diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
+  never the file itself. The diff shows for the Claude Code pill only, since
+  other agents' pills have no ticker here yet; there is no ⌘E-style shortcut.
 
 ## Linux
 
