@@ -414,7 +414,53 @@ function generalSection(): HTMLElement {
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
+    ...recapRows(),
   );
+}
+
+/** Settings → General → Weekly recap. The prefs live with the history in Rust. */
+function recapRows(): HTMLElement[] {
+  const T = {
+    label: "Weekly recap",
+    keep: "Keep a history of my coding sessions",
+    clear: "Clear history",
+    cleared: "History cleared.",
+    about: "Counts and project names only — never commands, files or prompts. Kept on this computer for 12 weeks.",
+  };
+  const feedback = h("span", { class: "hint" });
+  const sw = toggle(true, (v) => { void Bridge.recapSetEnabled(v); });
+  void Bridge.recapPrefs().then((prefs) => {
+    if (prefs) sw.classList.toggle("on", prefs.enabled);
+  });
+  const clearBtn = h("button", {
+    class: "danger",
+    text: T.clear,
+    onclick: async () => {
+      clearBtn.disabled = true;
+      await Bridge.recapClear();
+      feedback.textContent = T.cleared;
+      window.setTimeout(() => {
+        clearBtn.disabled = false;
+        feedback.textContent = "";
+      }, 2400);
+    },
+  }) as HTMLButtonElement;
+  return [
+    h("div", { class: "row" },
+      h("label", { text: T.label }),
+      sw,
+      h("span", { class: "hint", text: T.keep }),
+    ),
+    h("div", { class: "row" },
+      h("label", {}),
+      clearBtn,
+      feedback,
+    ),
+    h("div", { class: "row" },
+      h("label", {}),
+      h("span", { class: "hint", style: "flex:1 1 0;min-width:0", text: T.about }),
+    ),
+  ];
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

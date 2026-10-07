@@ -7,6 +7,7 @@ import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
+import { Recap } from "./recap/recap";
 
 async function main() {
   const root = document.getElementById("root");
@@ -43,6 +44,10 @@ async function main() {
         setPaused(false);
         island.alert(State.defaultView());
         break;
+      case "recap":
+        setPaused(false);
+        void Recap.open(island);
+        break;
       case "pause":
         setPaused(!State.paused);
         if (State.paused) island.fsm.forceHidden();
@@ -63,6 +68,12 @@ async function main() {
 
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
+
+  // Monday recap: app start (greeting over), an agent starting work, waking up.
+  const checkRecap = () => void Recap.check(island);
+  island.onGreetingDone = checkRecap;
+  island.onWake = checkRecap;
+  await onEvent<null>("recap-check", checkRecap);
 
   island.launch();
 
