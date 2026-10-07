@@ -7,7 +7,7 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
-  type IslandMode, type IslandViewName,
+  type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
@@ -337,6 +337,33 @@ export class Island {
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
+  }
+
+  // ── Keyboard shortcuts (island/shortcuts.ts) ────────────────────────────────
+
+  emote(name: BotEmoteName) {
+    this.engine.triggerEmote(name);
+    this.ensureRunning();
+  }
+
+  /** Ctrl+P: keep the open island from folding away, or let it fold again. */
+  setPinned(on: boolean) {
+    State.isPinned = on;
+    this.fsm.pinned = on;
+    if (on) {
+      this.fsm.cancelTimers();
+      this.homeCollapseAt = null;
+    } else if (!this.wasInIsland && this.fsm.state === "home") {
+      this.fsm.mouseLeft();
+      this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
+    }
+    State.notify();
+  }
+
+  /** The island takes the keyboard, so its own shortcuts work (Mac: makeKey).
+   *  It gives it back when it closes, or when the chat is left. */
+  takeKeyboard() {
+    void Bridge.focusWindow(true);
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
