@@ -2,6 +2,7 @@
 
 mod claude;
 mod files;
+mod github;
 mod hooks;
 mod integrations;
 mod island;
@@ -82,6 +83,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
+    integrations::settings_saved(&app, &settings.active_integrations);
     // Keep the other window in step (island ⇄ settings window).
     let _ = app.emit("settings-changed", settings);
 }
@@ -265,13 +267,25 @@ fn secret_present(key: String) -> bool {
 }
 
 #[tauri::command]
-fn secret_set(key: String, value: String) -> Result<(), String> {
-    secrets::set(&key, &value)
+fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+    let before = (key == "github-token").then(|| secrets::get(&key));
+    secrets::set(&key, &value)?;
+    if let Some(before) = before {
+        if secrets::get(&key) != before {
+            integrations::github_token_changed(&app);
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
-fn secret_clear(key: String) -> Result<(), String> {
-    secrets::clear(&key)
+fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
+    let had = key == "github-token" && secrets::present(&key);
+    secrets::clear(&key)?;
+    if had {
+        integrations::github_token_changed(&app);
+    }
+    Ok(())
 }
 
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
@@ -286,6 +300,13 @@ fn open_n8n() {
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
+}
+
+/// The GitHub card was opened: refetch its `section` ("pulse" or "activity")
+/// if it is stale. The pollers still decline while the pill is off or paused.
+#[tauri::command]
+fn github_refresh(section: String) {
+    integrations::github_refresh_if_stale(&section);
 }
 
 /// Lets the island write to the same log as the Rust side.
@@ -400,6 +421,7 @@ pub fn run() {
             secret_set,
             secret_clear,
             refresh_integration,
+            github_refresh,
             open_n8n,
             open_settings_window,
             set_paused,
