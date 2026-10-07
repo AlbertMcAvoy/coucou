@@ -7,6 +7,7 @@ import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
+  QUESTION_PICKER_H,
   type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
@@ -101,6 +102,16 @@ export class Island {
     });
   }
 
+  /** The request has its answer: the card goes and the session carries on. */
+  private closeApproval() {
+    State.pendingApproval = null;
+    State.isPinned = false;
+    this.fsm.pinned = false;
+    State.updateTask("integration_claude", "working");
+    State.setPillBadge("integration_claude", null);
+    this.setView(State.defaultView());
+  }
+
   // ── DOM ─────────────────────────────────────────────────────────────────────
 
   private build() {
@@ -141,12 +152,21 @@ export class Island {
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
+        this.closeApproval();
+      },
+      answer: (answers) => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("approve");
+        void Bridge.approvalAnswer(req.requestId, answers);
+        this.closeApproval();
+      },
+      answerInTerminal: () => {
+        const req = State.pendingApproval;
+        if (!req) return;
+        Sound.play("blip");
+        void Bridge.approvalDecline(req.requestId);
+        this.closeApproval();
       },
       toggleSound: () => {
         State.settings.soundEnabled = !State.settings.soundEnabled;
@@ -461,7 +481,10 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    const { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
+      h = QUESTION_PICKER_H;
+    }
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
