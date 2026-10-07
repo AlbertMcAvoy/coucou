@@ -1728,6 +1728,11 @@ input[type="range"]::-webkit-slider-thumb {
   text-overflow: ellipsis;
 }
 
+/* A label with nothing more to say unfolds whole. */
+.int-change.whole {
+  white-space: normal;
+}
+
 .int-row {
   display: flex;
   align-items: center;
