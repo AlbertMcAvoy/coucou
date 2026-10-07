@@ -6,6 +6,8 @@ import "./settings.css";
 import { Bridge, onEvent, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
+import { agentsSection } from "./agents";
+import { renderDiff, statusDot } from "./parts";
 
 /** Where secrets.rs keeps the keys on this OS. */
 const KEY_STORE = navigator.userAgent.includes("Windows")
@@ -31,19 +33,6 @@ function toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement {
     onChange(next);
   });
   return el;
-}
-
-function statusDot(ok: boolean): HTMLElement {
-  return h("i", { class: "dot", style: `background:${ok ? "#22c55e" : "#f4505e"}` });
-}
-
-function renderDiff(text: string): HTMLElement {
-  const box = h("div", { class: "diff" });
-  for (const line of text.split("\n")) {
-    const cls = line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "ctx";
-    box.append(h("div", { class: cls, text: line }));
-  }
-  return box;
 }
 
 // ── Claude Code section ───────────────────────────────────────────────────────
@@ -144,7 +133,12 @@ function claudeSection(status: HookStatus): HTMLElement {
       }),
       renderDiff(preview.diff),
       h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
+        h("span", {
+          class: "path",
+          text: preview.backup
+            ? `Backup → ${preview.backup}`
+            : "No settings.json yet — nothing to back up.",
+        }),
       ),
     );
     const confirm = h("button", {
@@ -158,7 +152,10 @@ function claudeSection(status: HookStatus): HTMLElement {
         clear(body);
         body.append(h("div", {
           class: "notice ok",
-          text: `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`,
+          // No backup when there was no settings.json to back up.
+          text: backup
+            ? `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`
+            : "Done. Open a new Claude Code session to pick the hooks up.",
         }));
         window.setTimeout(() => void rebuild(), 2600);
       } catch (err) {
@@ -448,6 +445,7 @@ async function main() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, settingsPath: "", hookPath: "", hookReady: false,
   };
+  const agents = await Bridge.agentHooksList();
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
 
@@ -462,6 +460,7 @@ async function main() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    agentsSection(agents),
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
