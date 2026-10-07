@@ -21,8 +21,6 @@ pub struct Settings {
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
-    #[serde(default)]
-    pub gemini_hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
 }
@@ -47,7 +45,6 @@ impl Default for Settings {
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
-            gemini_hooks_installed: false,
             model: default_model(),
         }
     }

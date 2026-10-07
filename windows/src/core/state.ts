@@ -105,7 +105,6 @@ export interface Settings {
   screen: string;
   autostart: boolean;
   hooksInstalled: boolean;
-  geminiHooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
 }
@@ -121,7 +120,6 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
-  geminiHooksInstalled: false,
   model: "claude-opus-5",
 };
 

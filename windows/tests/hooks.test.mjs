@@ -211,7 +211,7 @@ test("a tagged agent gets its own pill next to Claude Code's", () => {
   assert.equal(State.tasks[0].id, CLAUDE);
   assert.equal(State.tasks[1].id, "agent_gemini");
   const agent = task("agent_gemini");
-  assert.equal(agent.name, "gemini");
+  assert.equal(agent.name, "Gemini CLI");
   assert.equal(agent.source, "agent");
   assert.equal(agent.state, "working");
   assert.deepEqual(agent.steps, ["Exécute · ls"]);

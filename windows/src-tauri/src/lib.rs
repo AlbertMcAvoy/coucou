@@ -1,6 +1,8 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod agents;
 mod claude;
+mod config_file;
 mod files;
 mod hooks;
 mod integrations;
@@ -49,9 +51,8 @@ pub struct BootInfo {
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json and ~/.gemini/settings.json wins over whatever we stored.
+    // The real state of ~/.claude/settings.json wins over whatever we stored.
     settings.hooks_installed = hooks::status().installed;
-    settings.gemini_hooks_installed = hooks::gemini_status().installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -223,34 +224,27 @@ fn hooks_apply(
     Ok(backup)
 }
 
-// ── Gemini CLI hooks ──────────────────────────────────────────────────────────
+// ── Other agents' hooks and plugins ──────────────────────────────────────────
 
 #[tauri::command]
-fn gemini_hooks_status() -> HookStatus {
-    hooks::gemini_status()
+fn agent_hooks_list() -> Vec<agents::AgentStatus> {
+    agents::list()
 }
 
+/// The diff the user has to look at before anything is written.
 #[tauri::command]
-fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
-    hooks::gemini_preview(install)
+fn agent_hooks_preview(agent: String, install: bool) -> Result<config_file::Plan, String> {
+    agents::preview(&agent, install)
 }
 
+/// Only ever called from an explicit click in the settings window, with the
+/// fingerprint of the preview the user looked at.
 #[tauri::command]
-fn gemini_hooks_apply(
-    app: AppHandle,
-    shared: State<Shared>,
-    install: bool,
-    fingerprint: String,
-) -> Result<String, String> {
-    let backup = hooks::gemini_write(install, &fingerprint)?;
-    let updated = {
-        let mut current = shared.settings.lock().unwrap();
-        current.gemini_hooks_installed = install;
-        let _ = settings::save(&current);
-        current.clone()
-    };
-    let _ = app.emit("settings-changed", updated);
-    Ok(backup)
+fn agent_hooks_apply(agent: String, install: bool, fingerprint: String) -> Result<String, String> {
+    let backups = agents::apply(&agent, install, &fingerprint)?;
+    let done = if install { "installed" } else { "removed" };
+    log::line(format!("agent hooks {done} for {agent}"));
+    Ok(backups)
 }
 
 #[tauri::command]
@@ -440,9 +434,9 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
-            gemini_hooks_status,
-            gemini_hooks_preview,
-            gemini_hooks_apply,
+            agent_hooks_list,
+            agent_hooks_preview,
+            agent_hooks_apply,
             approval_decision,
             approval_answer,
             approval_ack,

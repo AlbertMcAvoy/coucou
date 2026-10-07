@@ -76,12 +76,17 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
-  // ── Gemini CLI hooks ───────────────────────────────────────────────────────
-  geminiHooksStatus: () => call<HookStatus>("gemini_hooks_status"),
-  geminiHooksPreview: (install: boolean) =>
-    callOrThrow<HookPreview>("gemini_hooks_preview", { install }),
-  geminiHooksApply: (install: boolean, fingerprint: string) =>
-    callOrThrow<string>("gemini_hooks_apply", { install, fingerprint }),
+  // ── Other agents (Gemini CLI, Codex, Cursor…) ─────────────────────────────
+  agentHooksList: () => call<AgentHookStatus[]>("agent_hooks_list"),
+  /** Diff to show before anything is written. `install: false` previews removal. */
+  agentHooksPreview: (agent: string, install: boolean) =>
+    callOrThrow<AgentHookPlan>("agent_hooks_preview", { agent, install }),
+  /**
+   * Writes the agent's config — only ever after an explicit click, and only when
+   * it still matches the preview the user looked at. Returns the backups taken.
+   */
+  agentHooksApply: (agent: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("agent_hooks_apply", { agent, install, fingerprint }),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
@@ -137,6 +142,29 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+}
+
+/** One agent other than Claude Code, as agents.rs reports it. */
+export interface AgentHookStatus {
+  /** The `--agent` name; its pill is `agent_<id>`. */
+  id: string;
+  name: string;
+  installed: boolean;
+  /** The file (or files, one per line) Coucou writes. */
+  path: string;
+  hookReady: boolean;
+  /** The island can allow or deny this agent's permission requests. */
+  approvals: boolean;
+  /** What to do once it is written. */
+  note: string;
+}
+
+export interface AgentHookPlan {
+  diff: string;
+  /** Where each existing file is copied first, one per line; "" when none. */
+  backup: string;
+  path: string;
+  fingerprint: string;
 }
 
 export interface HookPreview {

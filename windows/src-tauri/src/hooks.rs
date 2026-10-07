@@ -8,12 +8,17 @@
 // The command is only the quoted exe path in forward slashes plus the event name:
 // on Windows Claude Code runs hook commands through Git Bash, and anything with
 // PowerShell or cmd in it breaks.
+//
+// Reading, the diff, the backup and the write itself live in config_file.rs,
+// shared with every other agent's installer (agents.rs).
 
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
+use crate::agents::{self, Shell};
+use crate::config_file::{self, FileEdit};
 use crate::{platform, settings};
 
 /// Every event the island reacts to, with the hook timeout written to settings.json.
@@ -60,68 +65,20 @@ pub fn settings_path() -> PathBuf {
     platform::home_dir().join(".claude").join("settings.json")
 }
 
-/// Reads `~/.claude/settings.json`.
-///
-/// The only error that means "start from nothing" is the file not being there.
-/// Everything else — a lock held by another process, a permission problem, JSON
-/// we cannot parse — is reported, because the alternative is treating somebody's
-/// unreadable settings as an empty object and then writing that back over them.
-fn read_settings() -> Result<Value, String> {
-    let path = settings_path();
-    match std::fs::read(&path) {
-        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
-        // A lock, a permission problem, a bad drive: all of them mean we do not
-        // know what is in there, and not knowing is not the same as empty.
-        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
-    }
-}
-
-/// The parsing half of `read_settings`, split out so it can be tested without a
-/// home directory.
-fn parse_settings(bytes: &[u8], path: &str) -> Result<Value, String> {
-    // PowerShell writes a UTF-8 BOM with `Set-Content -Encoding utf8`, and
-    // serde_json refuses it. Stripping it is safe and well defined; guessing at
-    // anything else is not.
-    let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
-    if text.iter().all(u8::is_ascii_whitespace) {
-        return Ok(json!({}));
-    }
-    match serde_json::from_slice::<Value>(text) {
-        Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{path} isn't a JSON object — Coucou won't touch it.")),
-        Err(err) => Err(format!(
-            "{path} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
-        )),
-    }
-}
-
 /// The settings as they are, or an empty object when we cannot tell. Only for
 /// read-only paths like `status()`, which must never fail loudly; anything that
-/// writes uses `read_settings()` and surfaces the error instead.
+/// writes goes through `config_file`, which surfaces the error instead.
 fn read_settings_lossy() -> Value {
-    read_settings().unwrap_or_else(|_| json!({}))
+    config_file::read(&settings_path())
+        .ok()
+        .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
+        .unwrap_or_else(|| json!({}))
 }
 
-#[cfg(windows)]
+/// On Windows Claude Code runs hook commands through Git Bash; on Linux through
+/// `sh`. Either way the relay path is one quoted shell word.
 fn hook_command(event: &str) -> String {
-    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
-    format!("\"{exe}\" {event}")
-}
-
-/// Claude Code runs the command through `sh`, which still reads `$`, `` ` ``
-/// and `\` inside double quotes. Single quotes keep the path a path, whatever
-/// the home directory is called.
-#[cfg(unix)]
-fn hook_command(event: &str) -> String {
-    format!("{} {event}", sh_quote(&settings::hook_exe_path().to_string_lossy()))
-}
-
-/// `s` as one single-quoted shell word: `'` becomes `'\''`, nothing else is
-/// special inside single quotes.
-#[cfg(unix)]
-fn sh_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', r"'\''"))
+    agents::relay_command(Shell::Sh, event)
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -139,21 +96,23 @@ fn entry_is_ours(entry: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// Settings with Coucou's hooks added; everything else is left untouched.
-fn merged(existing: &Value) -> Value {
+/// Settings with Coucou's hooks added; everything else is left untouched. A
+/// `hooks` (or one of its events) that is not what Claude Code documents is
+/// refused rather than replaced.
+fn merged(existing: &Value) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
-    let mut hooks = root
-        .get("hooks")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_else(Map::new);
+    let mut hooks = match root.get("hooks") {
+        None => Map::new(),
+        Some(Value::Object(h)) => h.clone(),
+        Some(_) => return Err(unexpected("\"hooks\"")),
+    };
 
     for (event, timeout) in HOOK_EVENTS {
-        let mut list = hooks
-            .get(*event)
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
+        let mut list = match hooks.get(*event) {
+            None => Vec::new(),
+            Some(Value::Array(list)) => list.clone(),
+            Some(_) => return Err(unexpected(&format!("\"hooks\".\"{event}\""))),
+        };
         list.retain(|entry| !entry_is_ours(entry));
         list.push(json!({
             "hooks": [{
@@ -166,14 +125,20 @@ fn merged(existing: &Value) -> Value {
     }
 
     root.insert("hooks".into(), Value::Object(hooks));
-    Value::Object(root)
+    Ok(Value::Object(root))
+}
+
+fn unexpected(what: &str) -> String {
+    format!("settings.json: {what} has an unexpected type — Coucou has not touched it.")
 }
 
 /// Settings with every Coucou entry removed, and nothing else changed.
-fn without_ours(existing: &Value) -> Value {
+fn without_ours(existing: &Value) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
-    let Some(hooks) = root.get("hooks").and_then(Value::as_object).cloned() else {
-        return Value::Object(root);
+    let hooks = match root.get("hooks") {
+        None => return Ok(Value::Object(root)),
+        Some(Value::Object(h)) => h.clone(),
+        Some(_) => return Err(unexpected("\"hooks\"")),
     };
     let mut out = Map::new();
     for (event, value) in hooks {
@@ -195,299 +160,19 @@ fn without_ours(existing: &Value) -> Value {
     } else {
         root.insert("hooks".into(), Value::Object(out));
     }
-    Value::Object(root)
+    Ok(Value::Object(root))
 }
 
-fn pretty(v: &Value) -> String {
-    serde_json::to_string_pretty(v).unwrap_or_default()
-}
-
-/// Down to the second: installing then uninstalling in the same minute must not
-/// quietly overwrite the first backup.
-fn stamp() -> String {
-    let t = platform::local_time();
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        t.year, t.month, t.day, t.hour, t.minute, t.second
-    )
-}
-
-fn backup_path() -> PathBuf {
-    let p = settings_path();
-    p.with_file_name(format!("settings.json.bak-{}", stamp()))
-}
-
-/// Identifies the exact bytes a preview was computed from. FNV-1a is plenty:
-/// the question is only "is this still the file I showed the user?".
-fn fingerprint(bytes: &[u8]) -> String {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in bytes {
-        hash ^= *b as u64;
-        hash = hash.wrapping_mul(0x1000_0000_01b3);
-    }
-    format!("{hash:016x}")
-}
-
-fn current_fingerprint() -> String {
-    match std::fs::read(settings_path()) {
-        Ok(bytes) => fingerprint(&bytes),
-        Err(_) => fingerprint(b""),
-    }
+fn edits(install: bool) -> Vec<FileEdit<'static>> {
+    vec![FileEdit {
+        path: settings_path(),
+        edit: config_file::json_edit("settings.json".into(), move |current| {
+            if install { merged(current).map(Some) } else { without_ours(current).map(Some) }
+        }),
+    }]
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
-
-pub fn gemini_settings_path() -> PathBuf {
-    platform::home_dir().join(".gemini").join("settings.json")
-}
-
-const GEMINI_EVENTS: &[(&str, &str, u64)] = &[
-    ("SessionStart", "SessionStart", 10000),
-    ("SessionEnd", "SessionEnd", 10000),
-    ("BeforeTool", "PreToolUse", 5000),
-    ("AfterTool", "PostToolUse", 5000),
-    ("BeforeAgent", "UserPromptSubmit", 5000),
-    ("AfterAgent", "Stop", 5000),
-];
-
-#[cfg(windows)]
-fn gemini_hook_command(event: &str) -> String {
-    let exe = settings::hook_exe_path().to_string_lossy().replace('\\', "/");
-    format!("\"{exe}\" --agent gemini {event}")
-}
-
-#[cfg(unix)]
-fn gemini_hook_command(event: &str) -> String {
-    format!(
-        "{} --agent gemini {event}",
-        sh_quote(&settings::hook_exe_path().to_string_lossy())
-    )
-}
-
-fn read_gemini_settings() -> Result<Value, String> {
-    let path = gemini_settings_path();
-    match std::fs::read(&path) {
-        Ok(bytes) => parse_settings(&bytes, &path.display().to_string()),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
-        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
-    }
-}
-
-fn read_gemini_settings_lossy() -> Value {
-    read_gemini_settings().unwrap_or_else(|_| json!({}))
-}
-
-fn gemini_entry_is_ours(entry: &Value) -> bool {
-    if let Some(cmd) = entry.get("command").and_then(Value::as_str) {
-        if cmd.contains(MARKER) && cmd.contains("--agent gemini") {
-            return true;
-        }
-    }
-    if let Some(inner) = entry.get("hooks").and_then(Value::as_array) {
-        if inner.iter().any(|h| {
-            h.get("command")
-                .and_then(Value::as_str)
-                .map(|c| c.contains(MARKER) && c.contains("--agent gemini"))
-                .unwrap_or(false)
-        }) {
-            return true;
-        }
-    }
-    false
-}
-
-fn remove_gemini_nb_hook_entries(groups: &[Value]) -> Vec<Value> {
-    let mut out = Vec::new();
-    for group in groups {
-        if let Some(cmd) = group.get("command").and_then(Value::as_str) {
-            if cmd.contains(MARKER) && cmd.contains("--agent gemini") {
-                continue;
-            }
-        }
-        if let Some(inner) = group.get("hooks").and_then(Value::as_array) {
-            let filtered: Vec<Value> = inner
-                .iter()
-                .filter(|h| {
-                    !h.get("command")
-                        .and_then(Value::as_str)
-                        .map(|c| c.contains(MARKER) && c.contains("--agent gemini"))
-                        .unwrap_or(false)
-                })
-                .cloned()
-                .collect();
-            if !filtered.is_empty() {
-                let mut updated = group.as_object().cloned().unwrap_or_default();
-                updated.insert("hooks".into(), Value::Array(filtered));
-                out.push(Value::Object(updated));
-            }
-        } else {
-            out.push(group.clone());
-        }
-    }
-    out
-}
-
-fn merged_gemini(existing: &Value) -> Result<Value, String> {
-    let mut root = existing.as_object().cloned().unwrap_or_default();
-    if let Some(raw) = root.get("hooks") {
-        if !raw.is_object() {
-            return Err("~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou won't touch it.".into());
-        }
-    }
-    let mut hooks = root
-        .get("hooks")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_else(Map::new);
-
-    for (gemini_event, normalized_event, timeout) in GEMINI_EVENTS {
-        if let Some(raw) = hooks.get(*gemini_event) {
-            if !raw.is_array() {
-                return Err(format!(
-                    "~/.gemini/settings.json: \"hooks\"[\"{gemini_event}\"] has an unexpected type — Coucou won't touch it."
-                ));
-            }
-        }
-        let list = hooks
-            .get(*gemini_event)
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        let mut cleaned = remove_gemini_nb_hook_entries(&list);
-        cleaned.push(json!({
-            "matcher": "*",
-            "hooks": [{
-                "type": "command",
-                "command": gemini_hook_command(normalized_event),
-                "timeout": timeout,
-            }]
-        }));
-        hooks.insert((*gemini_event).to_string(), Value::Array(cleaned));
-    }
-
-    root.insert("hooks".into(), Value::Object(hooks));
-    Ok(Value::Object(root))
-}
-
-fn without_gemini_ours(existing: &Value) -> Result<Value, String> {
-    let mut root = existing.as_object().cloned().unwrap_or_default();
-    let Some(raw_hooks) = root.get("hooks") else {
-        return Ok(Value::Object(root));
-    };
-    let Some(hooks) = raw_hooks.as_object() else {
-        return Err("~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou won't touch it.".into());
-    };
-    let mut out = Map::new();
-    for (event, value) in hooks {
-        match value.as_array() {
-            Some(list) => {
-                let kept = remove_gemini_nb_hook_entries(list);
-                if !kept.is_empty() {
-                    out.insert(event.clone(), Value::Array(kept));
-                }
-            }
-            None => {
-                out.insert(event.clone(), value.clone());
-            }
-        }
-    }
-    if out.is_empty() {
-        root.remove("hooks");
-    } else {
-        root.insert("hooks".into(), Value::Object(out));
-    }
-    Ok(Value::Object(root))
-}
-
-fn gemini_backup_path() -> PathBuf {
-    let p = gemini_settings_path();
-    p.with_file_name(format!("settings.json.bak-{}", stamp()))
-}
-
-fn gemini_current_fingerprint() -> String {
-    match std::fs::read(gemini_settings_path()) {
-        Ok(bytes) => fingerprint(&bytes),
-        Err(_) => fingerprint(b""),
-    }
-}
-
-pub fn gemini_status() -> HookStatus {
-    let current = read_gemini_settings_lossy();
-    let installed = current
-        .get("hooks")
-        .and_then(Value::as_object)
-        .map(|hooks| {
-            hooks
-                .values()
-                .filter_map(Value::as_array)
-                .flatten()
-                .any(gemini_entry_is_ours)
-        })
-        .unwrap_or(false);
-    let hook_path = settings::hook_exe_path();
-    HookStatus {
-        installed,
-        settings_path: gemini_settings_path().to_string_lossy().to_string(),
-        hook_ready: hook_path.exists(),
-        hook_path: hook_path.to_string_lossy().to_string(),
-    }
-}
-
-pub fn gemini_preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_gemini_settings()?;
-    let next = if install {
-        merged_gemini(&current)?
-    } else {
-        without_gemini_ours(&current)?
-    };
-    Ok(HookPreview {
-        diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: gemini_backup_path().to_string_lossy().to_string(),
-        settings_path: gemini_settings_path().to_string_lossy().to_string(),
-        fingerprint: gemini_current_fingerprint(),
-    })
-}
-
-pub fn gemini_write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = gemini_settings_path();
-    let dir = path.parent().unwrap_or(Path::new("."));
-    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-
-    let current = read_gemini_settings()?;
-    if gemini_current_fingerprint() != fingerprint {
-        return Err(format!(
-            "{} changed since the preview. Nothing was written — review the new diff.",
-            path.display()
-        ));
-    }
-
-    let backup = gemini_backup_path();
-    if path.exists() {
-        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
-    }
-
-    let next = if install {
-        merged_gemini(&current)?
-    } else {
-        without_gemini_ours(&current)?
-    };
-    let mut text = pretty(&next);
-    text.push('\n');
-
-    #[cfg(unix)]
-    let path = std::fs::canonicalize(&path).unwrap_or(path);
-
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
-    }
-    if let Err(err) = std::fs::rename(&temp, &path) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
-    }
-    Ok(backup.to_string_lossy().to_string())
-}
 
 pub fn status() -> HookStatus {
     let current = read_settings_lossy();
@@ -512,89 +197,23 @@ pub fn status() -> HookStatus {
 }
 
 pub fn preview(install: bool) -> Result<HookPreview, String> {
-    let current = read_settings()?;
-    let next = if install { merged(&current) } else { without_ours(&current) };
+    let plan = config_file::preview(&edits(install))?;
     Ok(HookPreview {
-        diff: unified_diff(&pretty(&current), &pretty(&next)),
-        backup: backup_path().to_string_lossy().to_string(),
-        settings_path: settings_path().to_string_lossy().to_string(),
-        fingerprint: current_fingerprint(),
+        diff: plan.diff,
+        backup: plan.backup,
+        settings_path: plan.path,
+        fingerprint: plan.fingerprint,
     })
 }
 
-/// Writes the merged (or cleaned) settings after taking a dated backup.
+/// Writes the merged (or cleaned) settings after taking a dated backup, and
+/// returns where the backup went ("" when there was no file to back up).
 ///
-/// `fingerprint` is the one the preview was computed from. If the file changed
-/// in between — another tool, another window, the user's own editor — we stop
-/// and make them look at a fresh diff, because the only thing worse than not
-/// installing the hooks is silently reverting somebody else's edit.
+/// `fingerprint` is the one the preview was computed from: a settings.json that
+/// changed in between is refused rather than overwritten (see config_file).
 pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let path = settings_path();
-    let dir = path.parent().unwrap_or(Path::new("."));
-    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-
-    // Read before the backup: an unreadable file must abort before we touch
-    // anything at all.
-    let current = read_settings()?;
-    if current_fingerprint() != fingerprint {
-        return Err(format!(
-            "{} changed since the preview. Nothing was written — review the new diff.",
-            path.display()
-        ));
-    }
-
-    let backup = backup_path();
-    if path.exists() {
-        std::fs::copy(&path, &backup).map_err(|e| format!("backup failed: {e}"))?;
-    }
-
-    let next = if install { merged(&current) } else { without_ours(&current) };
-    let mut text = pretty(&next);
-    text.push('\n');
-
-    // A dotfiles setup often makes settings.json a symlink: write to the file it
-    // points at, so the link survives the rename below.
-    #[cfg(unix)]
-    let path = std::fs::canonicalize(&path).unwrap_or(path);
-
-    // Write beside the target and rename over it: a crash or a full disk leaves
-    // the original settings.json intact rather than half a file.
-    let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
-    if let Err(err) = write_like(&temp, &path, text.as_bytes()) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
-    }
-    if let Err(err) = std::fs::rename(&temp, &path) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(format!("write failed: {err}"));
-    }
-    Ok(backup.to_string_lossy().to_string())
-}
-
-/// Writes `bytes` to `temp`, which is about to replace `original`.
-///
-/// On Linux a fresh file would get the umask's 0644, and settings.json can hold
-/// API keys in its `env` block: the new file is created readable by us only,
-/// then given the original's permissions, so the rename never widens them.
-fn write_like(temp: &Path, original: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let mut file = options.open(temp)?;
-    file.write_all(bytes)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(original)
-            .map(|m| m.permissions().mode() & 0o777)
-            .unwrap_or(0o600);
-        file.set_permissions(std::fs::Permissions::from_mode(mode))?;
-    }
-    #[cfg(not(unix))]
-    let _ = original;
-    Ok(())
+    let backups = config_file::apply(&edits(install), fingerprint)?;
+    Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
 /// Copies the relay (coucou-hook.exe / coucou-hook) into the local data dir's
@@ -681,116 +300,9 @@ fn install_relay(src: &Path, dest: &Path) {
     }
 }
 
-// ── Minimal unified diff (LCS) ────────────────────────────────────────────────
-
-/// settings.json is short, so a plain O(n·m) LCS is the simplest honest diff.
-fn unified_diff(before: &str, after: &str) -> String {
-    let a: Vec<&str> = before.lines().collect();
-    let b: Vec<&str> = after.lines().collect();
-    let (n, m) = (a.len(), b.len());
-
-    let mut lcs = vec![vec![0usize; m + 1]; n + 1];
-    for i in (0..n).rev() {
-        for j in (0..m).rev() {
-            lcs[i][j] = if a[i] == b[j] {
-                lcs[i + 1][j + 1] + 1
-            } else {
-                lcs[i + 1][j].max(lcs[i][j + 1])
-            };
-        }
-    }
-
-    let mut out: Vec<String> = Vec::new();
-    let (mut i, mut j) = (0usize, 0usize);
-    while i < n && j < m {
-        if a[i] == b[j] {
-            out.push(format!("  {}", a[i]));
-            i += 1;
-            j += 1;
-        } else if lcs[i + 1][j] >= lcs[i][j + 1] {
-            out.push(format!("- {}", a[i]));
-            i += 1;
-        } else {
-            out.push(format!("+ {}", b[j]));
-            j += 1;
-        }
-    }
-    while i < n {
-        out.push(format!("- {}", a[i]));
-        i += 1;
-    }
-    while j < m {
-        out.push(format!("+ {}", b[j]));
-        j += 1;
-    }
-
-    // Keep three lines of context around each change so the panel stays readable.
-    let changed: Vec<usize> = out
-        .iter()
-        .enumerate()
-        .filter(|(_, l)| l.starts_with('+') || l.starts_with('-'))
-        .map(|(i, _)| i)
-        .collect();
-    if changed.is_empty() {
-        return "No change.".into();
-    }
-    let mut keep = vec![false; out.len()];
-    for idx in changed {
-        let lo = idx.saturating_sub(3);
-        let hi = (idx + 4).min(out.len());
-        for k in lo..hi {
-            keep[k] = true;
-        }
-    }
-    let mut result = String::new();
-    let mut gap = false;
-    for (idx, line) in out.iter().enumerate() {
-        if keep[idx] {
-            result.push_str(line);
-            result.push('\n');
-            gap = false;
-        } else if !gap {
-            result.push_str("  …\n");
-            gap = true;
-        }
-    }
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    const WHERE: &str = "settings.json";
-
-    #[test]
-    fn a_utf8_bom_is_stripped_not_treated_as_corruption() {
-        // PowerShell 5's `Set-Content -Encoding utf8` produces exactly this.
-        let mut bytes = vec![0xEF, 0xBB, 0xBF];
-        bytes.extend_from_slice(br#"{"model":"opus","hooks":{}}"#);
-        let parsed = parse_settings(&bytes, WHERE).expect("a BOM must not defeat the parser");
-        assert_eq!(parsed["model"], "opus");
-    }
-
-    #[test]
-    fn unreadable_content_is_an_error_never_an_empty_object() {
-        // This is the whole bug: returning {} here meant `merged()` produced a
-        // file containing nothing but Coucou's hooks, and the write replaced
-        // everything the user had.
-        for bad in [&b"{ not json"[..], &b"[1,2,3]"[..], &b"\"a string\""[..]] {
-            assert!(
-                parse_settings(bad, WHERE).is_err(),
-                "content we cannot use must refuse, not come back empty"
-            );
-        }
-    }
-
-    #[test]
-    fn empty_and_whitespace_files_start_from_nothing() {
-        assert_eq!(parse_settings(b"", WHERE).unwrap(), json!({}));
-        assert_eq!(parse_settings(b"  
-	 ", WHERE).unwrap(), json!({}));
-    }
 
     #[test]
     fn merging_keeps_every_other_setting_and_every_foreign_hook() {
@@ -808,7 +320,7 @@ mod tests {
             }
         });
 
-        let after = merged(&existing);
+        let after = merged(&existing).unwrap();
         assert_eq!(after["model"], "claude-opus-5");
         assert_eq!(after["theme"], "dark");
         assert_eq!(after["enabledPlugins"], serde_json::json!(["a", "b"]));
@@ -821,78 +333,27 @@ mod tests {
         assert!(pre.iter().any(entry_is_ours), "our own hook was not added");
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
+        // Installing twice adds nothing more.
+        assert_eq!(merged(&after).unwrap(), after);
+
         // And removing ours puts it back exactly as it was.
-        let cleaned = without_ours(&after);
+        let cleaned = without_ours(&after).unwrap();
         assert_eq!(cleaned, existing);
     }
 
     #[test]
-    fn merging_gemini_creates_groups_and_preserves_others() {
-        let existing = serde_json::json!({
-            "theme": "dark",
-            "hooks": {
-                "BeforeTool": [
-                    { "matcher": "other", "hooks": [{ "type": "command", "command": "custom.exe" }] }
-                ]
-            }
-        });
-
-        let after = merged_gemini(&existing).unwrap();
-        assert_eq!(after["theme"], "dark");
-        let before_tool = after["hooks"]["BeforeTool"].as_array().unwrap();
-        assert_eq!(before_tool.len(), 2);
-        assert!(before_tool[0]["matcher"] == "other");
-        assert!(gemini_entry_is_ours(&before_tool[1]));
-
-        let cleaned = without_gemini_ours(&after).unwrap();
-        assert_eq!(cleaned, existing);
-    }
-
-    #[test]
-    fn a_fingerprint_notices_any_change() {
-        assert_eq!(fingerprint(b"{}"), fingerprint(b"{}"));
-        assert_ne!(fingerprint(b"{}"), fingerprint(b"{ }"));
-        assert_ne!(fingerprint(b""), fingerprint(b"{}"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn the_hook_path_is_one_shell_word_whatever_it_contains() {
-        assert_eq!(sh_quote("/home/a b/x"), "'/home/a b/x'");
-        // $, backticks, backslashes and double quotes stay literal in single quotes.
-        assert_eq!(sh_quote(r#"/h/$(id)`x`\"y"#), r#"'/h/$(id)`x`\"y'"#);
-        // A single quote closes, escapes and reopens.
-        assert_eq!(sh_quote("/h/it's"), r"'/h/it'\''s'");
-    }
-
-    /// settings.json can carry API keys in its `env` block: rewriting it must
-    /// never make it readable by more people than before.
-    #[cfg(unix)]
-    #[test]
-    fn rewriting_settings_never_widens_its_permissions() {
-        use std::os::unix::fs::PermissionsExt;
-        let dir = std::env::temp_dir().join(format!("coucou-perm-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let original = dir.join("settings.json");
-        let temp = dir.join("settings.json.new");
-        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
-
-        for wanted in [0o600, 0o640, 0o644] {
-            std::fs::write(&original, b"{}").unwrap();
-            std::fs::set_permissions(&original, std::fs::Permissions::from_mode(wanted)).unwrap();
-            let _ = std::fs::remove_file(&temp);
-            write_like(&temp, &original, b"{\"a\":1}").unwrap();
-            assert_eq!(mode(&temp), wanted, "the rewrite must keep {wanted:o}");
+    fn values_of_an_unexpected_type_are_refused_not_replaced() {
+        for odd in [
+            json!({ "hooks": "a string" }),
+            json!({ "hooks": [1, 2] }),
+            json!({ "hooks": { "PreToolUse": { "not": "a list" } } }),
+        ] {
+            assert!(merged(&odd).is_err(), "{odd}");
         }
-
-        // No original: ours only.
-        std::fs::remove_file(&original).unwrap();
-        let _ = std::fs::remove_file(&temp);
-        write_like(&temp, &original, b"{}").unwrap();
-        assert_eq!(mode(&temp), 0o600);
-
-        let _ = std::fs::remove_dir_all(&dir);
+        assert!(without_ours(&json!({ "hooks": 3 })).is_err());
+        // An event we do not install stays as it is, whatever its shape.
+        let kept = json!({ "hooks": { "Custom": "anything" } });
+        assert_eq!(without_ours(&kept).unwrap(), kept);
     }
 
     /// Everything filesystem-shaped lives in one test on purpose: it points
