@@ -17,6 +17,8 @@ pub struct Settings {
     pub auto_close_interval: f64,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
+    /// The always-on workspace pill (src/core/pills.ts checks it is one).
+    pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
@@ -42,6 +44,7 @@ impl Default for Settings {
                 "integration_vercel".into(),
                 "integration_github".into(),
             ],
+            main_pill: "integration_claude".into(),
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
@@ -303,6 +306,7 @@ mod tests {
   "autoCloseInterval": 30.0,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
+  "mainPill": "agent_cursor",
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
@@ -413,6 +417,7 @@ mod tests {
             ("soundVolume", json!("loud")),
             ("soundEnabled", json!(1)),
             ("activeIntegrations", json!("integration_n8n")),
+            ("mainPill", json!(["agent_cursor"])),
             ("screen", Value::Null),
         ] {
             let loaded = parse(&custom_with(key, Some(wrong)))
@@ -628,6 +633,7 @@ mod tests {
                 "autoCloseInterval",
                 "absenceInterval",
                 "activeIntegrations",
+                "mainPill",
                 "screen",
                 "autostart",
                 "hooksInstalled",

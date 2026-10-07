@@ -444,6 +444,14 @@ body {
   z-index: 2;
 }
 
+/* Folds a waiting permission card or question away without answering it. */
+.fold {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+}
+
 /* Ticker */
 
 .ticker {

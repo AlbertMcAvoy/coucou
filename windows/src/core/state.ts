@@ -2,6 +2,10 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
+import {
+  DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
+  toggleDeclared, type HostOs, type PillDefinition,
+} from "./pills";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -24,12 +28,14 @@ export interface AgentTask {
   miniEye?: EyeShape | null;
   pillBadge?: PillBadge | null;
   sessionCwd?: string | null;
+  /** Claude Code's session, so "Open terminal" can find the window it runs in. */
+  sessionId?: string | null;
 }
 
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
-  /** The pill the request belongs to: Claude Code's, or an agent's (Codex…). */
+  /** The pill the request belongs to: VS Code's or Cursor's (Claude Code), or an agent's (Codex…). */
   pillId: string;
   tool: string;
   command: string;
@@ -66,28 +72,13 @@ export interface SearchResult {
   note?: string;
 }
 
-const task = (
-  id: string, name: string, color: string, source: AgentSource,
-): AgentTask => ({
-  id, name, color, state: "idle", stepIndex: 0, steps: [], source, isIntegration: true,
-});
-
-/** AgentTask.integrationAgents — same ids, names and colours as macOS. */
-export const INTEGRATION_AGENTS: AgentTask[] = [
-  task("integration_claude", "VS Code", "#F5F6F8", "claudeCode"),
-  task("integration_resend", "Resend", "#22C55E", "n8n"),
-  task("integration_n8n", "n8n", "#F29B38", "n8n"),
-  task("integration_vercel", "Vercel", "#7C5CFF", "n8n"),
-  task("integration_github", "GitHub", "#F4505E", "n8n"),
-  task("integration_notion", "Notion", "#8C8C8C", "n8n"),
-  task("integration_calcom", "Cal.com", "#C9956A", "n8n"),
-  task("integration_stripe", "Stripe", "#0570DE", "n8n"),
-];
-
-export const TOGGLEABLE_INTEGRATION_IDS = [
-  "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-  "integration_notion", "integration_calcom", "integration_stripe",
-];
+/** A fresh, idle task for a catalog pill. */
+function taskFor(def: PillDefinition, name = def.name): AgentTask {
+  return {
+    id: def.id, name, color: def.color, state: "idle", stepIndex: 0, steps: [],
+    source: def.source, isIntegration: true,
+  };
+}
 
 /** What an integration poller last reported. */
 export interface IntegrationInfo {
@@ -102,7 +93,10 @@ export interface Settings {
   soundVolume: number;
   autoCloseInterval: number;
   absenceInterval: number;
+  /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
+  /** The always-on workspace pill: VS Code, Cursor, Codex or Antigravity. */
+  mainPill: string;
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
   autostart: boolean;
@@ -119,6 +113,7 @@ export const DEFAULT_SETTINGS: Settings = {
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   ],
+  mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
   autostart: false,
   hooksInstalled: false,
@@ -154,12 +149,17 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** The pill that was in front when the card came up; it comes back after. */
+  focusBeforeApproval: string | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 
   lastActivity = performance.now();
 
   settings: Settings = { ...DEFAULT_SETTINGS };
+
+  /** Which pills this build offers depends on it (Claude Desktop is Windows only). */
+  os: HostOs = HOST_OS;
 
   private listeners = new Set<Listener>();
 
@@ -193,6 +193,36 @@ class AppState {
     this.notify();
   }
 
+  /**
+   * A permission card or a question comes up: its pill comes to the front, and
+   * the pill that was there is remembered (HookServer.focusBeforeApproval).
+   */
+  beginApproval(info: ApprovalInfo) {
+    this.pendingApproval = info;
+    this.isPinned = true;
+    if (this.focusBeforeApproval == null) this.focusBeforeApproval = this.focusId;
+    this.setFocus(info.pillId);
+  }
+
+  /**
+   * The card has its answer, or is withdrawn: the session carries on, and the
+   * pill you were on comes back — unless you moved to another one meanwhile.
+   */
+  endApproval() {
+    const req = this.pendingApproval;
+    if (!req) return;
+    this.pendingApproval = null;
+    this.isPinned = false;
+    this.updateTask(req.pillId, "working");
+    this.setPillBadge(req.pillId, null);
+    const previous = this.focusBeforeApproval;
+    this.focusBeforeApproval = null;
+    if (previous && this.focusId === req.pillId && this.tasks.some((t) => t.id === previous)) {
+      this.focusId = previous;
+    }
+    this.notify();
+  }
+
   updateTask(id: string, state: BotStateName) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
@@ -218,71 +248,120 @@ class AppState {
     this.notify();
   }
 
-  /** loadIntegrationTasks() — VS Code always on, the rest opt-in (max 4). */
+  /** The always-on workspace pill, once the setting has been checked. */
+  get mainPillId(): string {
+    return sanitizeDeclared(this.settings, this.os).mainPill;
+  }
+
+  /**
+   * True for a pill that stays when its session ends: the main pill and the
+   * declared ones go back to idle instead of going away.
+   */
+  isKept(id: string): boolean {
+    const d = sanitizeDeclared(this.settings, this.os);
+    return id === d.mainPill || d.activeIntegrations.includes(id);
+  }
+
+  /**
+   * Loads the catalog pills: the main pill always, the declared ones, and none
+   * of the others — a pill that is mid-session stays until its session ends.
+   * Safe to call any number of times. AppState.loadIntegrationTasks on macOS.
+   */
   loadIntegrationTasks() {
-    for (const proto of INTEGRATION_AGENTS) {
-      const shouldLoad =
-        proto.id === "integration_claude" || this.settings.activeIntegrations.includes(proto.id);
-      const idx = this.tasks.findIndex((t) => t.id === proto.id);
-      if (shouldLoad && idx < 0) this.tasks.push({ ...proto, steps: [] });
-      if (!shouldLoad && idx >= 0) this.tasks.splice(idx, 1);
+    const d = sanitizeDeclared(this.settings, this.os);
+    this.settings.mainPill = d.mainPill;
+    this.settings.activeIntegrations = d.activeIntegrations;
+    for (const def of availablePills(this.os)) {
+      const shouldLoad = def.id === d.mainPill || d.activeIntegrations.includes(def.id);
+      const idx = this.tasks.findIndex((t) => t.id === def.id);
+      if (shouldLoad && idx < 0) this.tasks.push(taskFor(def));
+      const busy = idx >= 0 && (this.tasks[idx].state !== "idle" || this.tasks[idx].steps.length > 0);
+      if (!shouldLoad && idx >= 0 && !busy) this.tasks.splice(idx, 1);
     }
-    // Order: integration_claude first, then agent_* pills (visible in slice(0,4)),
-    // then other integrations in declaration order.
-    const order = INTEGRATION_AGENTS.map((t) => t.id);
-    this.tasks.sort((a, b) => {
-      const isAgentA = a.id.startsWith("agent_");
-      const isAgentB = b.id.startsWith("agent_");
-      // integration_claude always first
-      if (a.id === "integration_claude") return -1;
-      if (b.id === "integration_claude") return 1;
-      // agent_* before other integrations; preserve insertion order among themselves
-      if (isAgentA && !isAgentB) return -1;
-      if (isAgentB && !isAgentA) return 1;
-      if (isAgentA && isAgentB) return 0;
-      // both known integrations → declaration order
-      return order.indexOf(a.id) - order.indexOf(b.id);
-    });
-    if (!this.focusId) this.focusId = "integration_claude";
+    this.tasks = orderPills(this.tasks, d.mainPill);
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = d.mainPill;
     this.notify();
   }
 
+  /**
+   * A session is over. The main and declared pills are put back as they were;
+   * any other pill goes away (AppState.removeTask on macOS).
+   */
   removeTask(id: string) {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
+    if (this.isKept(id)) {
+      const t = this.tasks[idx];
+      t.state = "idle";
+      t.steps = [];
+      t.stepIndex = 0;
+      delete t.stepSeq;
+      t.pillBadge = null;
+      const def = pillDefinition(id);
+      if (def) t.name = def.name;
+      this.notify();
+      return;
+    }
     this.tasks.splice(idx, 1);
-    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? "integration_claude";
+    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? this.mainPillId;
     this.notify();
   }
 
-  /** Creates a dynamic agent_ pill on first event; no-ops if it already exists.
-   *  Inserted right after integration_claude so it appears in the visible slice(0,4). */
+  /**
+   * Creates the pill of a tagged agent on its first event; no-op if it exists.
+   * Inserted right after the main pill so it is in the visible slice(0,4). A
+   * catalog agent wears its catalog colour, as on macOS.
+   */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
-    const at = this.tasks.findIndex((t) => t.id === "integration_claude") + 1;
-    this.tasks.splice(at, 0, {
-      id, name, color,
+    const def = pillDefinition(id);
+    this.insertAfterMain({
+      id, name, color: def?.color ?? color,
       state: "idle", stepIndex: 0, steps: [],
       source: "agent", isIntegration: false,
     });
-    if (!this.focusId) this.focusId = id;
+  }
+
+  /**
+   * The pill a Claude Code session belongs to (VS Code or Cursor). It is made
+   * for the session when it is neither the main pill nor declared, as
+   * upsertWorkspaceTask does on macOS.
+   */
+  upsertWorkspacePill(id: string, name: string, cwd: string): AgentTask | null {
+    let t = this.tasks.find((x) => x.id === id);
+    if (!t) {
+      const def = pillDefinition(id);
+      if (!def) return null;
+      t = taskFor(def, name);
+      this.insertAfterMain(t);
+    }
+    t.name = name;
+    if (cwd) t.sessionCwd = cwd;
+    return t;
+  }
+
+  private insertAfterMain(t: AgentTask) {
+    const at = this.tasks.findIndex((x) => x.id === this.mainPillId) + 1;
+    this.tasks.splice(at, 0, t);
+    if (!this.focusId) this.focusId = t.id;
     this.notify();
   }
 
+  /** Declares or undeclares a pill (max 4 next to the main one). */
   toggleIntegration(id: string) {
-    if (id === "integration_claude") return;
-    const active = this.settings.activeIntegrations;
-    if (active.includes(id)) {
-      this.settings.activeIntegrations = active.filter((x) => x !== id);
-      if (this.focusId === id) this.focusId = "integration_claude";
-    } else {
-      if (active.length >= 4) return;
-      this.settings.activeIntegrations = [...active, id];
-    }
+    const next = toggleDeclared(sanitizeDeclared(this.settings, this.os), id, this.os);
+    if (!next) return;
+    this.settings.activeIntegrations = next;
+    if (!next.includes(id) && this.focusId === id) this.focusId = this.mainPillId;
     this.loadIntegrationTasks();
   }
 
+  /**
+   * What the island opens on. A card waiting for an answer comes first, so
+   * reopening a folded island shows it again (Mac #117, #290).
+   */
   defaultView(): IslandViewName {
+    if (this.pendingApproval) return this.pendingApproval.questions ? "question" : "approval";
     return this.tasks.length === 0 ? "empty" : "overview";
   }
 }

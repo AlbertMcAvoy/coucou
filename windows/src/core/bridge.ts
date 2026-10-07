@@ -58,6 +58,16 @@ export const Bridge = {
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
+  /**
+   * "Open terminal": the window the session runs in when Rust found it
+   * (Windows), else the folder in VS Code.
+   */
+  openSession: (sessionId: string | null, path: string | null) =>
+    call<boolean>("open_session", { sessionId, path }),
+
+  /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
+  openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
+
   quit: () => call<void>("quit_app"),
 
   openSettingsWindow: () => call<void>("open_settings_window"),
@@ -67,6 +77,8 @@ export const Bridge = {
 
   // ── Claude Code hooks ─────────────────────────────────────────────────────
   hooksStatus: () => call<HookStatus>("hooks_status"),
+  /** Pill ID → whether that agent's hooks reach Coucou (read-only, Mac #183). */
+  agentHooksStatus: () => call<Record<string, boolean>>("agent_hooks_status"),
   /** Diff to show before anything is written. `install: false` previews removal. */
   hooksPreview: (install: boolean) => callOrThrow<HookPreview>("hooks_preview", { install }),
   /**

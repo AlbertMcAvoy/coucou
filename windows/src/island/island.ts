@@ -20,8 +20,10 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { refreshHookPills } from "./integrations";
 
 const BOT_OVERHANG = 40;
+const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
 
@@ -73,7 +75,6 @@ export class Island {
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
-  private homeCollapseAt: number | null = null;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
   private botHovering = false;
@@ -104,13 +105,21 @@ export class Island {
 
   /** The request has its answer: the card goes and the session carries on. */
   private closeApproval() {
-    const pill = State.pendingApproval?.pillId ?? "integration_claude";
-    State.pendingApproval = null;
-    State.isPinned = false;
+    State.endApproval();
     this.fsm.pinned = false;
-    State.updateTask(pill, "working");
-    State.setPillBadge(pill, null);
     this.setView(State.defaultView());
+  }
+
+  /**
+   * Folds a card that is waiting for an answer down to the compact island,
+   * without answering it (Mac #290). Nothing is decided: the request keeps
+   * waiting, the island stays on screen, and opening it shows the card again.
+   */
+  foldApproval() {
+    if (!State.pendingApproval || State.mode !== "expanded") return;
+    State.isPinned = true;
+    this.fsm.pinned = true;
+    this.fsm.forcePetit();
   }
 
   // ── DOM ─────────────────────────────────────────────────────────────────────
@@ -120,17 +129,20 @@ export class Island {
       setView: (v) => this.setView(v),
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
+      foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
-        // A pill badged with a waiting request opens on its card: that is how a
-        // request that arrived behind another pill gets answered.
+        // A pill with a waiting request opens on its card: going back to it
+        // after looking at another pill brings the card up again.
         const req = State.pendingApproval;
         if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
       },
       openTerminal: () => {
-        const cwd = State.focusTask?.sessionCwd ?? null;
-        void Bridge.openInVSCode(cwd);
+        const task = State.focusTask;
+        // Sessions from the Claude desktop app live there, not in a terminal.
+        if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+        else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
       },
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
@@ -144,8 +156,10 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
-        else if (task.id === "integration_n8n") void Bridge.openN8n();
+        if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+        else if (task.id === "integration_claude" || task.sessionId) {
+          void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
+        } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -266,6 +280,9 @@ export class Island {
         case "home":
           this.expand(State.defaultView());
           if (!this.wasInIsland) this.fsm.mouseLeft();
+          // Hooks may have been installed in a terminal since: the idle cards
+          // say so on the next open, without polling while the island is shut.
+          void refreshHookPills();
           break;
         case "coucou":
           this.expand("greeting");
@@ -289,7 +306,8 @@ export class Island {
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
-      State.isPinned = false;
+      // A folded card is still waiting: it keeps the island pinned.
+      if (!State.pendingApproval) State.isPinned = false;
       void Bridge.focusWindow(false);
     }
     if (mode !== "expanded") {
@@ -320,7 +338,6 @@ export class Island {
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
     State.lastActivity = performance.now();
-    this.homeCollapseAt = null;
     State.notify();
   }
 
@@ -341,6 +358,11 @@ export class Island {
   }
 
   collapse() {
+    // A waiting card is only ever folded, never dropped by a close.
+    if (State.pendingApproval) {
+      this.foldApproval();
+      return;
+    }
     State.isPinned = false;
     this.fsm.pinned = false;
     // Drive the state machine rather than the mode: setting the mode behind its
@@ -363,6 +385,8 @@ export class Island {
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
+    // The countdown the pin held back starts now, if the mouse is elsewhere.
+    if (!this.wasInIsland) this.fsm.mouseLeft();
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -583,8 +607,14 @@ export class Island {
       }
     });
 
+    // Only keys typed into the island itself land here, never Escape typed in
+    // a terminal — so it may fold a waiting card away, as Escape in the notch
+    // does on macOS.
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded" && !State.isPinned) this.collapse();
+      if (e.key === "Escape" && State.mode === "expanded") {
+        if (State.pendingApproval) this.foldApproval();
+        else if (!State.isPinned) this.collapse();
+      }
       State.lastActivity = performance.now();
     });
 
@@ -643,13 +673,9 @@ export class Island {
     if (inIsland && !this.wasInIsland) {
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
-      this.homeCollapseAt = null;
     }
     if (!inIsland && this.wasInIsland) {
       this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
-        this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
-      }
     }
     this.wasInIsland = inIsland;
 
@@ -875,13 +901,16 @@ export class Island {
   }
 
   private updateCountdown(nowMs: number) {
-    if (State.mode !== "expanded" || State.isPinned || this.homeCollapseAt == null) {
+    // The state machine's own deadline, so the bar follows an auto-close delay
+    // edited while the countdown runs.
+    const dueAt = this.fsm.homeCollapseDueAt;
+    if (State.mode !== "expanded" || State.isPinned || dueAt == null) {
       this.countdown.style.width = "0px";
       return;
     }
-    const autoClose = State.settings.autoCloseInterval;
+    const autoClose = this.fsm.homeToPetitDelay;
     const windowS = Math.min(10, autoClose * 0.6);
-    const remaining = (this.homeCollapseAt - nowMs) / 1000;
+    const remaining = (dueAt - nowMs) / 1000;
     this.countdown.style.width =
       remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
   }

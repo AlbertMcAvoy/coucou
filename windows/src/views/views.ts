@@ -11,12 +11,15 @@ import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { pillDefinition, sessionSubtitle } from "../core/pills";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
+  /** Folds a waiting card to the compact island without answering it. */
+  foldApproval(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
@@ -180,12 +183,9 @@ function buildOverview(actions: ViewActions): ViewHost {
         mode = null;
       }
 
-      // VS Code with a live Claude Code session keeps the ticker, and so does an
-      // agent's pill (Gemini CLI, Codex…) — it only exists while its session
-      // does. Every other pill shows its own card, exactly like IntegrationCardView.
-      const sessionActive =
-        (task?.id === "integration_claude" && (task.state !== "idle" || task.steps.length > 0)) ||
-        (task != null && task.source === "agent" && !task.isIntegration);
+      // A workspace or agent pill with a live session keeps the ticker; every
+      // other pill shows its own card, exactly like IntegrationCardView.
+      const sessionActive = task != null && hasSessionTicker(task);
 
       if (task && sessionActive) {
         if (mode !== "ticker") {
@@ -196,12 +196,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
         clear(who);
         // The agent's name is already the pill's: the label says what kind of
-        // pill it is, as on the Mac.
-        const toolLabel = task.source === "claudeCode" ? "Claude Code" : task.source === "agent" ? "Agent" : "n8n";
+        // pill it is, as on the Mac (PillDefinition.sessionSubtitle).
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: toolLabel }),
+          h("span", { class: "tool", text: sessionSubtitle(task.id) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {
@@ -237,6 +236,20 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
     },
   };
+}
+
+/**
+ * IntegrationCardView.agentSessionActive: a workspace tool or an agent — or
+ * any other tagged agent — with something going on.
+ */
+export function hasSessionTicker(task: AgentTask): boolean {
+  // A pill made for an agent's session (Gemini CLI, Codex… not declared) only
+  // exists while that session does: it keeps the ticker from the first event.
+  if (task.source === "agent" && !task.isIntegration) return true;
+  const category = pillDefinition(task.id)?.category;
+  const isSession = category === "workspace" || category === "agent" ||
+    (category == null && task.id.startsWith("agent_"));
+  return isSession && (task.state !== "idle" || task.steps.length > 0);
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
@@ -304,11 +317,25 @@ function buildEmpty(actions: ViewActions): ViewHost {
 /** How long a fresh permission card ignores clicks on its buttons. */
 const CLICK_GUARD_MS = 600;
 
+/**
+ * The ⌃ in the corner of a waiting card: folds the island to its compact size
+ * and leaves the request waiting — nothing is answered (Mac #290). Opening the
+ * island again brings the card back.
+ */
+function foldButton(actions: ViewActions): HTMLElement {
+  return h(
+    "button",
+    { class: "icon-btn fold", title: "Later — keep it waiting", onclick: () => actions.foldApproval() },
+    svg(ICONS.chevronUp, 8, { stroke: 2.4 }),
+  );
+}
+
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
-  const el = h("div", { class: "view" }, card("amber", stack(116, 16, who, code, row)));
+  const el = h("div", { class: "view" },
+    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
   let rowKey = "";
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
@@ -353,7 +380,8 @@ function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title question-text" });
   const row = h("div", { class: "actions options" });
-  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row)));
+  const fold = foldButton(actions);
+  const el = h("div", { class: "view" }, card("cyan", stack(116, 16, who, title, row), fold));
 
   // Where we are in the request on screen: which question, what is answered so
   // far, and what is ticked in a pick-several question.
@@ -378,6 +406,8 @@ function buildQuestion(actions: ViewActions): ViewHost {
     sync() {
       const questions = State.pendingApproval?.questions;
       clear(who);
+      // Only a request that is waiting can be folded away and come back.
+      fold.style.display = State.pendingApproval ? "" : "none";
 
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {
@@ -470,8 +500,9 @@ function buildError(actions: ViewActions): ViewHost {
 function buildFinished(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
+  const open = btn("Open terminal", "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
-    btn("Open terminal", "primary", () => actions.openTerminal()),
+    open,
     btn("OK", "secondary", () => actions.collapse()),
   );
   const el = h("div", { class: "view" }, card("green", stack(116, 16, who, title, row)));
@@ -482,6 +513,10 @@ function buildFinished(actions: ViewActions): ViewHost {
       const agent = State.focusTask?.source === "agent";
       who.append(agentWho(State.focusTask, agent ? "finished" : "Claude Code finished"));
       title.textContent = State.focusTask?.steps.at(-1) ?? "Session finished";
+      // Sessions from the Claude desktop app live there, not in a terminal.
+      const label = State.focusTask?.id === "agent_claude-desktop" ? "Open Claude" : "Open terminal";
+      const span = open.firstElementChild as HTMLElement;
+      if (span.textContent !== label) span.textContent = label;
     },
   };
 }

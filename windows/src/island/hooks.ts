@@ -8,10 +8,12 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
+import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
+const CURSOR_ID = "agent_cursor";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -19,12 +21,8 @@ let pendingTimeout: number | null = null;
 /** Takes the approval or question card down and gives the island back. */
 function dropPendingCard(island: Island): void {
   if (!State.pendingApproval) return;
-  const pill = State.pendingApproval.pillId;
-  State.pendingApproval = null;
-  State.isPinned = false;
+  State.endApproval();
   island.dropPin();
-  State.updateTask(pill, "working");
-  State.setPillBadge(pill, null);
   if (State.view === "approval" || State.view === "question") {
     island.setView(State.defaultView());
   }
@@ -61,6 +59,8 @@ interface HookPayload {
   coucou_agent?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
+  /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
+  term_editor?: string;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -168,21 +168,27 @@ function askedQuestions(tool: string, input: Record<string, unknown>): AskedQues
   return out.length > 0 ? out : null;
 }
 
-function upsert(projectName: string, cwd: string) {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
-  if (!t) return;
-  t.name = projectName;
-  if (cwd) t.sessionCwd = cwd;
+/** The Claude Code session's pill, named after its project for the session. */
+function upsert(id: string, projectName: string, cwd: string, sessionId: string) {
+  const t = State.upsertWorkspacePill(id, projectName, cwd);
+  if (t && sessionId) t.sessionId = sessionId;
 }
 
-function clearSession() {
-  const t = State.tasks.find((x) => x.id === CLAUDE_ID);
+/** The session is over: the pill goes back as it was, or away if it was only there for it. */
+function clearSession(id: string) {
+  const t = State.tasks.find((x) => x.id === id);
   if (!t) return;
+  if (!State.isKept(id)) {
+    State.removeTask(id);
+    return;
+  }
+  t.state = "idle";
   t.steps = [];
   t.stepIndex = 0;
   delete t.stepSeq;
-  t.name = "VS Code";
+  t.name = pillDefinition(id)?.name ?? t.name;
   t.pillBadge = null;
+  t.sessionId = null;
 }
 
 export function registerHookHandlers(island: Island) {
@@ -204,12 +210,13 @@ function handleHook(island: Island, payload: HookPayload) {
   const projectName = aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
-  // "claude" is reserved; absent or invalid → Claude Code pill unchanged.
+  // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
+  // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const agentId = validAgent ? `agent_${validAgent}` : CLAUDE_ID;
+  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
-
-  const focused = State.focusId === agentId;
+  const sessionId = payload.session_id ?? "";
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -226,8 +233,11 @@ function handleHook(island: Island, payload: HookPayload) {
   const ensurePill = () => {
     if (isExternalAgent) {
       State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t && cwd) t.sessionCwd = cwd;
+      if (t && sessionId) t.sessionId = sessionId;
     } else {
-      upsert(projectName, cwd);
+      upsert(agentId, projectName, cwd, sessionId);
     }
   };
 
@@ -255,6 +265,10 @@ function handleHook(island: Island, payload: HookPayload) {
     if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
     dropPendingCard(island);
   }
+
+  // Read after the card above is dropped: its pill may have handed the front
+  // back to the pill you were on.
+  const focused = State.focusId === agentId;
 
   switch (name) {
     case "SessionStart":
@@ -330,7 +344,8 @@ function handleHook(island: Island, payload: HookPayload) {
       const said = payload.message ?? (isExternalAgent ? payload.last_assistant_message : undefined);
       if (said) State.appendStep(agentId, said.slice(0, 60));
       Sound.play("finish");
-      if (focused) surface("finished", true);
+      // A card waiting for an answer is never covered by another alert.
+      if (focused && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
@@ -359,7 +374,7 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
-      if (focused) surface("error", true);
+      if (focused && !State.pendingApproval) surface("error", true);
       else State.setPillBadge(agentId, "error");
       break;
 
@@ -371,7 +386,7 @@ function handleHook(island: Island, payload: HookPayload) {
         State.removeTask(agentId);
       } else {
         State.updateTask(agentId, "idle");
-        clearSession();
+        clearSession(agentId);
       }
       break;
 
@@ -410,29 +425,25 @@ function handleHook(island: Island, payload: HookPayload) {
       // Code asks questions this way.
       const questions = isExternalAgent ? null : askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
-      State.pendingApproval = {
+      // The card always comes up, even over another pill or an island that is
+      // already open: its pill comes to the front, and the one you were on
+      // comes back once you answer (Mac #117, #120).
+      State.beginApproval({
         requestId,
-        sessionId: payload.session_id ?? "",
+        sessionId,
         pillId: agentId,
         tool,
         command: approvalTarget(tool, input),
         ...(questions ? { questions } : {}),
-      };
+      });
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
       State.updateTask(agentId, view);
-      State.isPinned = true;
       Sound.play(view);
-      if (State.focusId === agentId) {
-        island.alert(view);
-      } else {
-        // Another pill holds the view, so the card would yank it away. The badge
-        // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. Clicking the pill brings the card up.
-        State.setPillBadge(agentId, "approval");
-        island.reveal();
-      }
+      // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
+      // the same way: beginApproval brought its pill to the front.
+      island.alert(view);
       // Coucou answers within 108 s or not at all; after that the terminal has
       // taken over and the card would be lying.
       pendingTimeout = window.setTimeout(() => {

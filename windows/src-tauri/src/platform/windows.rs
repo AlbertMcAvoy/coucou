@@ -1,5 +1,7 @@
 // Windows: Win32 for the island window and the cursor, %APPDATA% for files.
 
+use std::collections::HashMap;
+use std::os::windows::io::RawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
@@ -10,16 +12,23 @@ use ::windows::core::{BOOL, PWSTR};
 use ::windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, LPARAM, LocalFree, POINT};
 use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
 use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
+use ::windows::Win32::System::Diagnostics::ToolHelp::{
+    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+};
 use ::windows::Win32::System::Ole::RevokeDragDrop;
+use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW,
-    GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
+    GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
+    SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
+use crate::session_window::{self, Proc};
 
 /// File name of the Claude Code relay.
 pub const HOOK_EXE: &str = "coucou-hook.exe";
@@ -236,3 +245,124 @@ pub fn set_pointer_watch(_active: bool) {}
 
 /// `set_position` already places a Win32 window on the right display.
 pub fn pin_to_monitor(_win: &WebviewWindow, _x: i32, _y: i32) {}
+
+// ── Session windows ("Open terminal") ─────────────────────────────────────────
+//
+// See session_window.rs: the relay's ancestors lead to the terminal or editor
+// window a Claude Code session runs in.
+
+/// The process on the other end of a relay connection.
+pub fn pipe_client_pid(handle: RawHandle) -> Option<u32> {
+    let mut pid = 0u32;
+    unsafe { GetNamedPipeClientProcessId(HANDLE(handle), &mut pid).ok()? };
+    (pid != 0).then_some(pid)
+}
+
+/// Every process, by ID: its parent and its executable's name.
+fn process_table() -> HashMap<u32, Proc> {
+    let mut out = HashMap::new();
+    unsafe {
+        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return out };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut more = Process32FirstW(snapshot, &mut entry).is_ok();
+        while more {
+            let len = entry.szExeFile.iter().position(|c| *c == 0).unwrap_or(entry.szExeFile.len());
+            out.insert(
+                entry.th32ProcessID,
+                Proc {
+                    parent: entry.th32ParentProcessID,
+                    exe: String::from_utf16_lossy(&entry.szExeFile[..len]),
+                },
+            );
+            more = Process32NextW(snapshot, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snapshot);
+    }
+    out
+}
+
+/// The ancestors of a process, nearest first, below the desktop shell.
+pub fn process_ancestors(pid: u32) -> Vec<u32> {
+    session_window::ancestors(&process_table(), pid)
+}
+
+/// Visible top-level windows that are nobody's dialog and have a title:
+/// (handle, process ID, title).
+fn top_windows() -> Vec<(isize, u32, String)> {
+    unsafe extern "system" fn collect(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let list = unsafe { &mut *(lparam.0 as *mut Vec<(isize, u32, String)>) };
+        unsafe {
+            if !IsWindowVisible(hwnd).as_bool() || GetWindow(hwnd, GW_OWNER).is_ok() {
+                return true.into();
+            }
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32));
+            let mut text = [0u16; 512];
+            let len = GetWindowTextW(hwnd, &mut text);
+            if len > 0 {
+                list.push((hwnd.0 as isize, pid, String::from_utf16_lossy(&text[..len as usize])));
+            }
+        }
+        true.into()
+    }
+    let mut list: Vec<(isize, u32, String)> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(Some(collect), LPARAM(&mut list as *mut _ as isize));
+    }
+    list
+}
+
+/// The first of `pids` that owns a window.
+pub fn first_with_window(pids: &[u32]) -> Option<u32> {
+    let windows = top_windows();
+    pids.iter().copied().find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
+}
+
+fn bring_forward(raw: isize) -> bool {
+    let hwnd = HWND(raw as *mut _);
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        // Allowed: the click on the island that asked for this was the last input.
+        SetForegroundWindow(hwnd).as_bool()
+    }
+}
+
+/// Brings `pid`'s window forward — the one titled after `folder` if there are several.
+pub fn focus_process_window(pid: u32, folder: &str) -> bool {
+    let candidates: Vec<(isize, String)> = top_windows()
+        .into_iter()
+        .filter(|(_, owner, _)| *owner == pid)
+        .map(|(hwnd, _, title)| (hwnd, title))
+        .collect();
+    session_window::pick_window(&candidates, folder).is_some_and(|hwnd| bring_forward(*hwnd))
+}
+
+/// Brings forward the window of a running app, by executable name.
+fn focus_app(exe: &str) -> bool {
+    let pids: Vec<u32> = process_table()
+        .into_iter()
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case(exe))
+        .map(|(pid, _)| pid)
+        .collect();
+    top_windows()
+        .into_iter()
+        .find(|(_, owner, _)| pids.contains(owner))
+        .is_some_and(|(hwnd, _, _)| bring_forward(hwnd))
+}
+
+/// The Claude desktop app: brought forward when it runs (Claude Code's own
+/// `claude.exe` has no window of its own, so it is never the one picked),
+/// started from where its installer puts it otherwise.
+pub fn open_claude_desktop() -> bool {
+    if focus_app("claude.exe") {
+        return true;
+    }
+    let Some(base) = std::env::var_os("LOCALAPPDATA") else { return false };
+    let exe = PathBuf::from(base).join("AnthropicClaude").join("claude.exe");
+    exe.is_file() && Command::new(exe).spawn().is_ok()
+}

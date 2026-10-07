@@ -265,3 +265,43 @@ select option {
   background: rgba(245, 165, 36, 0.13);
   color: #fbc06a;
 }
+
+/* Active pills — one group per catalog category, one row per pill. */
+
+.pill-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.pill-group > h3 {
+  font: 600 11px var(--font);
+  color: var(--dim);
+}
+
+.pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.pill-row .name {
+  font-size: 12.5px;
+}
+
+.pill-row.full .name {
+  color: var(--dim-2);
+}
+
+.pill-row .state {
+  margin-left: auto;
+  font: 400 11.5px var(--font);
+  color: var(--dim);
+}
+
+.hint.full {
+  color: var(--amber);
+}

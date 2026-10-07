@@ -208,6 +208,29 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
         })
 }
 
+// ── Session windows ("Open terminal") ─────────────────────────────────────────
+//
+// Wayland lets no app raise another app's window, and X11 would need a window
+// manager protocol client this build does not carry, so "Open terminal" opens
+// the folder in VS Code here, as before. There is no Claude desktop app for
+// Linux either.
+
+pub fn process_ancestors(_pid: u32) -> Vec<u32> {
+    Vec::new()
+}
+
+pub fn first_with_window(_pids: &[u32]) -> Option<u32> {
+    None
+}
+
+pub fn focus_process_window(_pid: u32, _folder: &str) -> bool {
+    false
+}
+
+pub fn open_claude_desktop() -> bool {
+    false
+}
+
 // ── Cursor ────────────────────────────────────────────────────────────────────
 
 /// Nothing polls the cursor here: the page reports it over the island, and the
