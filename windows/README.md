@@ -74,6 +74,37 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
+add their keys in **Settings… → Chat providers**, then click the model name
+above the chat box to switch provider and model, as on the Mac. The model list
+is fetched from the provider only once you pick it and it has a key. Switching
+mid-conversation carries the conversation over as plain text, so nothing in one
+provider's format is ever sent to another. These providers get no web search
+and no tools — they answer, they never act on your PC.
+
+**Local models**: **Settings… → Local models** connects **Ollama** or **LM
+Studio** (leave the address empty for the usual one on this PC; Ollama's
+`OLLAMA_HOST` is honoured) or any server that speaks the OpenAI API (vLLM,
+llama.cpp…), with an optional key kept in the credential store. Answers stream
+in as they are written, and the `<think>` blocks of reasoning models stay
+hidden. A text file you dropped goes along inline (24 000 characters at most);
+images and PDFs by name only. Settings tells you whether the address is this
+PC — nothing leaves it then — and warns before a key would travel over plain
+`http://` to another machine.
+
+Answers from every provider are shown as **Markdown**: headings, lists, bold,
+inline code, quotes, and code blocks with a copy button. It is built from text
+nodes, never parsed as HTML, and only `http`/`https` links open. Mochi greets
+you by your first name when your account has one (the Windows display name or
+the Linux GECOS full name; a bare login name is not used).
+
+To send the Claude chat through an Anthropic-compatible gateway, set
+`COUCOU_ANTHROPIC_BASE_URL` (for example `https://gateway.example.com`;
+`/v1/messages` is added). It must be `https://`, or `http://` to this PC only.
+Claude Code's own `ANTHROPIC_BASE_URL` is deliberately ignored: your key only
+goes where you told Coucou to send it. The gateway's host is written to the log
+once; the key never is.
+
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.
 
@@ -163,6 +194,10 @@ OpenCode, Amp and Hermes are not yet supported on Windows or Linux. Their integr
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- The chat's model picker opens inside the chat card instead of a popover, and
+  it also offers OpenRouter and any OpenAI-compatible server, which the Mac
+  does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
+  inline), where the Mac sends its name only.
 
 ## Linux
 
@@ -193,6 +228,8 @@ What changes on Linux:
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Mochi's greeting** uses the full name in your account's GECOS field
+  (`chfn` sets it); without one the chat stays neutral.
 - **Files**: preferences in `~/.config/coucou/`, the log at
   `~/.local/share/coucou/coucou.log`.
 - What the Windows build leaves out, this one does too: sending a file by
