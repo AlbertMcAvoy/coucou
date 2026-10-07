@@ -12,6 +12,7 @@ use reqwest::Url;
 use serde_json::{json, Value};
 
 use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
+use crate::i18n::{t, tf};
 use crate::{net, secrets};
 
 pub struct Provider {
@@ -131,15 +132,21 @@ fn reply_text(p: &Provider, response: &Value) -> Result<String, String> {
     if let Some(msg) = response.pointer("/error/message").and_then(Value::as_str) {
         return Err(format!("{}: {msg}", p.name));
     }
-    Err("No response text.".into())
+    Err(t("No response text."))
 }
 
 fn status_error(p: &Provider, status: u16, detail: &str) -> String {
     match status {
-        401 | 403 => format!("{} rejected the API key ({status}). Check it in Settings.", p.name),
-        402 => format!("{}: not enough credits (402). {detail}", p.name),
-        404 => format!("{}: model not found (404). Pick another one above the chat box. {detail}", p.name),
-        429 => format!("{} rate limit reached (429): {detail}", p.name),
+        401 | 403 => tf(
+            "{name} rejected the API key ({status}). Check it in Settings.",
+            &[("name", p.name), ("status", &status.to_string())],
+        ),
+        402 => tf("{name}: not enough credits (402). {detail}", &[("name", p.name), ("detail", detail)]),
+        404 => tf(
+            "{name}: model not found (404). Pick another one above the chat box. {detail}",
+            &[("name", p.name), ("detail", detail)],
+        ),
+        429 => tf("{name} rate limit reached (429): {detail}", &[("name", p.name), ("detail", detail)]),
         _ => format!("{} {status}: {detail}", p.name),
     }
 }
@@ -152,9 +159,9 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get(p.key).ok_or_else(|| format!("{} API key missing. Add it in Settings.", p.name))?;
+    let key = secrets::get(p.key).ok_or_else(|| tf("{name} API key missing. Add it in Settings.", &[("name", p.name)]))?;
     if model.is_empty() {
-        return Err(format!("Pick a {} model above the chat box.", p.name));
+        return Err(tf("Pick a {name} model above the chat box.", &[("name", p.name)]));
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
@@ -167,14 +174,14 @@ pub async fn send(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    let json: Value = serde_json::from_slice(&bytes).map_err(|e| format!("Bad API response: {e}"))?;
+    let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
     let text = reply_text(p, &json)?;
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
@@ -191,14 +198,14 @@ pub async fn models(p: &Provider, key: &str) -> Result<Vec<ModelInfo>, String> {
         .bearer_auth(key)
         .send()
         .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    let json: Value = serde_json::from_slice(&bytes).map_err(|_| "Unexpected API response.".to_string())?;
+    let json: Value = serde_json::from_slice(&bytes).map_err(|_| t("Unexpected API response."))?;
     Ok(parse_models(p, &json))
 }
 

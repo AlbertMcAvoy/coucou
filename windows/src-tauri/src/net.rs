@@ -10,6 +10,8 @@ use std::time::Duration;
 
 use reqwest::Url;
 
+use crate::i18n::{t, tf};
+
 /// Ceiling for a JSON answer: a chat reply or a model list.
 pub const MAX_BODY: usize = 8 * 1024 * 1024;
 /// Ceiling for an error body: only its message is shown.
@@ -45,18 +47,18 @@ pub fn is_loopback_url(url: &Url) -> bool {
 pub fn normalise_server_url(raw: &str) -> Result<Url, String> {
     let raw = raw.trim();
     if raw.is_empty() {
-        return Err("Enter the server address first.".into());
+        return Err(t("Enter the server address first."));
     }
     let with_scheme = if raw.contains("://") { raw.to_string() } else { format!("http://{raw}") };
-    let mut url = Url::parse(&with_scheme).map_err(|_| format!("Not a valid address: {raw}"))?;
+    let mut url = Url::parse(&with_scheme).map_err(|_| tf("Not a valid address: {address}", &[("address", raw)]))?;
     if !matches!(url.scheme(), "http" | "https") {
-        return Err("The address must start with http:// or https://.".into());
+        return Err(t("The address must start with http:// or https://."));
     }
     if !url.username().is_empty() || url.password().is_some() {
-        return Err("Leave the user name and password out of the address.".into());
+        return Err(t("Leave the user name and password out of the address."));
     }
     if url.host_str().is_none_or(str::is_empty) {
-        return Err(format!("Not a valid address: {raw}"));
+        return Err(tf("Not a valid address: {address}", &[("address", raw)]));
     }
     if is_loopback_url(&url) {
         let _ = url.set_ip_host(IpAddr::V4(Ipv4Addr::LOCALHOST));
@@ -122,12 +124,12 @@ pub fn client(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
 /// The body of `response`, refused past `limit` bytes.
 pub async fn read_capped(mut response: reqwest::Response, limit: usize) -> Result<Vec<u8>, String> {
     if response.content_length().is_some_and(|n| n > limit as u64) {
-        return Err("The server's answer is too large.".into());
+        return Err(t("The server's answer is too large."));
     }
     let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|e| format!("Network error: {e}"))? {
+    while let Some(chunk) = response.chunk().await.map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))? {
         if body.len() + chunk.len() > limit {
-            return Err("The server's answer is too large.".into());
+            return Err(t("The server's answer is too large."));
         }
         body.extend_from_slice(&chunk);
     }

@@ -198,13 +198,13 @@ pub async fn send(
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
-    const NO_KEY: &str = "No API key — add it in Settings.";
+    let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
-        let key = secrets::get(claude::KEY).ok_or(NO_KEY)?;
+        let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
         return claude::models(&key).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
-        let key = secrets::get(p.key).ok_or(NO_KEY)?;
+        let key = secrets::get(p.key).ok_or_else(no_key)?;
         return openai_compat::models(p, &key).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {

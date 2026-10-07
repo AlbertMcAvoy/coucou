@@ -140,11 +140,13 @@ fn is_new(key: &'static str, id: &str) -> bool {
     }
 }
 
+/// The card's error line, in the interface language (i18n.rs);
+/// `unauthorised_hint` comes translated.
 fn status_error(code: u16, unauthorised_hint: &str) -> String {
     match code {
-        401 => "Invalid API key (401)".into(),
-        403 => unauthorised_hint.into(),
-        _ => format!("API error {code}"),
+        401 => crate::i18n::t("Invalid API key (401)"),
+        403 => unauthorised_hint.to_string(),
+        _ => crate::i18n::tf("API error {code}", &[("code", &code.to_string())]),
     }
 }
 
@@ -187,7 +189,7 @@ async fn poll_stripe(app: AppHandle) {
             emit(&app, IntegrationUpdate {
                 id: "integration_stripe",
                 data: json!({}),
-                error: Some(status_error(code, "Use a secret key (sk_live_… not pk_live_…)")),
+                error: Some(status_error(code, &crate::i18n::t("Use a secret key (sk_live_… not pk_live_…)"))),
                 event: None,
             });
             return;
@@ -196,7 +198,7 @@ async fn poll_stripe(app: AppHandle) {
             emit(&app, IntegrationUpdate {
                 id: "integration_stripe",
                 data: json!({}),
-                error: Some(format!("No connection: {e}")),
+                error: Some(crate::i18n::tf("No connection: {error}", &[("error", &e.to_string())])),
                 event: None,
             });
             return;
@@ -287,7 +289,7 @@ async fn poll_github(app: AppHandle) {
         emit(&app, IntegrationUpdate {
             id: "integration_github",
             data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Token lacks the needed scope")),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks the needed scope"))),
             event: None,
         });
         return;
@@ -577,7 +579,7 @@ async fn poll_vercel(app: AppHandle) {
         emit(&app, IntegrationUpdate {
             id: "integration_vercel",
             data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Token lacks access")),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks access"))),
             event: None,
         });
         return;
@@ -649,7 +651,7 @@ async fn poll_resend(app: AppHandle) {
         emit(&app, IntegrationUpdate {
             id: "integration_resend",
             data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Key lacks access")),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Key lacks access"))),
             event: None,
         });
         return;
@@ -711,7 +713,7 @@ async fn poll_notion(app: AppHandle) {
         emit(&app, IntegrationUpdate {
             id: "integration_notion",
             data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Integration lacks access")),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Integration lacks access"))),
             event: None,
         });
         return;
@@ -798,7 +800,7 @@ async fn poll_calcom(app: AppHandle) {
         emit(&app, IntegrationUpdate {
             id: "integration_calcom",
             data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Key lacks access")),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Key lacks access"))),
             event: None,
         });
         return;
@@ -903,7 +905,7 @@ async fn poll_n8n(app: AppHandle) {
         format!("{base}/rest/executions/{id}?includeData=true"),
         format!("{base}/rest/executions/{id}"),
     ];
-    let mut name = "Workflow".to_string();
+    let mut name = crate::i18n::t("Workflow");
     let mut detail = None;
     for url in &detail_urls {
         let Ok(response) = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await
@@ -919,8 +921,8 @@ async fn poll_n8n(app: AppHandle) {
             .and_then(|w| w.get("name"))
             .and_then(Value::as_str)
             .or_else(|| json.get("name").and_then(Value::as_str))
-            .unwrap_or("Workflow")
-            .to_string();
+            .map(str::to_string)
+            .unwrap_or_else(|| crate::i18n::t("Workflow"));
         detail = n8n_detail(&json, success);
         break;
     }

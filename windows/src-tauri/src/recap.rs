@@ -651,19 +651,23 @@ fn write_unique(dir: &Path, stem: &str, bytes: &[u8]) -> std::io::Result<PathBuf
 /// that exists.
 fn save_png(dirs: &[PathBuf], data: &str, week: &str) -> Result<PathBuf, String> {
     if data.len() > MAX_PNG_BYTES / 3 * 4 + 64 {
-        return Err("The image is too large.".into());
+        return Err(crate::i18n::t("The image is too large."));
     }
-    let bytes = decode_base64(data).ok_or("The image could not be read.")?;
+    let bytes = decode_base64(data).ok_or_else(|| crate::i18n::t("The image could not be read."))?;
     if !bytes.starts_with(PNG_SIGNATURE) {
-        return Err("The image could not be read.".into());
+        return Err(crate::i18n::t("The image could not be read."));
     }
-    let dir = dirs.iter().find(|d| d.is_dir()).ok_or("No Pictures or Downloads folder to save into.")?;
+    let dir = dirs
+        .iter()
+        .find(|d| d.is_dir())
+        .ok_or_else(|| crate::i18n::t("No Pictures or Downloads folder to save into."))?;
     let stem = if is_week_key(week) {
         format!("Coucou weekly recap {week}")
     } else {
         "Coucou weekly recap".to_string()
     };
-    write_unique(dir, &stem, &bytes).map_err(|err| format!("Could not save the image: {err}"))
+    write_unique(dir, &stem, &bytes)
+        .map_err(|err| crate::i18n::tf("Could not save the image: {error}", &[("error", &err.to_string())]))
 }
 
 // ── Tauri glue ────────────────────────────────────────────────────────────────

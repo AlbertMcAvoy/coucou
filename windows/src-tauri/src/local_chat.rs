@@ -20,6 +20,7 @@ use tauri::{AppHandle, Emitter};
 use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
 use crate::island::WINDOW_LABEL;
 use crate::settings::Settings;
+use crate::i18n::{t, tf};
 use crate::{net, secrets};
 
 /// Credential store entry of the key of the user's own OpenAI-compatible server.
@@ -52,7 +53,7 @@ pub fn server(settings: &Settings, id: &str) -> Option<Server> {
     let (id, name, url, key) = match id {
         "ollama" => ("ollama", "Ollama", &settings.ollama_url, None),
         "lmstudio" => ("lmstudio", "LM Studio", &settings.lmstudio_url, None),
-        "custom" => ("custom", "OpenAI-compatible server", &settings.custom_url, secrets::get(CUSTOM_KEY)),
+        "custom" => ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, secrets::get(CUSTOM_KEY)),
         _ => return None,
     };
     Some(Server { id, name, url: url.clone(), key })
@@ -78,12 +79,12 @@ fn bearer(key: Option<&str>) -> String {
 }
 
 fn unreachable(url: &Url) -> String {
-    format!("Cannot reach {}. Is the server running?", url.as_str().trim_end_matches('/'))
+    tf("Cannot reach {url}. Is the server running?", &[("url", url.as_str().trim_end_matches('/'))])
 }
 
 fn base_url(server: &Server) -> Result<Url, String> {
     if server.url.trim().is_empty() {
-        return Err(format!("Connect {} in Settings → Local models first.", server.name));
+        return Err(tf("Connect {name} in Settings → Local models first.", &[("name", &t(server.name))]));
     }
     net::normalise_server_url(&server.url)
 }
@@ -117,7 +118,7 @@ pub async fn models(server: &Server) -> Result<Vec<ModelInfo>, String> {
     let url = base_url(server)?;
     let models = list(&url, server.key.as_deref()).await?;
     if models.is_empty() {
-        return Err(format!("No models yet. Download one in {} first.", server.name));
+        return Err(tf("No models yet. Download one in {name} first.", &[("name", &t(server.name))]));
     }
     Ok(models.into_iter().map(|id| ModelInfo { label: id.clone(), id }).collect())
 }
@@ -131,7 +132,7 @@ async fn list(base: &Url, key: Option<&str>) -> Result<Vec<String>, String> {
         .await
         .map_err(|_| unreachable(base))?;
     if matches!(response.status().as_u16(), 401 | 403) {
-        return Err("The server refused the key. Check it, then connect again.".into());
+        return Err(t("The server refused the key. Check it, then connect again."));
     }
     if !response.status().is_success() {
         return Err(unreachable(base));
@@ -220,7 +221,7 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let base = base_url(server)?;
     if model.is_empty() {
-        return Err("Pick a model above the chat box first.".into());
+        return Err(t("Pick a model above the chat box first."));
     }
     let turn = chat.begin(server.id);
     let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
@@ -231,7 +232,7 @@ pub async fn send(
     })
     .await?;
     if answer.is_empty() {
-        return Err("No response text.".into());
+        return Err(t("No response text."));
     }
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": answer }), &plain, &answer);
@@ -298,7 +299,7 @@ async fn stream(
 
     let status = reply.status();
     if status.as_u16() == 404 {
-        return Err(format!("{model} isn't installed. Pick another model above the chat box."));
+        return Err(tf("{model} isn't installed. Pick another model above the chat box.", &[("model", model)]));
     }
     if !status.is_success() {
         let body = net::read_capped(reply, net::MAX_ERROR_BODY).await.unwrap_or_default();
@@ -322,7 +323,7 @@ async fn stream(
             }
         }
         if pending.len() > MAX_LINE || accumulated.len() > MAX_ANSWER {
-            return Err("The server's answer is too large.".into());
+            return Err(t("The server's answer is too large."));
         }
         if last.elapsed() >= DELTA_INTERVAL {
             last = Instant::now();
