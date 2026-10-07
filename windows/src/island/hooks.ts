@@ -143,6 +143,7 @@ function clearSession() {
   if (!t) return;
   t.steps = [];
   t.stepIndex = 0;
+  delete t.stepSeq;
   t.name = "VS Code";
   t.pillBadge = null;
 }
