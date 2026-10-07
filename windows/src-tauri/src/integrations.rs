@@ -883,6 +883,14 @@ pub fn gitlab_base() -> Result<String, String> {
 const GITLAB_APPROVAL_CHECKS: usize = 5;
 /// The discussion is read for at most this many updated MRs a minute.
 const GITLAB_ACTIVITY_CHECKS: usize = 5;
+/// The user's pipelines are looked for in the projects of their activity over
+/// this many days, at most this many projects: one request each, every minute.
+const GITLAB_PIPELINE_DAYS: i64 = 7;
+const GITLAB_PIPELINE_PROJECTS: usize = 10;
+/// Pipelines updated in this window are read each minute; one seen is
+/// remembered this long, so it is never told twice.
+const GITLAB_PIPELINE_WINDOW_MS: i64 = 15 * 60 * 1000;
+const GITLAB_PIPELINE_MEMORY_MS: i64 = 60 * 60 * 1000;
 
 /// What the poller remembers between polls, source by source. `None` until that
 /// source has answered once: its first answer only fills it — no news on
@@ -891,7 +899,8 @@ const GITLAB_ACTIVITY_CHECKS: usize = 5;
 #[derive(Default)]
 struct GitlabMemory {
     todo_max: Option<i64>,
-    pipeline_max: Option<i64>,
+    /// The user's recent pipelines as last seen: id → (status, when seen).
+    pipelines: Option<std::collections::HashMap<i64, (String, i64)>>,
     /// The user's own MRs as last seen: id → (state, approvers).
     authored: Option<std::collections::HashMap<i64, (String, Vec<String>)>>,
     /// The open MRs the user is involved in, as last seen: id → updated_at.
@@ -1069,6 +1078,52 @@ fn gitlab_failed_jobs(jobs: &[Value]) -> Vec<Value> {
         .collect()
 }
 
+/// "https://gl/group/sub/api/-/pipelines/12" → "api".
+fn gitlab_project_of(url: &str) -> String {
+    url.split("/-/").next().unwrap_or("").rsplit('/').next().unwrap_or("").to_string()
+}
+
+/// What started a pipeline, in words.
+fn gitlab_pipeline_source(source: &str) -> String {
+    match source {
+        "push" => "Push".into(),
+        "web" => "Run from GitLab".into(),
+        "merge_request_event" => "Merge request".into(),
+        "schedule" => "Schedule".into(),
+        "api" => "API".into(),
+        "trigger" => "Trigger".into(),
+        "parent_pipeline" | "pipeline" => "Parent pipeline".into(),
+        "" => "Pipeline".into(),
+        other => other.replace('_', " "),
+    }
+}
+
+/// A pipeline's duration in seconds, as "4 min 12 s".
+fn gitlab_took(secs: i64) -> String {
+    match secs {
+        s if s < 60 => format!("{s} s"),
+        s if s < 3600 => format!("{} min {} s", s / 60, s % 60),
+        s => format!("{} h {} min", s / 3600, s % 3600 / 60),
+    }
+}
+
+/// Milliseconds since the epoch as ISO-8601 in UTC, as GitLab takes it.
+fn iso_utc(ms: i64) -> String {
+    let secs = ms.div_euclid(1000);
+    let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
+    // Days to a civil date (Howard Hinnant's algorithm).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
+}
+
 /// The involved MRs updated since the last poll: their discussion says what
 /// happened. An MR seen for the first time is not one — its to-do tells it —
 /// and nothing is before the first answer.
@@ -1108,41 +1163,46 @@ fn gitlab_fresh(
         json!({ "label": label, "url": url, "success": success, "at": now_ms(), "todoId": todo, "mrId": mr })
     };
 
-    // Pipelines: finished ones above every id seen before. Canceled is no news.
+    // Pipelines: one that finished since it was last seen — running then, or
+    // not started yet, or retried since. Canceled is no news.
     let mut failed_projects: Vec<String> = Vec::new();
-    let seen_pipeline = memory.pipeline_max;
+    let primed = memory.pipelines.is_some();
+    let known = memory.pipelines.clone().unwrap_or_default();
     for p in pipelines {
         let id = p["id"].as_i64().unwrap_or(0);
         let status = p["status"].as_str().unwrap_or("");
-        let Some(seen) = seen_pipeline else { break };
-        if !matches!(status, "success" | "failed" | "canceled") || id <= seen {
+        let was = known.get(&id).map(|k| k.0.as_str());
+        if !primed || !matches!(status, "success" | "failed") || was == Some(status) {
             continue;
         }
-        if status != "canceled" {
-            let ok = status == "success";
-            let project = p["project"].as_str().unwrap_or("");
-            if !ok {
-                failed_projects.push(project.to_string());
-            }
-            let verb = if ok { "Pipeline passed" } else { "Pipeline failed" };
-            let label = format!("{verb}: {project} · {}", p["ref"].as_str().unwrap_or(""));
-            let mut item = news(label, p["url"].as_str().unwrap_or("").to_string(), ok, None, None);
-            // Which jobs failed is asked for afterwards (`poll_gitlab`): this
-            // says which pipeline to ask about.
-            if !ok {
-                item["pipeline"] = json!({ "id": id, "projectId": p["projectId"] });
-            }
-            fresh.push(item);
+        let ok = status == "success";
+        let project = p["project"].as_str().unwrap_or("");
+        if !ok {
+            failed_projects.push(project.to_string());
         }
+        let verb = if ok { "Pipeline passed" } else { "Pipeline failed" };
+        let reference = p["ref"].as_str().unwrap_or("");
+        let url = p["url"].as_str().unwrap_or("").to_string();
+        let mut item = news(format!("{verb}: {project} · {reference}"), url, ok, None, None);
+        let sha: String = p["sha"].as_str().unwrap_or("").chars().take(8).collect();
+        let started = format!("{} on {reference}", gitlab_pipeline_source(p["source"].as_str().unwrap_or("")));
+        let started = if sha.is_empty() { started } else { format!("{started} · {sha}") };
+        item["changes"] = json!([{ "text": started, "by": "" }]);
+        // How long it took, and which jobs failed, are asked for afterwards
+        // (`poll_gitlab`): this says which pipeline to ask about.
+        item["pipeline"] = json!({ "id": id, "projectId": p["projectId"] });
+        fresh.push(item);
     }
     if projects_answer.is_some() {
-        let top = pipelines
-            .iter()
-            .filter(|p| matches!(p["status"].as_str(), Some("success" | "failed" | "canceled")))
-            .filter_map(|p| p["id"].as_i64())
-            .max()
-            .unwrap_or(0);
-        memory.pipeline_max = Some(seen_pipeline.unwrap_or(0).max(top));
+        let now = now_ms() as i64;
+        let mut seen: std::collections::HashMap<i64, (String, i64)> =
+            known.into_iter().filter(|(_, (_, at))| now - at < GITLAB_PIPELINE_MEMORY_MS).collect();
+        for p in pipelines {
+            if let Some(id) = p["id"].as_i64() {
+                seen.insert(id, (p["status"].as_str().unwrap_or("").to_string(), now));
+            }
+        }
+        memory.pipelines = Some(seen);
     }
 
     // To-dos: every one newer than the newest seen. A pipeline failure already
@@ -1160,13 +1220,21 @@ fn gitlab_fresh(
         let is_new = memory.todo_max.is_some_and(|seen| id > seen);
         if is_new && !(action == "build_failed" && failed_projects.contains(&project)) {
             let mut item = news(format!("{kind}: {title}"), url.clone(), ok, Some(id), mr);
+            let by = t.get("author").map(|a| s(a, "name")).unwrap_or_default();
+            let mut changes: Vec<Value> = Vec::new();
             // A mention or a review carries what was written; an assignment's
             // body is only the title again.
             let body = gitlab_plain(&s(t, "body"));
             if !body.is_empty() && body != gitlab_plain(&title) {
-                let by = t.get("author").map(|a| s(a, "name")).unwrap_or_default();
-                item["changes"] = json!([{ "text": format!("“{body}”"), "by": by }]);
+                changes.push(json!({ "text": format!("“{body}”"), "by": by }));
             }
+            // Where, and from whom.
+            let from = if by.is_empty() { String::new() } else { format!("from {by}") };
+            let place: Vec<&str> = [project.as_str(), from.as_str()].into_iter().filter(|x| !x.is_empty()).collect();
+            if !place.is_empty() {
+                changes.push(json!({ "text": place.join(" · "), "by": "" }));
+            }
+            item["changes"] = json!(changes);
             fresh.push(item);
         }
         todo_items.push(json!({
@@ -1203,11 +1271,21 @@ fn gitlab_fresh(
                 .or_else(|| before.as_ref().map(|b| b.1.clone()))
                 .unwrap_or_default();
             if let (true, Some((was, had))) = (primed, &before) {
+                let branches = format!("{} → {}", s(mr, "source_branch"), s(mr, "target_branch"));
                 if state == "merged" && was != "merged" {
-                    fresh.push(news(format!("Merged: {title}"), url.clone(), true, None, Some(id)));
+                    let mut item = news(format!("Merged: {title}"), url.clone(), true, None, Some(id));
+                    let by = mr.get("merged_by").map(|a| s(a, "name")).unwrap_or_default();
+                    let text = if by.is_empty() { branches.clone() } else { format!("Merged by {by} · {branches}") };
+                    item["changes"] = json!([{ "text": text, "by": by }]);
+                    fresh.push(item);
                 }
                 for name in now_approvers.iter().filter(|n| !had.contains(n)) {
-                    fresh.push(news(format!("Approved by {name}: {title}"), url.clone(), true, None, Some(id)));
+                    let mut item = news(format!("Approved by {name}: {title}"), url.clone(), true, None, Some(id));
+                    item["changes"] = json!([
+                        { "text": format!("Approvals so far: {}", now_approvers.join(", ")), "by": "" },
+                        { "text": branches.clone(), "by": "" },
+                    ]);
+                    fresh.push(item);
                 }
             }
             known.insert(id, (state, now_approvers));
@@ -1365,31 +1443,37 @@ async fn poll_gitlab(app: AppHandle) {
         }
     }
 
-    // ── The latest pipeline the user triggered in each of their busiest projects ──
-    let projects_answer =
-        list("projects?membership=true&archived=false&simple=true&order_by=last_activity_at&sort=desc&per_page=3".into()).await;
-    let projects = projects_answer.clone().unwrap_or_default();
+    // ── The user's recent pipelines, in every project of their recent activity ──
+    // GitLab has no list of a user's pipelines across projects: the projects
+    // come from the user's own events, newest first, and each is asked for the
+    // pipelines the user started that moved in the last minutes.
+    let since_day = iso_utc(now_ms() as i64 - (GITLAB_PIPELINE_DAYS + 1) * 86_400_000);
+    let projects_answer = list(format!("events?after={}&per_page=100", &since_day[..10])).await;
+    let mut project_ids: Vec<i64> = Vec::new();
+    for event in projects_answer.iter().flatten() {
+        if let Some(pid) = event.get("project_id").and_then(Value::as_i64) {
+            if !project_ids.contains(&pid) && project_ids.len() < GITLAB_PIPELINE_PROJECTS {
+                project_ids.push(pid);
+            }
+        }
+    }
+    let updated_after = iso_utc(now_ms() as i64 - GITLAB_PIPELINE_WINDOW_MS);
     let mut pipelines: Vec<Value> = Vec::new();
-    for project in &projects {
-        let Some(pid) = project.get("id").and_then(Value::as_i64) else { continue };
-        let name = project.get("name").and_then(Value::as_str).unwrap_or("Project");
-        let Some(p) = list(format!("projects/{pid}/pipelines?per_page=1&username={username}"))
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .next()
-        else {
-            continue;
-        };
-        pipelines.push(json!({
-            "id": p.get("id").and_then(Value::as_i64).unwrap_or(0),
-            "projectId": pid,
-            "project": name,
-            "ref": s(&p, "ref"),
-            "status": s(&p, "status"),
-            "url": s(&p, "web_url"),
-            "updatedAt": s(&p, "updated_at"),
-        }));
+    for pid in project_ids {
+        let path = format!("projects/{pid}/pipelines?username={username}&updated_after={updated_after}&per_page=20");
+        for p in list(path).await.unwrap_or_default() {
+            pipelines.push(json!({
+                "id": p.get("id").and_then(Value::as_i64).unwrap_or(0),
+                "projectId": pid,
+                "project": gitlab_project_of(&s(&p, "web_url")),
+                "ref": s(&p, "ref"),
+                "sha": s(&p, "sha"),
+                "source": s(&p, "source"),
+                "status": s(&p, "status"),
+                "url": s(&p, "web_url"),
+                "updatedAt": s(&p, "updated_at"),
+            }));
+        }
     }
     // ISO-8601 in UTC sorts as text.
     pipelines.sort_by(|a, b| b["updatedAt"].as_str().cmp(&a["updatedAt"].as_str()));
@@ -1403,16 +1487,26 @@ async fn poll_gitlab(app: AppHandle) {
         )
     };
 
-    // Which jobs failed, for each pipeline failure in the news: one request
-    // each, only then. Without it the news still goes out, just without them.
+    // For each pipeline in the news, how long it took and, when it failed,
+    // which jobs did: asked only then. Without them the news still goes out.
     for item in &mut fresh {
         let (Some(pipeline), Some(project)) = (item["pipeline"]["id"].as_i64(), item["pipeline"]["projectId"].as_i64())
         else {
             continue;
         };
-        if let Some(jobs) = list(format!("projects/{project}/pipelines/{pipeline}/jobs?scope=failed&per_page=20")).await {
-            item["changes"] = json!(gitlab_failed_jobs(&jobs));
+        let mut lines: Vec<Value> = Vec::new();
+        if item["success"] == false {
+            if let Some(jobs) = list(format!("projects/{project}/pipelines/{pipeline}/jobs?scope=failed&per_page=20")).await {
+                lines = gitlab_failed_jobs(&jobs);
+            }
         }
+        lines.extend(item["changes"].as_array().cloned().unwrap_or_default());
+        if let Ok(r) = get(format!("projects/{project}/pipelines/{pipeline}")).await {
+            if let Some(secs) = r.json::<Value>().await.ok().and_then(|p| p["duration"].as_i64()) {
+                lines.push(json!({ "text": format!("Took {}", gitlab_took(secs)), "by": "" }));
+            }
+        }
+        item["changes"] = json!(lines);
     }
 
     // News for the card: the fresh items first, then the earlier ones — read
@@ -1820,8 +1914,43 @@ mod gitlab_tests {
             with_body(1, "mentioned", "@me could you look at the **cache** part?"),
             with_body(2, "assigned", "MR 2"),
         ]), &None, &none);
-        assert_eq!(texts(&fresh[0]), vec!["“@me could you look at the cache part?”"]);
-        assert!(fresh[1].get("changes").is_none(), "an assignment's body is the title again");
+        assert_eq!(texts(&fresh[0]), vec!["“@me could you look at the cache part?”", "web · from Ada"]);
+        assert_eq!(texts(&fresh[1]), vec!["web · from Ada"], "an assignment's body is the title again");
+    }
+
+    #[test]
+    fn a_pipeline_is_told_once_it_finishes_whenever_it_started() {
+        let mut m = GitlabMemory::default();
+        let none = Default::default();
+        let projects = Some(vec![]);
+        let pipe = |id: i64, status: &str| json!({ "id": id, "projectId": 4, "status": status, "project": "api",
+            "ref": "main", "sha": "3f2a1b9c0d", "source": "push", "url": "p" });
+        let run = |m: &mut GitlabMemory, pipes: Vec<Value>| without_involved(m, &projects, &pipes, &None, &None, &none).0;
+
+        assert!(run(&mut m, vec![pipe(1, "success"), pipe(2, "running")]).is_empty(), "launch only remembers");
+        // 2 finishes after 3, which started later and was never seen running.
+        let fresh = run(&mut m, vec![pipe(1, "success"), pipe(2, "running"), pipe(3, "failed")]);
+        assert_eq!(labels(&fresh), vec!["Pipeline failed: api · main"]);
+        assert_eq!(texts(&fresh[0]), vec!["Push on main · 3f2a1b9c"]);
+        assert_eq!(fresh[0]["pipeline"]["id"], 3);
+        let fresh = run(&mut m, vec![pipe(2, "success"), pipe(3, "failed")]);
+        assert_eq!(labels(&fresh), vec!["Pipeline passed: api · main"], "told once each");
+        // 3 retried, and passing this time.
+        assert!(run(&mut m, vec![pipe(3, "running")]).is_empty());
+        assert_eq!(labels(&run(&mut m, vec![pipe(3, "success")])), vec!["Pipeline passed: api · main"]);
+        assert!(run(&mut m, vec![pipe(4, "canceled")]).is_empty(), "canceled is no news");
+    }
+
+    #[test]
+    fn pipeline_words() {
+        assert_eq!(gitlab_project_of("https://gl/team/sub/api/-/pipelines/12"), "api");
+        assert_eq!(gitlab_pipeline_source("merge_request_event"), "Merge request");
+        assert_eq!(gitlab_took(42), "42 s");
+        assert_eq!(gitlab_took(252), "4 min 12 s");
+        assert_eq!(gitlab_took(3_780), "1 h 3 min");
+        assert_eq!(iso_utc(0), "1970-01-01T00:00:00Z");
+        assert_eq!(iso_utc(951_868_800_000), "2000-03-01T00:00:00Z");
+        assert_eq!(iso_utc(1_791_383_045_000), "2026-10-07T14:24:05Z");
     }
 
     #[test]

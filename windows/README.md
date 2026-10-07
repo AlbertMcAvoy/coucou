@@ -401,12 +401,14 @@ own window.
   Integrations, token with the `read_api` scope): your To-Do list (review
   requests, assignments, mentions, failed pipelines on your merge requests…),
   your merge requests being approved or merged, someone else commenting on or
-  updating a merge request you authored, are assigned or review, and your
-  latest pipelines. Everything new in a minute arrives as one notification; the
-  pill lists your to-dos and those merge requests, five at a time. The
-  notification's Details, and a click on a piece of news in the pill, unfold
-  what happened: the comment or what was done on an MR (commits pushed,
-  approval, title changed…), what a mention said, the jobs a pipeline failed on.
+  updating a merge request you authored, are assigned or review, and every
+  pipeline you started finishing, in any project you were active in over the
+  last week (ten at most). Everything new in a minute arrives as one
+  notification; the pill lists your to-dos and those merge requests, five at a
+  time. The notification's Details, and a click on a piece of news in the pill,
+  unfold what happened: the comment or what was done on an MR (commits pushed,
+  approval, title changed…), what a mention said, who merged or approved, what
+  started a pipeline, how long it took and which jobs failed.
   The pill keeps the last ten pieces of news, details included, through a
   restart too (in `%LOCALAPPDATA%\Coucou\news-gitlab.json`).
 - Permission approval works from **any** terminal; the Mac build only listens to

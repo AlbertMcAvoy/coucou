@@ -323,21 +323,15 @@ const unfolded = new Set<string>();
 const NEWS_HIGHLIGHT_MS = 30 * 60 * 1000;
 
 /**
- * One piece of news, highlighted in `accent` while it is recent. With what
- * changed attached, a click unfolds those changes under it and the ↗ opens its
- * page; without, a click opens it.
+ * One piece of news, highlighted in `accent` while it is recent. A click
+ * unfolds what changed under it — or, when nothing is attached, its whole
+ * label, which the row cuts — and the ↗ opens its page.
  */
 function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
   const label = String(n.label ?? "");
   const recent = Date.now() - Number(n.at ?? 0) < NEWS_HIGHLIGHT_MS;
   const url = typeof n.url === "string" ? n.url : "";
   const changes = Array.isArray(n.changes) ? (n.changes as { text?: string; by?: string }[]) : [];
-  if (changes.length === 0) {
-    return [linkRow(accent, recent, url, label,
-      h("span", { class: "int-name", text: label }),
-      h("span", { class: "int-ago", text: timeAgo(n.at) }),
-    )];
-  }
 
   const key = `${label}@${String(n.at ?? "")}`;
   const open = h("button", {
@@ -354,14 +348,18 @@ function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
     h("span", { class: "int-ago", text: timeAgo(n.at) }),
     open,
   );
-  row.title = `${label}\n${changes.length} ${changes.length === 1 ? "detail" : "details"} — click to show`;
+  row.title = changes.length > 0
+    ? `${label}\n${changes.length} ${changes.length === 1 ? "detail" : "details"} — click to show`
+    : label;
   row.style.cursor = "pointer";
   const detail = h("div", { class: "int-changes" },
-    ...changes.map((c) => h("div", {
-      class: "int-change",
-      title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
-      text: c.text ?? "",
-    })),
+    ...(changes.length > 0
+      ? changes.map((c) => h("div", {
+        class: "int-change",
+        title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
+        text: c.text ?? "",
+      }))
+      : [h("div", { class: "int-change whole", text: label })]),
   );
   const show = (on: boolean) => {
     detail.hidden = !on;
