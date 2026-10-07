@@ -317,6 +317,14 @@ test("Codex's Interrupt puts its pill back to idle", () => {
   assert.equal(task("agent_codex").state, "idle");
 });
 
+test("Hermes says where a gateway session comes from", () => {
+  hook({ hook_event_name: "SessionStart", coucou_agent: "hermes", platform: "telegram" });
+  assert.deepEqual(task("agent_hermes").steps, ["Telegram"]);
+  hook({ hook_event_name: "SessionEnd", coucou_agent: "hermes" });
+  hook({ hook_event_name: "SessionStart", coucou_agent: "hermes", platform: "cli" });
+  assert.deepEqual(task("agent_hermes").steps, []);
+});
+
 test("an agent's last words show when it stops", () => {
   hook({ hook_event_name: "SessionStart", coucou_agent: "hermes" });
   hook({ hook_event_name: "Stop", coucou_agent: "hermes", last_assistant_message: "All done, tests pass." });

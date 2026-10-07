@@ -333,8 +333,11 @@ mod tests {
         assert!(pre.iter().any(entry_is_ours), "our own hook was not added");
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
-        // Installing twice adds nothing more.
-        assert_eq!(merged(&after).unwrap(), after);
+        // Installing twice still leaves one entry of ours per event. (Compared
+        // by count: another test points HOME elsewhere meanwhile, which moves
+        // the relay path.)
+        let twice = merged(&after).unwrap();
+        assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
 
         // And removing ours puts it back exactly as it was.
         let cleaned = without_ours(&after).unwrap();

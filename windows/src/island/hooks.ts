@@ -59,6 +59,8 @@ interface HookPayload {
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
+  platform?: string;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -257,6 +259,10 @@ function handleHook(island: Island, payload: HookPayload) {
   switch (name) {
     case "SessionStart":
       ensurePill();
+      // Hermes through its gateway says where the session comes from.
+      if (validAgent === "hermes" && payload.platform && payload.platform !== "cli") {
+        State.appendStep(agentId, payload.platform.charAt(0).toUpperCase() + payload.platform.slice(1));
+      }
       surface("overview", false);
       Sound.play("work");
       break;

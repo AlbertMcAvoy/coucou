@@ -98,6 +98,9 @@ pub enum Agent {
     Codex,
     Copilot,
     Muse,
+    OpenCode,
+    Amp,
+    Hermes,
 }
 
 impl Agent {
@@ -108,6 +111,9 @@ impl Agent {
         Agent::Gemini,
         Agent::Antigravity,
         Agent::Cursor,
+        Agent::OpenCode,
+        Agent::Amp,
+        Agent::Hermes,
     ];
 
     /// The `--agent` name; the pill is `agent_<id>` (PillCatalog.swift).
@@ -119,6 +125,9 @@ impl Agent {
             Agent::Codex => "codex",
             Agent::Copilot => "copilot",
             Agent::Muse => "muse",
+            Agent::OpenCode => "opencode",
+            Agent::Amp => "amp",
+            Agent::Hermes => "hermes",
         }
     }
 
@@ -135,16 +144,39 @@ impl Agent {
             Agent::Codex => vec![home.join(".codex").join("hooks.json")],
             Agent::Copilot => vec![home.join(".copilot").join("hooks").join("coucou.json")],
             Agent::Muse => vec![home.join(".config").join("muse").join("settings.json")],
+            // OpenCode and Amp read ~/.config on Windows too.
+            Agent::OpenCode => vec![home.join(".config").join("opencode").join("plugins").join("coucou.js")],
+            Agent::Amp => vec![home.join(".config").join("amp").join("plugins").join("coucou.ts")],
+            Agent::Hermes => {
+                let dir = home.join(".hermes").join("plugins").join("coucou");
+                vec![dir.join("__init__.py"), dir.join("plugin.yaml")]
+            }
         }
     }
 
     /// The edits that install (or remove) Coucou for this agent.
     fn edits(self, home: &Path, relay: &Relay, install: bool) -> Vec<FileEdit<'static>> {
         let files = self.files(home);
+        if let Some(contents) = self.plugin(relay) {
+            return files.into_iter().zip(contents).map(|(path, text)| plugin_edit(path, text, install)).collect();
+        }
         let path = files[0].clone();
         let label = path.display().to_string();
         let change = self.json_change(relay, install);
         vec![FileEdit { path, edit: config_file::json_edit(label, change) }]
+    }
+
+    /// For an agent that loads a plugin rather than running hook commands, the
+    /// contents of each of its files (same order as `files`).
+    fn plugin(self, relay: &Relay) -> Option<Vec<String>> {
+        // A JSON string is also a valid JavaScript, TypeScript and Python one.
+        let hook = serde_json::to_string(&relay.exe).unwrap_or_default();
+        match self {
+            Agent::OpenCode => Some(vec![OPENCODE_PLUGIN.replace("{HOOK}", &hook)]),
+            Agent::Amp => Some(vec![AMP_PLUGIN.replace("{HOOK}", &hook)]),
+            Agent::Hermes => Some(vec![HERMES_PLUGIN.replace("{HOOK}", &hook), HERMES_PLUGIN_YAML.to_string()]),
+            _ => None,
+        }
     }
 
     /// The change to this agent's JSON config: the new object, or `None` to
@@ -197,6 +229,10 @@ impl Agent {
                     .collect();
                 Box::new(move |v| muse_install(v, &commands).map(Some))
             }
+            // Plugins are whole files (see `plugin`), never merged into JSON.
+            (Agent::OpenCode | Agent::Amp | Agent::Hermes, _) => {
+                Box::new(|_| Err("This agent takes a plugin, not hook entries.".into()))
+            }
         }
     }
 
@@ -204,6 +240,9 @@ impl Agent {
     /// file we cannot read just reads as "not installed".
     fn installed(self, home: &Path) -> bool {
         let files = self.files(home);
+        if matches!(self, Agent::OpenCode | Agent::Amp | Agent::Hermes) {
+            return std::fs::read_to_string(&files[0]).is_ok_and(|text| is_our_plugin(&text));
+        }
         let json = || {
             config_file::read(&files[0])
                 .ok()
@@ -221,6 +260,7 @@ impl Agent {
                 .and_then(Value::as_object)
                 .is_some_and(|h| h.values().filter_map(Value::as_array).flatten().any(copilot_entry_is_ours)),
             Agent::Muse => groups_have_ours(&json(), "muse"),
+            Agent::OpenCode | Agent::Amp | Agent::Hermes => false,
         }
     }
 
@@ -245,6 +285,9 @@ impl Agent {
             Agent::Codex => "Codex",
             Agent::Copilot => "GitHub Copilot CLI",
             Agent::Muse => "Muse Code",
+            Agent::OpenCode => "OpenCode",
+            Agent::Amp => "Amp",
+            Agent::Hermes => "Hermes Agent",
         }
     }
 
@@ -257,6 +300,9 @@ impl Agent {
             Agent::Codex => "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.",
             Agent::Copilot => "Start a new Copilot CLI session to pick the hooks up.",
             Agent::Muse => "Start a new Muse Code session to pick the hooks up.",
+            Agent::OpenCode => "Restart OpenCode to load the plugin.",
+            Agent::Amp => "Restart Amp to load the plugin.",
+            Agent::Hermes => "Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session.",
         }
     }
 }
@@ -311,6 +357,12 @@ pub fn apply(id: &str, install: bool, fingerprint: &str) -> Result<String, Strin
 
 fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint: &str) -> Result<String, String> {
     let backups = config_file::apply(&agent.edits(home, relay, install), fingerprint)?;
+    // Hermes loads every folder under plugins/: an empty `coucou` one goes too.
+    if agent == Agent::Hermes && !install {
+        if let Some(dir) = agent.files(home)[0].parent() {
+            let _ = std::fs::remove_dir(dir);
+        }
+    }
     Ok(backups.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"))
 }
 
@@ -674,6 +726,202 @@ fn muse_install(root: &Value, commands: &[(String, String, u64)]) -> Result<Valu
     Ok(Value::Object(root))
 }
 
+// ── Plugins: OpenCode, Amp, Hermes ────────────────────────────────────────────
+//
+// These agents load code rather than run hook commands. The Mac's plugins
+// start `/bin/sh` on a script at a macOS path; these start the relay itself,
+// at this machine's path, with no shell in between. Every one is
+// fire-and-forget: the agent never waits on Coucou, and if Coucou is closed
+// nothing happens. None of them ever answers a permission: Hermes keeps its
+// approvals (as on the Mac), and Amp's steps come from `tool.result` so the
+// plugin never has to return a verdict from `tool.call`.
+
+/// Every plugin file Coucou writes says so; only such a file is replaced or removed.
+const GENERATED: &str = "generated by Coucou";
+
+fn is_our_plugin(text: &str) -> bool {
+    text.contains(GENERATED)
+}
+
+fn plugin_edit(path: PathBuf, content: String, install: bool) -> FileEdit<'static> {
+    let label = path.display().to_string();
+    let name = label.clone();
+    let edit = config_file::text_edit(label, move |current| match (install, current) {
+        (_, Some(text)) if !is_our_plugin(text) => {
+            Err(format!("{name} wasn't written by Coucou — {TEXT_UNTOUCHED}"))
+        }
+        (true, _) => Ok(Some(content.clone())),
+        (false, _) => Ok(None),
+    });
+    FileEdit { path, edit }
+}
+
+const OPENCODE_PLUGIN: &str = r#"// Coucou plugin for OpenCode — generated by Coucou.
+// Forwards OpenCode's events to Coucou's relay (coucou-hook), fire-and-forget:
+// OpenCode never waits on it, and nothing happens when Coucou is closed.
+import { spawn } from 'node:child_process';
+
+const HOOK = {HOOK};
+const EVENT_MAP = {
+  'session.created': 'SessionStart',
+  'session.idle': 'Stop',
+  'session.error': 'StopFailure',
+  'session.deleted': 'SessionEnd',
+};
+
+function forward(hook_event_name, payload) {
+  try {
+    const p = spawn(HOOK, ['--agent', 'opencode'], {
+      stdio: ['pipe', 'ignore', 'ignore'],
+      detached: process.platform !== 'win32',
+      windowsHide: true,
+    });
+    p.on('error', () => {});
+    p.stdin.on('error', () => {});
+    p.stdin.end(JSON.stringify({ hook_event_name, ...payload }) + '\n');
+    p.unref();
+  } catch {}
+}
+
+export const CoucouPlugin = async ({ directory } = {}) => ({
+  event: async ({ event }) => {
+    const hook_event_name = EVENT_MAP[event?.type];
+    if (!hook_event_name) return;
+    const props = event.properties || {};
+    forward(hook_event_name, {
+      session_id: props.sessionID || props.info?.id || '',
+      cwd: directory || '',
+    });
+  },
+  'tool.execute.before': async (input, output) => {
+    forward('PreToolUse', {
+      session_id: input?.sessionID || '',
+      cwd: directory || '',
+      tool_name: typeof input?.tool === 'string' ? input.tool : '',
+      tool_input: output?.args ?? null,
+    });
+  },
+  'tool.execute.after': async (input) => {
+    forward('PostToolUse', {
+      session_id: input?.sessionID || '',
+      cwd: directory || '',
+      tool_name: typeof input?.tool === 'string' ? input.tool : '',
+    });
+  },
+});
+"#;
+
+const AMP_PLUGIN: &str = r#"// Coucou plugin for Amp — generated by Coucou.
+// Forwards Amp's events to Coucou's relay (coucou-hook), fire-and-forget and
+// display only: Amp never waits on it, and it never decides anything for Amp.
+import { spawn } from 'node:child_process';
+
+const HOOK = {HOOK};
+
+function forward(hook_event_name: string, fields: Record<string, unknown>): void {
+  try {
+    const p = spawn(HOOK, ['--agent', 'amp'], {
+      stdio: ['pipe', 'ignore', 'ignore'],
+      detached: process.platform !== 'win32',
+      windowsHide: true,
+    });
+    p.on('error', () => {});
+    p.stdin?.on('error', () => {});
+    p.stdin?.end(JSON.stringify({ hook_event_name, ...fields }) + '\n');
+    p.unref();
+  } catch {}
+}
+
+export default function (amp: any): void {
+  const session = (e: any) => ({ session_id: e?.thread?.id ?? '' });
+  amp.on('session.start', (e: any) => { forward('SessionStart', session(e)); });
+  amp.on('agent.start', (e: any) => {
+    forward('UserPromptSubmit', { ...session(e), prompt: typeof e?.message === 'string' ? e.message : '' });
+  });
+  // A step per tool once it has run: listening to tool.call would mean
+  // returning a verdict for Amp, and Coucou never makes one.
+  amp.on('tool.result', (e: any) => {
+    forward('PreToolUse', { ...session(e), tool_name: typeof e?.tool === 'string' ? e.tool : '', tool_input: e?.input ?? null });
+  });
+  amp.on('agent.end', (e: any) => { forward('Stop', { ...session(e), status: e?.status ?? '' }); });
+}
+"#;
+
+const HERMES_PLUGIN: &str = r#"# Coucou plugin for Hermes Agent — generated by Coucou.
+# Session and tool events go to Coucou's relay (coucou-hook), fire-and-forget:
+# Hermes never waits on it, and keeps every approval decision to itself.
+import json, os, subprocess, threading
+
+HOOK = {HOOK}
+_current_session_id = ''
+
+
+def _fire(fields):
+    """Non-blocking: start the relay and return at once. Reaps it in a thread."""
+    def _run():
+        try:
+            extra = {'start_new_session': True} if os.name != 'nt' else {
+                'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+            p = subprocess.Popen([HOOK, '--agent', 'hermes'], stdin=subprocess.PIPE,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
+            p.stdin.write(json.dumps(fields).encode() + b'\n')
+            p.stdin.close()
+            p.wait(timeout=5)
+        except Exception:
+            pass
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def register(ctx):
+    def on_session_start(**kwargs):
+        global _current_session_id
+        sid = kwargs.get('session_id', '')
+        _current_session_id = sid
+        platform = kwargs.get('platform', 'cli') or 'cli'
+        _fire({'hook_event_name': 'SessionStart', 'session_id': sid, 'platform': platform})
+
+    def on_session_end(**kwargs):
+        # Stop comes from post_llm_call, which has the last answer.
+        if kwargs.get('interrupted'):
+            _fire({'hook_event_name': 'StopFailure', 'session_id': kwargs.get('session_id', '')})
+
+    def post_llm_call(**kwargs):
+        _fire({'hook_event_name': 'Stop',
+               'session_id': kwargs.get('session_id', '') or _current_session_id,
+               'last_assistant_message': kwargs.get('assistant_response', '')})
+
+    def pre_tool_call(**kwargs):
+        _fire({'hook_event_name': 'PreToolUse',
+               'session_id': kwargs.get('session_id', '') or _current_session_id,
+               'tool_name': kwargs.get('tool_name', ''),
+               'tool_input': kwargs.get('args') or {}})
+
+    def post_tool_call(**kwargs):
+        _fire({'hook_event_name': 'PostToolUse',
+               'session_id': kwargs.get('session_id', '') or _current_session_id,
+               'tool_name': kwargs.get('tool_name', '')})
+
+    def pre_approval_request(**kwargs):
+        # Observer only: Hermes asks and decides; the island just says so.
+        _fire({'hook_event_name': 'PreToolUse',
+               'session_id': kwargs.get('session_key', '') or _current_session_id,
+               'tool_name': '⏳ Approval pending in Hermes',
+               'tool_input': {'command': kwargs.get('command', ''),
+                              'description': kwargs.get('description', '')}})
+
+    ctx.register_hook('on_session_start', on_session_start)
+    ctx.register_hook('on_session_end', on_session_end)
+    ctx.register_hook('post_llm_call', post_llm_call)
+    ctx.register_hook('pre_tool_call', pre_tool_call)
+    ctx.register_hook('post_tool_call', post_tool_call)
+    ctx.register_hook('pre_approval_request', pre_approval_request)
+"#;
+
+const HERMES_PLUGIN_YAML: &str = r#"name: coucou
+version: "1.0"
+description: Coucou island integration — generated by Coucou
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -946,6 +1194,57 @@ mod tests {
     fn only_codex_copilot_and_muse_take_approvals() {
         let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
         assert_eq!(with, ["codex", "copilot", "muse"]);
+    }
+
+    #[test]
+    fn plugins_call_the_relay_directly_and_go_away_whole() {
+        for agent in [Agent::OpenCode, Agent::Amp, Agent::Hermes] {
+            let home = scratch(&format!("plugin-{}", agent.id()));
+            let relay = linux();
+            let plan = config_file::preview(&agent.edits(&home, &relay, true)).unwrap();
+            apply_in(agent, &home, &relay, true, &plan.fingerprint).unwrap();
+            assert!(agent.installed(&home), "{agent:?}");
+            let main = std::fs::read_to_string(&agent.files(&home)[0]).unwrap();
+            // The relay itself, at this machine's path, as a string literal: no
+            // shell, no macOS path.
+            assert!(main.contains(r#""/home/me/.local/share/coucou/bin/coucou-hook""#), "{agent:?}");
+            assert!(!main.contains("/bin/sh") && !main.contains("nb-hook"), "{agent:?}");
+            assert!(main.contains(&format!("'--agent', '{}'", agent.id())), "{agent:?}");
+            // Never a verdict for the agent.
+            assert!(!main.contains("action: 'allow'") && !main.contains("register_approval_transport"));
+
+            let plan = config_file::preview(&agent.edits(&home, &relay, false)).unwrap();
+            apply_in(agent, &home, &relay, false, &plan.fingerprint).unwrap();
+            assert!(!agent.installed(&home));
+            for file in agent.files(&home) {
+                assert!(!file.exists(), "{}", file.display());
+            }
+            let _ = std::fs::remove_dir_all(home);
+        }
+    }
+
+    #[test]
+    fn a_plugin_file_coucou_did_not_write_is_left_alone() {
+        let home = scratch("plugin-foreign");
+        let file = Agent::OpenCode.files(&home)[0].clone();
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(&file, "export const Mine = async () => ({});\n").unwrap();
+        for install in [true, false] {
+            let err = config_file::preview(&Agent::OpenCode.edits(&home, &linux(), install)).unwrap_err();
+            assert!(err.contains("wasn't written by Coucou"), "{err}");
+        }
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "export const Mine = async () => ({});\n");
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn a_windows_path_is_a_valid_string_in_every_plugin() {
+        let plugins = Agent::Hermes.plugin(&windows(WIN_SPACE)).unwrap();
+        let literal = serde_json::to_string(WIN_SPACE).unwrap();
+        assert!(plugins[0].contains(&format!("HOOK = {literal}")));
+        assert!(literal.contains(r"C:\\Users\\Jane O'Neil"));
+        // plugin.yaml is ours too, so removing it is allowed.
+        assert!(is_our_plugin(&plugins[1]));
     }
 
     #[test]
