@@ -3,6 +3,8 @@
 // tray menu) and stored in the preferences as `mochiOutfit`. The drawing lives
 // in ./outfits.ts.
 
+import { N_, labels, t } from "../i18n/i18n";
+
 /** Every outfit, plus "auto" (dress for the season) and "none". Order of the wardrobe. */
 export const OUTFIT_SELECTIONS = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
@@ -19,27 +21,31 @@ export const DEFAULT_OUTFIT: OutfitSelection = "auto";
 
 // ── User-visible strings ──────────────────────────────────────────────────────
 
-export const OUTFIT_LABELS: Record<OutfitSelection, string> = {
-  auto: "Auto (seasons)",
-  none: "None",
-  partyHat: "Party hat",
-  beanie: "Beanie",
-  crown: "Crown",
-  sunglasses: "Sunglasses",
-  roundGlasses: "Round glasses",
-  bow: "Bow",
-  scarf: "Scarf",
-  witchHat: "Witch hat",
-  pumpkin: "Pumpkin",
-  santaHat: "Santa hat",
-  bunnyEars: "Bunny ears",
+/** The English names, the keys of their translations (src/i18n). */
+export const OUTFIT_KEYS: Record<OutfitSelection, string> = {
+  auto: N_("Auto (seasons)"),
+  none: N_("None"),
+  partyHat: N_("Party hat"),
+  beanie: N_("Beanie"),
+  crown: N_("Crown"),
+  sunglasses: N_("Sunglasses"),
+  roundGlasses: N_("Round glasses"),
+  bow: N_("Bow"),
+  scarf: N_("Scarf"),
+  witchHat: N_("Witch hat"),
+  pumpkin: N_("Pumpkin"),
+  santaHat: N_("Santa hat"),
+  bunnyEars: N_("Bunny ears"),
 };
 
+/** In the current language: every read goes through `t()`. */
+export const OUTFIT_LABELS: Record<OutfitSelection, string> = labels(OUTFIT_KEYS);
+
 export const WARDROBE_STRINGS = {
-  title: "Wardrobe",
-  autoBadge: "AUTO",
-  autoNow: (current: string) => `Auto · ${current}`,
-  autoHover: (current: string) => `Auto · follows the seasons (now: ${current})`,
+  get title() { return t("Wardrobe"); },
+  get autoBadge() { return t("AUTO"); },
+  autoNow: (current: string) => t("Auto · {outfit}", { outfit: current }),
+  autoHover: (current: string) => t("Auto · follows the seasons (now: {outfit})", { outfit: current }),
 };
 
 // ── Logic ─────────────────────────────────────────────────────────────────────

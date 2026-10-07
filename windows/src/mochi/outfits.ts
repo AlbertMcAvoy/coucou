@@ -13,6 +13,7 @@
 
 import { Ease } from "../core/anim";
 import type { Outfit, OutfitSelection } from "./wardrobe";
+import { SCRIPT_FONTS } from "../core/fonts";
 
 const EXP = 2.7;
 const VIEW_TILT = -0.3;
@@ -1143,7 +1144,13 @@ export function drawWardrobeIcon(ctx: Ctx, size: number, selection: OutfitSelect
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fill();
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `600 4.2px system-ui, "Segoe UI", sans-serif`;
+  // A longer translation of "AUTO" gets a smaller font rather than overflowing the badge.
+  let fontPx = 4.2;
+  ctx.font = `600 ${fontPx}px system-ui, "Segoe UI", ${SCRIPT_FONTS}, sans-serif`;
+  while (ctx.measureText(autoLabel).width > bw - 2 && fontPx > 2.6) {
+    fontPx -= 0.2;
+    ctx.font = `600 ${fontPx}px system-ui, "Segoe UI", ${SCRIPT_FONTS}, sans-serif`;
+  }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(autoLabel, 0, 0.2);

@@ -6,10 +6,11 @@ import { h } from "./dom";
 import { State } from "../core/state";
 import { drawWardrobeIcon } from "../mochi/outfits";
 import {
-  OUTFIT_LABELS, OUTFIT_SELECTIONS, WARDROBE_STRINGS, parseOutfit, resolveOutfit, seasonalOutfit,
+  OUTFIT_KEYS, OUTFIT_SELECTIONS, WARDROBE_STRINGS, parseOutfit, resolveOutfit, seasonalOutfit,
   wardrobeHeader, type Outfit, type OutfitSelection,
 } from "../mochi/wardrobe";
 import type { ViewActions, ViewHost } from "./views";
+import { language, tl } from "../i18n/i18n";
 
 const ICON = 28;
 
@@ -25,7 +26,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
       h(
         "div",
         { class: "stack wardrobe-stack" },
-        h("div", { class: "wardrobe-head" }, h("span", { class: "wardrobe-title", text: WARDROBE_STRINGS.title }), note),
+        h("div", { class: "wardrobe-head" }, h("span", { class: "wardrobe-title", text: tl("Wardrobe") }), note),
         grid,
       ),
     ),
@@ -33,6 +34,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
 
   let hovered: OutfitSelection | null = null;
   let drawnSeason: Outfit | null = null;
+  let drawnLanguage = language();
   const items = new Map<OutfitSelection, { button: HTMLButtonElement; canvas: HTMLCanvasElement }>();
 
   const updateNote = () => {
@@ -43,7 +45,7 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
     const canvas = h("canvas");
     const button = h(
       "button",
-      { class: "wardrobe-item", title: OUTFIT_LABELS[sel], "aria-label": OUTFIT_LABELS[sel] },
+      { class: "wardrobe-item", title: tl(OUTFIT_KEYS[sel]), "aria-label": tl(OUTFIT_KEYS[sel]) },
       canvas,
     );
     button.addEventListener("mouseenter", () => {
@@ -62,12 +64,13 @@ export function buildWardrobe(actions: ViewActions): ViewHost {
     grid.append(button);
   }
 
-  /** Icons are drawn once; only "auto" changes, with the season. */
+  /** Icons are drawn once; only "auto" changes, with the season and its badge's language. */
   const drawIcons = () => {
     const season = seasonalOutfit(new Date());
-    if (season === drawnSeason) return;
+    if (season === drawnSeason && drawnLanguage === language()) return;
     const first = drawnSeason == null;
     drawnSeason = season;
+    drawnLanguage = language();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     for (const [sel, { canvas }] of items) {
       if (!first && sel !== "auto") continue;

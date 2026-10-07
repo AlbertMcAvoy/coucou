@@ -137,7 +137,16 @@ pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
             let d = describe(m);
             MonitorChoice {
                 key: d.key(),
-                label: format!("{} — {}×{} at {},{}", d.name, d.w, d.h, d.x, d.y),
+                label: crate::i18n::tf(
+                    "{name} — {width}×{height} at {x},{y}",
+                    &[
+                        ("name", &d.name),
+                        ("width", &d.w.to_string()),
+                        ("height", &d.h.to_string()),
+                        ("x", &d.x.to_string()),
+                        ("y", &d.y.to_string()),
+                    ],
+                ),
             }
         })
         .collect()

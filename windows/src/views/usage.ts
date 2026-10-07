@@ -18,6 +18,7 @@ import {
 import { State } from "../core/state";
 import { clear, dot, h, svg } from "./dom";
 import { ICONS } from "./icons";
+import { language, tl } from "../i18n/i18n";
 
 /** The Claude pill is in the header: overview, turned on, relay in. */
 export function claudePillVisible(): boolean {
@@ -118,7 +119,7 @@ export function buildPlanPill(codex: boolean): PlanPill {
   const isOpen = () => State.showingPlanDetail && State.planDetailIsCodex === codex;
   const el = h("button", {
     class: "plan-pill",
-    title: codex ? PLAN_TEXT.codexPillTitle : PLAN_TEXT.claudePillTitle,
+    title: codex ? tl("Codex plan usage") : tl("Claude plan usage"),
     onclick: () => {
       const open = isOpen();
       State.planDetailIsCodex = codex;
@@ -179,7 +180,7 @@ export class PlanCard {
   sync(now = Date.now()) {
     const codex = State.planDetailIsCodex;
     const u = codex ? State.codexPlanUsage : State.planUsage;
-    const key = `${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
+    const key = `${language()}|${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
     if (key === this.key) return;
     this.key = key;
     clear(this.el);

@@ -6,6 +6,8 @@
 // Parsing and alert detection happen in Rust (src-tauri/src/github.rs); this
 // reads what Rust sends and turns it into what the card shows.
 
+import { dayMonth, t, tn } from "../i18n/i18n";
+
 export type CIState = "pending" | "success" | "failure" | "unknown";
 export type ReviewState = "approved" | "changesRequested" | "pending" | "unknown";
 export type GitHubSection = "myPRs" | "toReview" | "mainCI" | "activity";
@@ -67,31 +69,31 @@ export type GitHubEvent =
   | { kind: "mainFailed"; repo: string }
   | { kind: "reviewRequested"; prId: string };
 
-/** Every word the GitHub card shows, in one place for the translation layer. */
+/** Every word the GitHub card shows, in the current language (src/i18n). */
 export const GH_STRINGS = {
   title: "GitHub",
-  overview: "Overview",
-  totalStars: "Total stars",
-  repositories: "Repositories",
-  myPRs: "My PRs",
-  toReview: "To review",
-  mainCI: "Default branch CI",
-  activity: "Activity",
-  nothingHere: "Nothing here",
-  loading: "Loading…",
-  draft: "Draft",
-  failing: "failing",
-  running: "running",
-  passing: "passing",
-  allGreen: "all green",
-  noRepos: "no repos",
-  unknown: "unknown",
-  noContributions: "No contributions",
-  oneContribution: "1 contribution",
-  contributions: (n: number) => `${n} contributions`,
-  pastYear: (total: string) => `${total} past year`,
-  repos: (n: number) => `${n} repos`,
-} as const;
+  get overview() { return t("Overview"); },
+  get totalStars() { return t("Total stars"); },
+  get repositories() { return t("Repositories"); },
+  get myPRs() { return t("My PRs"); },
+  get toReview() { return t("To review"); },
+  get mainCI() { return t("Default branch CI"); },
+  get activity() { return t("Activity"); },
+  get nothingHere() { return t("Nothing here"); },
+  get loading() { return t("Loading…"); },
+  get draft() { return t("Draft"); },
+  get failing() { return t("failing"); },
+  get running() { return t("running"); },
+  get passing() { return t("passing"); },
+  get allGreen() { return t("all green"); },
+  get noRepos() { return t("no repos"); },
+  get unknown() { return t("unknown"); },
+  get noContributions() { return t("No contributions"); },
+  get oneContribution() { return tn("{count} contribution", "{count} contributions", 1); },
+  contributions: (n: number) => tn("{count} contribution", "{count} contributions", n),
+  pastYear: (total: string) => t("{total} past year", { total }),
+  repos: (n: number) => tn("{count} repo", "{count} repos", n),
+};
 
 export const CI_COLORS: Record<CIState, string> = {
   failure: "#F4505E",
@@ -248,8 +250,6 @@ export function weekColumn(week: ContributionDay[]): (ContributionDay | null)[] 
   return Array.from({ length: 7 }, (_, dow) => week.find((d) => d.weekday === dow) ?? null);
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 /** "2026-01-05" → "Jan 5"; anything else is returned as is. */
 export function dayLabel(date: string): string {
   const parts = date.split("-");
@@ -257,7 +257,7 @@ export function dayLabel(date: string): string {
   const month = Number(parts[1]);
   const day = Number(parts[2]);
   if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(day)) return date;
-  return `${MONTHS[month - 1]} ${day}`;
+  return dayMonth(month - 1, day);
 }
 
 export function contributionsLabel(count: number): string {

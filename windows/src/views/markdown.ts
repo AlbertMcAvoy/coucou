@@ -10,10 +10,11 @@
 import { Bridge } from "../core/bridge";
 import { h, svg } from "./dom";
 import { ICONS } from "./icons";
+import { N_, t } from "../i18n/i18n";
 
 const STRINGS = {
-  copy: "Copy",
-  copied: "Copied",
+  copy: N_("Copy"),
+  copied: N_("Copied"),
 };
 
 export type Block =
@@ -212,17 +213,17 @@ async function writeClipboard(text: string) {
 
 /** Puts the code on the clipboard; the check mark shows for a moment. */
 function copyButton(text: string): HTMLElement {
-  const btn = h("button", { class: "md-copy", title: STRINGS.copy, "aria-label": STRINGS.copy }, svg(ICONS.copy, 11));
+  const btn = h("button", { class: "md-copy", title: t(STRINGS.copy), "aria-label": t(STRINGS.copy) }, svg(ICONS.copy, 11));
   btn.addEventListener("click", async (e) => {
     e.stopPropagation();
     await writeClipboard(text);
     btn.replaceChildren(svg(ICONS.check, 11, { stroke: 2.2 }));
     btn.classList.add("done");
-    btn.title = STRINGS.copied;
+    btn.title = t(STRINGS.copied);
     window.setTimeout(() => {
       btn.replaceChildren(svg(ICONS.copy, 11));
       btn.classList.remove("done");
-      btn.title = STRINGS.copy;
+      btn.title = t(STRINGS.copy);
     }, 1500);
   });
   return btn;

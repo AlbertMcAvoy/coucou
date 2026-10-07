@@ -14,6 +14,7 @@ import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents"
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
+import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -86,33 +87,36 @@ function lastPathComponent(p: string): string {
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
 }
 
-/** frenchStep() — same labels as the macOS app. */
+/**
+ * localizedStep() — same labels as the macOS app, in English and shown in the
+ * interface language (src/i18n) when the step is recorded.
+ */
 const TOOL_LABELS: Record<string, string> = {
-  Bash: "Exécute",
-  Read: "Lit",
-  Write: "Écrit",
-  Edit: "Modifie",
-  Glob: "Cherche",
-  Grep: "Recherche",
-  WebSearch: "Recherche web",
-  WebFetch: "Récupère",
-  TodoWrite: "Tâches",
-  Task: "Agent",
-  LS: "Liste",
-  MultiEdit: "Modifie",
-  NotebookEdit: "Notebook",
-  PowerShell: "Exécute",
+  Bash: N_("Runs"),
+  Read: N_("Reads"),
+  Write: N_("Writes"),
+  Edit: N_("Edits"),
+  Glob: N_("Searches"),
+  Grep: N_("Searches"),
+  WebSearch: N_("Searches the web"),
+  WebFetch: N_("Fetches"),
+  TodoWrite: N_("Tasks"),
+  Task: N_("Agent"),
+  LS: N_("Lists"),
+  MultiEdit: N_("Edits"),
+  NotebookEdit: N_("Notebook"),
+  PowerShell: N_("Runs"),
   // Antigravity's tools (#298).
-  run_command: "Exécute",
-  view_file: "Lit",
-  write_to_file: "Écrit",
-  replace_file_content: "Modifie",
-  read_url_content: "Récupère",
-  search_web: "Recherche web",
+  run_command: N_("Runs"),
+  view_file: N_("Reads"),
+  write_to_file: N_("Writes"),
+  replace_file_content: N_("Edits"),
+  read_url_content: N_("Fetches"),
+  search_web: N_("Searches the web"),
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ?? tool;
+  const label = TOOL_LABELS[tool] ? t(TOOL_LABELS[tool]) : tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
   const cmd = str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
@@ -209,7 +213,7 @@ function clearFinalLine(id: string) {
  * PostToolUse of Edit / MultiEdit / Write → a diff stored for the pill and a
  * ticker step with its +N −M counts. Nothing is kept for a pill that does not
  * exist, so a stray event cannot grow memory. An edit the relay had to cut
- * would give wrong counts: the PreToolUse step ("Modifie · file") stands alone.
+ * would give wrong counts: the PreToolUse step ("Edits · file") stands alone.
  */
 function recordDiff(agentId: string, payload: HookPayload) {
   if (payload.coucou_diff_truncated) return;
@@ -363,7 +367,7 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
-      State.appendStep(agentId, "⚠ failed");
+      State.appendStep(agentId, t("⚠ failed"));
       break;
 
     case "Notification": {
@@ -442,11 +446,11 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SubagentStart":
-      State.appendStep(agentId, "+ subagent");
+      State.appendStep(agentId, t("+ subagent"));
       break;
 
     case "SubagentStop":
-      State.appendStep(agentId, "• subagent done");
+      State.appendStep(agentId, t("• subagent done"));
       break;
 
     case "PermissionRequest": {

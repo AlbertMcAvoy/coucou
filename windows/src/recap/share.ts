@@ -4,32 +4,40 @@
 
 import { BotEngine } from "../mochi/engine";
 import { formatCount, formatDuration, weekRangeLabel, type WeeklySummary } from "./summary";
+import { t } from "../i18n/i18n";
+import { SCRIPT_FONTS } from "../core/fonts";
 
 export const SHARE_W = 1080;
 export const SHARE_H = 1920;
 
-const FONT = `system-ui, "Segoe UI Variable Display", "Segoe UI", "Cantarell", "Ubuntu", sans-serif`;
+const FONT = `system-ui, "Segoe UI Variable Display", "Segoe UI", "Cantarell", "Ubuntu", ${SCRIPT_FONTS}, sans-serif`;
 const MONO = `"Cascadia Mono", "Consolas", "DejaVu Sans Mono", ui-monospace, monospace`;
 
 const INK = "#F1F2F4";
 const DIM = "#8E939C";
 const INDIGO_TEXT = "#818CF8";
 
-/** Strings drawn into the image, in one place for the translation layer. */
+/** Strings drawn into the image, in the current language (src/i18n). */
 const T = {
-  title: "Weekly recap",
-  timeCoding: "TIME CODING",
-  sessions: "SESSIONS",
-  files: "FILES",
-  commands: "COMMANDS",
-  topAgent: "Top agent",
-  topProject: "Top project",
-  busiestDay: "Busiest day",
-  longestSession: "Longest session",
-  approved: "Approved",
-  denied: "Denied",
+  get title() { return t("Weekly recap"); },
+  get timeCoding() { return t("TIME CODING"); },
+  get sessions() { return t("SESSIONS"); },
+  get files() { return t("FILES"); },
+  get commands() { return t("COMMANDS"); },
+  get topAgent() { return t("Top agent"); },
+  get topProject() { return t("Top project"); },
+  get busiestDay() { return t("Busiest day"); },
+  get longestSession() { return t("Longest session"); },
+  get approved() { return t("Approved"); },
+  get denied() { return t("Denied"); },
   footer: "Coucou · github.com/Louis-CFM/coucou",
 };
+
+/**
+ * Scripts whose letters join or stack (Arabic, Devanagari, Bengali) must be
+ * drawn whole, and CJK has no letter spacing to speak of.
+ */
+const JOINED_SCRIPT = /[\u0590-\u08FF\u0900-\u0DFF\u3000-\u9FFF\uAC00-\uD7AF\uFB1D-\uFEFF]/;
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -47,8 +55,18 @@ function fitFont(x: Ctx, text: string, weight: number, size: number, maxW: numbe
   }
 }
 
-/** Text with letter spacing, centred on `cx` — `letterSpacing` is not everywhere yet. */
-function spaced(x: Ctx, text: string, cx: number, y: number, spacing: number) {
+/**
+ * Text with letter spacing, centred on `cx` — `letterSpacing` is not everywhere
+ * yet. A translation wider than `maxW` gets a smaller font first.
+ */
+function spaced(x: Ctx, text: string, cx: number, y: number, spacing: number, maxW = Infinity) {
+  if (JOINED_SCRIPT.test(text)) {
+    shrinkToFit(x, text, maxW);
+    x.textAlign = "center";
+    x.fillText(text, cx, y);
+    return;
+  }
+  shrinkToFit(x, text, maxW, spacing);
   const chars = [...text];
   const widths = chars.map((c) => x.measureText(c).width);
   const total = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
@@ -58,6 +76,21 @@ function spaced(x: Ctx, text: string, cx: number, y: number, spacing: number) {
     x.fillText(c, at, y);
     at += widths[i] + spacing;
   });
+}
+
+/** Lowers the current font's size until `text` (plus its letter spacing) fits `maxW`. */
+function shrinkToFit(x: Ctx, text: string, maxW: number, spacing = 0) {
+  if (!Number.isFinite(maxW)) return;
+  const match = /^(\S+) (\d+(?:\.\d+)?)px (.*)$/.exec(x.font);
+  if (!match) return;
+  const [, weight, sizeText, family] = match;
+  const size = Number(sizeText);
+  const extra = spacing * Math.max(0, [...text].length - 1);
+  let s = size;
+  while (x.measureText(text).width + extra > maxW && s > size * 0.6) {
+    s -= 1;
+    x.font = `${weight} ${s}px ${family}`;
+  }
 }
 
 /** Cuts `text` with an ellipsis so it fits `maxW` in the current font. */
@@ -131,7 +164,7 @@ export function renderShareImage(s: WeeklySummary, hideProjects: boolean): HTMLC
   const badges: [string, string][] = [];
   if (s.topAgent) badges.push([T.topAgent, s.topAgent]);
   if (!hideProjects && s.topProject) badges.push([T.topProject, s.topProject]);
-  if (s.busiestDay) badges.push([T.busiestDay, s.busiestDay]);
+  if (s.busiestDay) badges.push([T.busiestDay, t(s.busiestDay)]);
   if (s.longestSessionMinutes > 1) badges.push([T.longestSession, formatDuration(s.longestSessionMinutes)]);
   const decisions = s.permissionsAllowed + s.permissionsDenied > 0;
   const badgeRows = badges.length + (decisions ? 1 : 0);
@@ -162,7 +195,7 @@ export function renderShareImage(s: WeeklySummary, hideProjects: boolean): HTMLC
   y += 62 + 6;
 
   x.fillStyle = DIM;
-  font(x, 500, 30);
+  fitFont(x, T.title, 500, 30, W - 120, 0.6);
   x.fillText(T.title, cx, y);
   y += 36 + 14;
 
@@ -180,7 +213,7 @@ export function renderShareImage(s: WeeklySummary, hideProjects: boolean): HTMLC
   y += 110 + 6;
   x.fillStyle = DIM;
   font(x, 600, 22);
-  spaced(x, T.timeCoding, cx, y, 3);
+  spaced(x, T.timeCoding, cx, y, 3, W - 120);
   y += 26 + 56;
 
   // Sessions | files | commands
@@ -203,7 +236,7 @@ export function renderShareImage(s: WeeklySummary, hideProjects: boolean): HTMLC
     x.fillText(value, colCx, y);
     x.fillStyle = DIM;
     font(x, 600, 18);
-    spaced(x, label, colCx, y + 72, 2);
+    spaced(x, label, colCx, y + 72, 2, colW - 24);
   });
   y += 94;
 

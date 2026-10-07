@@ -137,7 +137,7 @@ fn merged(existing: &Value) -> Result<Value, String> {
 }
 
 fn unexpected(what: &str) -> String {
-    format!("settings.json: {what} has an unexpected type — Coucou has not touched it.")
+    crate::i18n::tf("settings.json: {what} has an unexpected type — Coucou has not touched it.", &[("what", what)])
 }
 
 /// Settings with every Coucou entry removed, and nothing else changed.
@@ -303,7 +303,7 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     let saved = match (install, own.as_ref()) {
         (true, Some(own)) => {
             save_status_line_previous(own).map_err(|_| {
-                "could not save your current status line next to the relay; nothing was changed".to_string()
+                crate::i18n::t("Could not save your current status line next to the relay; nothing was changed.")
             })?;
             true
         }

@@ -64,12 +64,13 @@ fn take_dropped(path: &str) -> bool {
 
 pub fn ingest(source: &str) -> Result<DroppedFile, String> {
     if !take_dropped(source) {
-        return Err("Only files dropped on the island can be added.".into());
+        return Err(crate::i18n::t("Only files dropped on the island can be added."));
     }
     let src = Path::new(source);
-    let meta = std::fs::metadata(src).map_err(|e| format!("cannot read {source}: {e}"))?;
+    let meta = std::fs::metadata(src)
+        .map_err(|e| crate::i18n::tf("Cannot read {path}: {error}", &[("path", source), ("error", &e.to_string())]))?;
     if meta.is_dir() {
-        return Err("Folders can't be dropped yet.".into());
+        return Err(crate::i18n::t("Folders can't be dropped yet."));
     }
 
     let dir = inbox_dir();
@@ -94,7 +95,7 @@ pub fn ingest(source: &str) -> Result<DroppedFile, String> {
         }
     }
 
-    std::fs::copy(src, &dest).map_err(|e| format!("cannot copy: {e}"))?;
+    std::fs::copy(src, &dest).map_err(|e| crate::i18n::tf("Cannot copy: {error}", &[("error", &e.to_string())]))?;
     // CopyFileEx carries the source's timestamps across, so a file last edited
     // three years ago would arrive already older than the sweep window and be
     // deleted on the spot. The inbox ages from when *we* copied it.

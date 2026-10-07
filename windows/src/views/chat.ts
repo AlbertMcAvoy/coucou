@@ -16,16 +16,17 @@ import {
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
+import { N_, t, tl } from "../i18n/i18n";
 
 const STRINGS = {
-  placeholderFirst: "Ask me anything…",
-  placeholderNext: "Continue…",
-  send: "Send",
-  switchModel: "Switch provider or model",
-  noModel: "Choose a model",
-  loading: "Loading models…",
-  noKey: "No API key — add it in Settings.",
-  openSettings: "Open Settings",
+  placeholderFirst: N_("Ask me anything…"),
+  placeholderNext: N_("Continue…"),
+  send: N_("Send"),
+  switchModel: N_("Switch provider or model"),
+  noModel: N_("Choose a model"),
+  loading: N_("Loading models…"),
+  noKey: N_("No API key — add it in Settings."),
+  openSettings: N_("Open Settings"),
 };
 
 let nextId = 1;
@@ -90,7 +91,7 @@ function buildPicker(onChange: () => void): Picker {
         "button",
         { class: on ? "picker-chip on" : "picker-chip", style: `--accent:${p.accent}` },
         h("i", { class: "picker-dot" }),
-        h("span", { text: p.name }),
+        h("span", { text: t(p.name) }),
       );
       chip.addEventListener("click", () => {
         if (p.id === State.settings.chatProvider) return;
@@ -112,7 +113,7 @@ function buildPicker(onChange: () => void): Picker {
       line.append(
         h("button", {
           class: "picker-link",
-          text: STRINGS.openSettings,
+          text: tl(STRINGS.openSettings),
           onclick: () => void Bridge.openSettingsWindow(),
         }),
       );
@@ -152,11 +153,11 @@ function buildPicker(onChange: () => void): Picker {
     }
     // Nothing is asked of a provider that has no key yet.
     if (p.key && !(await Bridge.secretPresent(p.key))) {
-      if (ticket === request) status(STRINGS.noKey, true);
+      if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }
     if (ticket !== request) return;
-    status(STRINGS.loading);
+    status(t(STRINGS.loading));
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
@@ -206,17 +207,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const input = h("input", {
     type: "text",
     class: "chat-input",
-    placeholder: STRINGS.placeholderFirst,
+    placeholder: t(STRINGS.placeholderFirst),
     spellcheck: "false",
   }) as HTMLInputElement;
-  const send = h("button", { class: "send-btn", title: STRINGS.send }, svg(ICONS.arrowUp, 11));
+  const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
   const bar = h("div", { class: "chat-bar" }, input, send);
 
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
   const modelBtn = h(
     "button",
-    { class: "model-btn", title: STRINGS.switchModel },
+    { class: "model-btn", title: tl(STRINGS.switchModel) },
     modelDot,
     modelName,
     svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
@@ -241,7 +242,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || STRINGS.noModel;
+    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -340,7 +341,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext;
+      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
       input.disabled = sending;
     },
     focus() {

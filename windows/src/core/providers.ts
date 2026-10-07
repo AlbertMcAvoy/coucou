@@ -3,6 +3,7 @@
 // server. Pure data and helpers, so they can be tested without a webview.
 
 import type { Settings } from "./state";
+import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
@@ -29,7 +30,7 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
-  { id: "custom", name: "Custom server", accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
 ];
 
 /** Credential store entry of the custom server's optional key. */

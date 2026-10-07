@@ -231,7 +231,7 @@ impl Agent {
             }
             // Plugins are whole files (see `plugin`), never merged into JSON.
             (Agent::OpenCode | Agent::Amp | Agent::Hermes, _) => {
-                Box::new(|_| Err("This agent takes a plugin, not hook entries.".into()))
+                Box::new(|_| Err(crate::i18n::t("This agent takes a plugin, not hook entries.")))
             }
         }
     }
@@ -273,8 +273,7 @@ impl Agent {
 
 // ── Strings shown in Settings ─────────────────────────────────────────────────
 
-const TEXT_UNTOUCHED: &str = "Coucou has not touched it.";
-const TEXT_UNEXPECTED: &str = "has an unexpected type — Coucou has not touched it.";
+// English keys, shown in the interface language (i18n.rs). Agent names are not translated.
 
 impl Agent {
     pub fn name(self) -> &'static str {
@@ -292,17 +291,18 @@ impl Agent {
     }
 
     /// What to do once the file is written, shown with the result.
-    fn note(self) -> &'static str {
+    fn note(self) -> String {
+        use crate::i18n::t;
         match self {
-            Agent::Gemini => "Start a new Gemini CLI session to pick the hooks up.",
-            Agent::Antigravity => "Start a new Antigravity conversation to pick the hooks up.",
-            Agent::Cursor => "Restart Cursor to pick the hooks up.",
-            Agent::Codex => "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.",
-            Agent::Copilot => "Start a new Copilot CLI session to pick the hooks up.",
-            Agent::Muse => "Start a new Muse Code session to pick the hooks up.",
-            Agent::OpenCode => "Restart OpenCode to load the plugin.",
-            Agent::Amp => "Restart Amp to load the plugin.",
-            Agent::Hermes => "Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session.",
+            Agent::Gemini => t("Start a new Gemini CLI session to pick the hooks up."),
+            Agent::Antigravity => t("Start a new Antigravity conversation to pick the hooks up."),
+            Agent::Cursor => t("Restart Cursor to pick the hooks up."),
+            Agent::Codex => t("Codex runs new hooks only once you trust them: start Codex and review them once with /hooks."),
+            Agent::Copilot => t("Start a new Copilot CLI session to pick the hooks up."),
+            Agent::Muse => t("Start a new Muse Code session to pick the hooks up."),
+            Agent::OpenCode => t("Restart OpenCode to load the plugin."),
+            Agent::Amp => t("Restart Amp to load the plugin."),
+            Agent::Hermes => t("Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session."),
         }
     }
 }
@@ -320,11 +320,11 @@ pub struct AgentStatus {
     pub hook_ready: bool,
     /// The island can allow or deny this agent's permission requests.
     pub approvals: bool,
-    pub note: &'static str,
+    pub note: String,
 }
 
 fn find(id: &str) -> Result<Agent, String> {
-    Agent::from_id(id).ok_or_else(|| format!("Unknown agent \"{id}\"."))
+    Agent::from_id(id).ok_or_else(|| crate::i18n::tf("Unknown agent \"{id}\".", &[("id", id)]))
 }
 
 pub fn list() -> Vec<AgentStatus> {
@@ -369,7 +369,7 @@ fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint
 // ── Shared JSON helpers ───────────────────────────────────────────────────────
 
 fn unexpected(what: &str) -> String {
-    format!("{what} {TEXT_UNEXPECTED}")
+    crate::i18n::tf("{what} has an unexpected type — Coucou has not touched it.", &[("what", what)])
 }
 
 /// `root[key]` as an object to edit: absent is empty, anything else is refused.
@@ -550,7 +550,7 @@ fn antigravity_is_ours(group: &Value) -> bool {
 fn antigravity_install(root: &Value, block: &Value) -> Result<Value, String> {
     let mut root = root.as_object().cloned().unwrap_or_default();
     if root.get("coucou").is_some_and(|g| !antigravity_is_ours(g)) {
-        return Err(format!("A hook group named \"coucou\" that Coucou did not write is already there — {TEXT_UNTOUCHED}"));
+        return Err(crate::i18n::t("A hook group named \"coucou\" that Coucou did not write is already there — Coucou has not touched it."));
     }
     root.insert("coucou".into(), block.clone());
     Ok(Value::Object(root))
@@ -748,7 +748,7 @@ fn plugin_edit(path: PathBuf, content: String, install: bool) -> FileEdit<'stati
     let name = label.clone();
     let edit = config_file::text_edit(label, move |current| match (install, current) {
         (_, Some(text)) if !is_our_plugin(text) => {
-            Err(format!("{name} wasn't written by Coucou — {TEXT_UNTOUCHED}"))
+            Err(crate::i18n::tf("{name} wasn't written by Coucou — Coucou has not touched it.", &[("name", &name.to_string())]))
         }
         (true, _) => Ok(Some(content.clone())),
         (false, _) => Ok(None),

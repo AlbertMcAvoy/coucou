@@ -180,6 +180,26 @@ the agent and the project folder's name — never a command, a file path, file
 contents or a prompt. It never leaves your machine. **Settings → General →
 Weekly recap** turns it off or clears it.
 
+## Languages
+
+Coucou speaks the same ten languages as the Mac app: English, 简体中文, हिन्दी,
+Español, العربية, Français, বাংলা, Português (Brasil), Русский and Bahasa
+Indonesia. **Settings… → General → Language** picks one; **System** (the
+default) follows your system's language when it is one of these, English
+otherwise. The island, the settings window and the tray menu switch at once —
+nothing restarts, and the island keeps its sessions, steps and chat.
+
+In Arabic the island's cards read right to left; Mochi, the pills and the
+header stay where they are, and commands, code and file paths stay left to
+right. Steps already in a session's ticker keep the language they were written
+in, as on the Mac.
+
+The translations are the Mac's own (`NotchBuddy/Resources/Localizable.xcstrings`,
+turned into `src/i18n/strings.json` by `node scripts/gen-strings.mjs`), plus
+`src/i18n/extra.json` for what only Windows and Linux show. Both are keyed by
+the English text; a string missing in a language shows in English. The Rust
+side (tray, errors) embeds the same two files.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
@@ -391,7 +411,7 @@ own window.
   inline), where the Mac sends its name only.
 - Live diff: the relay forwards an edit's text whole only once the edit is done
   (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
-  shows its "Modifie · file" step without counts rather than wrong ones. The
+  shows its "Edits · file" step without counts rather than wrong ones. The
   diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
   never the file itself. Counts and diffs come from Claude Code's Edit,
   MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
@@ -427,6 +447,10 @@ own window.
 - The wardrobe opens with a right-click on Mochi, from the tray menu, or with
   its global shortcut (`Ctrl+Alt+G` by default). In the compact island a tall hat
   is cut by the top edge of the screen, as it is by the notch on a Mac.
+- Languages: chosen in Settings, independently of the system, and applied
+  without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
+  the island's text right to left but not its layout: Mochi and the pills keep
+  their sides.
 - Mochi on the desktop doesn't dance: there is no music integration to dance
   to. Dropping him on a window doesn't attach it to the chat, and the Mac's
   ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
@@ -509,6 +533,11 @@ What changes on Linux:
   `~/.local/share/coucou/coucou.log`, the weekly recap history beside it in
   `recap.json`. A saved recap image goes to the pictures folder named in
   `~/.config/user-dirs.dirs`, else `~/Pictures`, else `~/Downloads`.
+- **Languages**: Hindi, Bengali, Chinese and Arabic need fonts that carry those
+  scripts; Coucou asks for the Noto families (`fonts-noto-core` and
+  `fonts-noto-cjk` on Debian and Ubuntu, `noto-fonts` and `noto-fonts-cjk` on
+  Arch). **System** reads the language from the webview, which follows
+  `LANGUAGE` / `LANG`.
 - **Copying the recap image** needs a WebKitGTK with image clipboard support;
   where it is missing, the island says so and Save still works.
 - What the Windows build leaves out, this one does too: sending a file by

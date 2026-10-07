@@ -17,6 +17,9 @@ import {
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
 import { renderDiff, statusDot } from "./parts";
+import {
+  LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
+} from "../i18n/i18n";
 
 /** Where secrets.rs keeps the keys on this OS. */
 const KEY_STORE = navigator.userAgent.includes("Windows")
@@ -61,25 +64,25 @@ interface Change {
 const HOOKS_CHANGE: Change = {
   preview: Bridge.hooksPreview,
   apply: Bridge.hooksApply,
-  installText: "This is exactly what will change in your settings.json. Your own hooks are left untouched.",
-  removeText: "This removes Coucou's entries only. Your own hooks are left untouched.",
-  installButton: "Back up and write",
-  removeButton: "Back up and remove",
+  get installText() { return t("This is exactly what will change in your settings.json. Your own hooks are left untouched."); },
+  get removeText() { return t("This removes Coucou's entries only. Your own hooks are left untouched."); },
+  get installButton() { return t("Back up and write"); },
+  get removeButton() { return t("Back up and remove"); },
   done: (backup) => backup
-    ? `Done. Previous settings saved as ${backup}. Open a new Claude Code session to pick the hooks up.`
-    : "Done. Open a new Claude Code session to pick the hooks up.",
+    ? t("Done. Previous settings saved as {backup}. Open a new Claude Code session to pick the hooks up.", { backup })
+    : t("Done. Open a new Claude Code session to pick the hooks up."),
 };
 
 const STATUS_LINE_CHANGE: Change = {
   preview: Bridge.statusLinePreview,
   apply: Bridge.statusLineApply,
-  installText: "This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you.",
-  removeText: "This puts your previous status line back, or removes the entry if there was none.",
-  installButton: "Back up and write",
-  removeButton: "Back up and remove",
+  get installText() { return t("This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you."); },
+  get removeText() { return t("This puts your previous status line back, or removes the entry if there was none."); },
+  get installButton() { return t("Back up and write"); },
+  get removeButton() { return t("Back up and remove"); },
   done: (backup) => backup
-    ? `Done. Previous settings saved as ${backup}. The numbers appear after the next reply of a Claude Code session.`
-    : "Done. The numbers appear after the next reply of a Claude Code session.",
+    ? t("Done. Previous settings saved as {backup}. The numbers appear after the next reply of a Claude Code session.", { backup })
+    : t("Done. The numbers appear after the next reply of a Claude Code session."),
 };
 
 /**
@@ -103,7 +106,7 @@ async function reviewChange(
     clear(body);
     body.append(
       h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
-      h("div", { class: "row" }, h("button", { text: "Back", onclick: back })),
+      h("div", { class: "row" }, h("button", { text: t("Back"), onclick: back })),
     );
     return;
   }
@@ -116,8 +119,8 @@ async function reviewChange(
       h("span", {
         class: "path",
         text: preview.backup
-          ? `Backup → ${preview.backup}`
-          : "No settings.json yet — nothing to back up.",
+          ? t("Backup → {path}", { path: preview.backup })
+          : t("No settings.json yet — nothing to back up."),
       }),
     ),
   );
@@ -134,10 +137,10 @@ async function reviewChange(
       window.setTimeout(applied, 2600);
     } catch (err) {
       confirm.disabled = false;
-      body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
+      body.append(h("div", { class: "notice err", text: t("Could not write: {error}", { error: String(err) }) }));
     }
   });
-  body.append(h("div", { class: "row" }, confirm, h("button", { text: "Cancel", onclick: back })));
+  body.append(h("div", { class: "row" }, confirm, h("button", { text: t("Cancel"), onclick: back })));
 }
 
 // ── Claude Code section ───────────────────────────────────────────────────────
@@ -169,15 +172,15 @@ function claudeSection(status: HookStatus): HTMLElement {
       h("div", {
         class: "hint",
         text: status.installed
-          ? "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there."
-          : "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.",
+          ? t("Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.")
+          : t("Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing."),
       }),
       h("div", { class: "row" },
         h("label", { text: "settings.json" }),
         h("span", { class: "path", text: status.settingsPath }),
       ),
       h("div", { class: "row" },
-        h("label", { text: "Relay" }),
+        h("label", { text: t("Relay") }),
         h("span", { class: "path", text: status.hookPath }),
         statusDot(status.hookReady),
       ),
@@ -186,27 +189,27 @@ function claudeSection(status: HookStatus): HTMLElement {
     if (!status.hookReady) {
       body.append(h("div", {
         class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
+        text: t("coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`."),
       }));
     }
 
     const actions = h("div", { class: "row" });
     const install = h("button", {
       class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
+      text: status.installed ? t("Reinstall hooks…") : t("Install hooks…"),
       onclick: () => void reviewChange(body, HOOKS_CHANGE, true, redraw, () => void rebuild()),
     });
     // Writing hook commands that point at a relay which isn't there would give
     // every Claude Code session a broken hook and nothing to show for it.
     if (!status.hookReady) {
       install.disabled = true;
-      install.title = "The relay isn't installed yet.";
+      install.title = t("The relay isn't installed yet.");
     }
     actions.append(install);
     if (status.installed) {
       actions.append(h("button", {
         class: "danger",
-        text: "Uninstall hooks…",
+        text: t("Uninstall hooks…"),
         onclick: () => void reviewChange(body, HOOKS_CHANGE, false, redraw, () => void rebuild()),
       }));
     }
@@ -226,15 +229,15 @@ function claudeSection(status: HookStatus): HTMLElement {
  * that has been confirmed. A status line the user had keeps working.
  */
 const PLAN_SETTINGS_TEXT = {
-  claude: "Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.",
-  showClaude: "Show in notch",
-  codex: "Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.",
-  showCodex: "Show Codex plan in the notch",
+  get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
+  get showClaude() { return t("Show in notch"); },
+  get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
+  get showCodex() { return t("Show Codex plan in the notch"); },
 };
 
 function planSection(status: HookStatus): HTMLElement {
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
-  const section = h("section", {}, h("h2", {}, h("span", { text: "Plan usage" })), body);
+  const section = h("section", {}, h("h2", {}, h("span", { text: t("Plan usage") })), body);
 
   const redraw = () => {
     clear(body);
@@ -274,18 +277,18 @@ function planSection(status: HookStatus): HTMLElement {
       }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
-        h("label", { text: "Relay" }),
+        h("label", { text: t("Relay") }),
         statusDot(status.planRelayInstalled),
-        h("span", { class: "hint", text: status.planRelayInstalled ? "installed" : "not installed" }),
+        h("span", { class: "hint", text: status.planRelayInstalled ? t("installed") : t("not installed") }),
         status.planRelayInstalled
           ? h("button", {
               class: "danger",
-              text: "Uninstall relay…",
+              text: t("Uninstall relay…"),
               onclick: () => void reviewChange(body, STATUS_LINE_CHANGE, false, redraw, () => void rebuild()),
             })
           : h("button", {
               class: "primary",
-              text: "Install relay…",
+              text: t("Install relay…"),
               onclick: () => void reviewChange(body, STATUS_LINE_CHANGE, true, redraw, () => void rebuild()),
             }),
       ),
@@ -315,27 +318,27 @@ const MODELS: [string, string][] = [
 
 function apiSection(hasKey: boolean): HTMLElement {
   const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? `Key saved in the ${KEY_STORE}.` : "No key yet — the chat needs one." });
+  const state = h("span", { class: "hint", text: hasKey ? t("Key saved in the {store}.", { store: KEY_STORE }) : t("No key yet — the chat needs one.") });
 
   const field = h("input", {
     type: "password",
-    placeholder: hasKey ? "••••••••••••  (stored)" : "sk-ant-...",
+    placeholder: hasKey ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...",
     style: "flex:1 1 auto;min-width:0",
     autocomplete: "off",
     spellcheck: "false",
   }) as HTMLInputElement;
 
-  const saveBtn = h("button", { class: "primary", text: "Save key" });
-  const clearBtn = h("button", { class: "danger", text: "Remove" });
+  const saveBtn = h("button", { class: "primary", text: t("Save key") });
+  const clearBtn = h("button", { class: "danger", text: t("Remove") });
   const feedback = h("div", {});
 
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
     dot.style.background = present ? "#22c55e" : "#f4505e";
     state.textContent = present
-      ? `Key saved in the ${KEY_STORE}.`
-      : "No key yet — the chat needs one.";
-    field.placeholder = present ? "••••••••••••  (stored)" : "sk-ant-...";
+      ? t("Key saved in the {store}.", { store: KEY_STORE })
+      : t("No key yet — the chat needs one.");
+    field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
 
@@ -346,10 +349,10 @@ function apiSection(hasKey: boolean): HTMLElement {
     try {
       await Bridge.secretSet("anthropic-api-key", value);
       field.value = "";
-      feedback.append(h("div", { class: "notice ok", text: "Saved. It never touches disk." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: t("Could not save: {error}", { error: String(err) }) }));
     }
   });
 
@@ -357,10 +360,10 @@ function apiSection(hasKey: boolean): HTMLElement {
     clear(feedback);
     try {
       await Bridge.secretClear("anthropic-api-key");
-      feedback.append(h("div", { class: "notice ok", text: "Key removed." }));
+      feedback.append(h("div", { class: "notice ok", text: t("Key removed.") }));
       await refresh();
     } catch (err) {
-      feedback.append(h("div", { class: "notice err", text: `Could not remove: ${String(err)}` }));
+      feedback.append(h("div", { class: "notice err", text: t("Could not remove: {error}", { error: String(err) }) }));
     }
   });
 
@@ -382,8 +385,8 @@ function apiSection(hasKey: boolean): HTMLElement {
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
-    h("div", { class: "row" }, h("label", { text: "API key" }), field, saveBtn, clearBtn),
-    h("div", { class: "row" }, h("label", { text: "Model" }), model),
+    h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
     feedback,
   );
 }
@@ -410,10 +413,10 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
 
   /** Why a pill would show nothing yet, as on the Mac's row. */
   function hint(def: PillDefinition): string | null {
-    if (isComingSoon(def.id)) return "Coming soon";
-    if (def.connect.kind === "hooks" && !connected[def.id]) return "Hooks not installed";
-    if (def.connect.kind === "key" && !connected[def.id]) return "Key not configured";
-    if (def.connect.kind === "server" && !settings[def.connect.field]) return "Not connected";
+    if (isComingSoon(def.id)) return t("Coming soon");
+    if (def.connect.kind === "hooks" && !connected[def.id]) return t("Hooks not installed");
+    if (def.connect.kind === "key" && !connected[def.id]) return t("Key not configured");
+    if (def.connect.kind === "server" && !settings[def.connect.field]) return t("Not connected");
     return null;
   }
 
@@ -426,7 +429,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
       h("span", { class: "name", text: def.name }),
     );
     if (isMain) {
-      el.append(h("span", { class: "state", text: "Main" }));
+      el.append(h("span", { class: "state", text: t("Main") }));
       return el;
     }
     const why = hint(def);
@@ -445,7 +448,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
 
   function draw() {
     const used = settings.activeIntegrations.length;
-    slots.textContent = `${used}/${MAX_ACTIVE} slots in use — the main tool doesn't take one.`;
+    slots.textContent = t("{used}/{max} slots in use — the main tool doesn't take one.", { used, max: MAX_ACTIVE });
     slots.classList.toggle("full", used >= MAX_ACTIVE);
     main.value = settings.mainPill;
     clear(groups);
@@ -453,7 +456,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
       if (cat.id === "service") continue;
       const pills = availablePills().filter((p) => p.category === cat.id);
       if (pills.length === 0) continue;
-      groups.append(h("div", { class: "pill-group" }, h("h3", { text: cat.title }), ...pills.map(row)));
+      groups.append(h("div", { class: "pill-group" }, h("h3", { text: t(cat.title) }), ...pills.map(row)));
     }
   }
   declaredViews.push(draw);
@@ -462,10 +465,10 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "Active pills" })),
-    h("div", { class: "hint", text: "Choose the tools you use. Coucou only shows what you declare here." }),
+    h("h2", {}, h("span", { text: t("Active pills") })),
+    h("div", { class: "hint", text: t("Choose the tools you use. Coucou only shows what you declare here.") }),
     slots,
-    h("div", { class: "row" }, h("label", { text: "Main tool" }), main),
+    h("div", { class: "row" }, h("label", { text: t("Main tool") }), main),
     groups,
   );
 }
@@ -473,26 +476,26 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
 // ── Chat providers section ────────────────────────────────────────────────────
 
 const CHAT_STRINGS = {
-  providersTitle: "Chat providers",
-  providersHint: "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.",
-  stored: "••••••••  (stored)",
-  save: "Save",
-  remove: "Remove",
-  localTitle: "Local models",
-  localHint: "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.",
-  connect: "Connect",
-  connecting: "Connecting…",
-  disconnect: "Disconnect",
-  useInChat: "Use in chat",
-  inUse: "In use",
-  keyOptional: "API key (optional)",
-  localOnly: "Nothing leaves your PC: the server runs on this computer.",
-  remote: "This address is another machine: what you ask is sent to it.",
-  remoteHttp: "This address is another machine, over plain http: what you ask travels unencrypted.",
-  keyOverHttp: "Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer.",
-  invalid: "Not a valid http:// or https:// address.",
-  noModels: (name: string) => `No models yet. Download one in ${name} first.`,
-  models: (n: number) => (n === 1 ? "1 model" : `${n} models`),
+  get providersTitle() { return t("Chat providers"); },
+  get providersHint() { return t("Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer."); },
+  get stored() { return `••••••••  ${t("(stored)")}`; },
+  get save() { return t("Save"); },
+  get remove() { return t("Remove"); },
+  get localTitle() { return t("Local models"); },
+  get localHint() { return t("Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box."); },
+  get connect() { return t("Connect"); },
+  get connecting() { return t("Connecting…"); },
+  get disconnect() { return t("Disconnect"); },
+  get useInChat() { return t("Use in chat"); },
+  get inUse() { return t("In use"); },
+  get keyOptional() { return t("API key (optional)"); },
+  get localOnly() { return t("Nothing leaves your PC: the server runs on this computer."); },
+  get remote() { return t("This address is another machine: what you ask is sent to it."); },
+  get remoteHttp() { return t("This address is another machine, over plain http: what you ask travels unencrypted."); },
+  get keyOverHttp() { return t("Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer."); },
+  get invalid() { return t("Not a valid http:// or https:// address."); },
+  noModels: (name: string) => t("No models yet. Download one in {name} first.", { name }),
+  models: (n: number) => tn("{count} model", "{count} models", n),
 };
 
 interface CloudDef {
@@ -565,7 +568,7 @@ function chatProvidersSection(
         ),
         input, saveBtn, removeBtn, dotEl,
       ),
-      h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: `Key from ${def.where}` }),
+      h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: t("Key from {site}", { site: def.where }) }),
     );
   }
   return h(
@@ -588,7 +591,7 @@ const LOCAL: Record<LocalId, { name: string; usual: string }> = {
   ollama: { name: "Ollama", usual: "http://127.0.0.1:11434" },
   lmstudio: { name: "LM Studio", usual: "http://127.0.0.1:1234" },
   // No usual address: any server that speaks the OpenAI API.
-  custom: { name: "OpenAI-compatible", usual: "" },
+  custom: { name: N_("OpenAI-compatible"), usual: "" },
 };
 
 /** What an address means for the user's data, as a hint line. */
@@ -630,7 +633,7 @@ function localSection(customKey: boolean): HTMLElement {
     const exposure = h("div", {});
     const label = h("label", {},
       h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
-      h("span", { text: def.name }),
+      h("span", { text: t(def.name) }),
     );
     const block = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
 
@@ -701,7 +704,7 @@ function localSection(customKey: boolean): HTMLElement {
         const server = await Bridge.localConnect(id, input.value);
         if (!server.models.length) {
           clear(status);
-          status.append(h("div", { class: "notice err", text: CHAT_STRINGS.noModels(def.name) }));
+          status.append(h("div", { class: "notice err", text: CHAT_STRINGS.noModels(t(def.name)) }));
         } else {
           settings[field] = server.url;
           if (!server.models.includes(settings.chatModels[id] ?? "")) {
@@ -744,23 +747,23 @@ interface IntegrationDef {
 
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
-    fields: [{ key: "stripe-api-key", label: "Secret key", placeholder: "sk_live_…", secret: true }] },
+    fields: [{ key: "stripe-api-key", label: N_("Secret key"), placeholder: "sk_live_…", secret: true }] },
   { id: "integration_github", name: "GitHub", color: "#F4505E",
-    fields: [{ key: "github-token", label: "Token", placeholder: "ghp_…", secret: true }],
-    hint: "Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions." },
+    fields: [{ key: "github-token", label: N_("Token"), placeholder: "ghp_…", secret: true }],
+    hint: N_("Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.") },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
-    fields: [{ key: "vercel-token", label: "Token", placeholder: "…", secret: true }] },
+    fields: [{ key: "vercel-token", label: N_("Token"), placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
     fields: [
-      { key: "n8n-url", label: "Instance URL", placeholder: "https://n8n.example.com", secret: false },
-      { key: "n8n-api-key", label: "API key", placeholder: "…", secret: true },
+      { key: "n8n-url", label: N_("Instance URL"), placeholder: "https://n8n.example.com", secret: false },
+      { key: "n8n-api-key", label: N_("API key"), placeholder: "…", secret: true },
     ] },
   { id: "integration_resend", name: "Resend", color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: "API key", placeholder: "re_…", secret: true }] },
+    fields: [{ key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true }] },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C",
-    fields: [{ key: "notion-api-key", label: "Integration token", placeholder: "ntn_…", secret: true }] },
+    fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
-    fields: [{ key: "calcom-api-key", label: "API key", placeholder: "cal_…", secret: true }] },
+    fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -779,7 +782,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the ${KEY_STORE}, never on disk.`;
+    note.textContent = t("Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
   }
   declaredViews.push(updateNote);
 
@@ -802,12 +805,12 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
-        placeholder: present[field.key] ? "••••••••  (stored)" : field.placeholder,
+        placeholder: present[field.key] ? CHAT_STRINGS.stored : field.placeholder,
         autocomplete: "off",
         spellcheck: "false",
         style: "flex:1 1 auto;min-width:0",
       }) as HTMLInputElement;
-      const saveBtn = h("button", { text: "Save" });
+      const saveBtn = h("button", { text: t("Save") });
       const dotEl = statusDot(present[field.key] ?? false);
       saveBtn.addEventListener("click", async () => {
         const value = input.value.trim();
@@ -815,7 +818,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
           await Bridge.secretSet(field.key, value);
           present[field.key] = value.length > 0;
           input.value = "";
-          input.placeholder = value ? "••••••••  (stored)" : field.placeholder;
+          input.placeholder = value ? CHAT_STRINGS.stored : field.placeholder;
           dotEl.style.background = value ? "#22c55e" : "#f4505e";
         } catch {
           dotEl.style.background = "#f5a524";
@@ -823,13 +826,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       });
       rows.append(
         h("div", { class: "row" },
-          h("label", { style: "min-width:104px", text: field.label }),
+          h("label", { style: "min-width:104px", text: t(field.label) }),
           input, saveBtn, dotEl,
         ),
       );
     }
 
-    if (def.hint) rows.append(h("div", { class: "hint", text: def.hint }));
+    if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
@@ -844,7 +847,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   }
 
   updateNote();
-  return h("section", {}, h("h2", {}, h("span", { text: "Integrations" })), note, list);
+  return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -872,8 +875,8 @@ function generalSection(): HTMLElement {
 
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
-    h("option", { value: "primary", text: "Main display" }),
-    h("option", { value: "cursor", text: "Display under the cursor" }),
+    h("option", { value: "primary", text: t("Main display") }),
+    h("option", { value: "cursor", text: t("Display under the cursor") }),
   );
   screen.value = settings.screen;
   void Bridge.listMonitors().then((list) => {
@@ -899,52 +902,72 @@ function generalSection(): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "General" })),
+    h("h2", {}, h("span", { text: t("General") })),
     h("div", { class: "row" },
-      h("label", { text: "Sound" }),
+      h("label", { text: t("Sound") }),
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Auto-close" }),
+      h("label", { text: t("Auto-close") }),
       autoClose,
-      h("span", { class: "hint", text: "seconds after you leave the island" }),
+      h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
     h("div", { class: "row" },
-      h("label", { text: "Island lives on" }),
+      h("label", { text: t("Island lives on") }),
       screen,
     ),
     h("div", { class: "row" },
-      h("label", { text: "Launch at startup" }),
+      h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
     ...recapRows(),
+    languageRow(),
   );
+}
+
+/**
+ * Settings → General → Language, as on the Mac: "System" follows the
+ * system's language when Coucou has it (else English), or one of the ten.
+ * Both windows and the tray switch in place, without a restart.
+ */
+function languageRow(): HTMLElement {
+  const select = h("select", {}) as HTMLSelectElement;
+  select.append(h("option", { value: "", text: t("System") }));
+  for (const { code, name } of LANGUAGES) select.append(h("option", { value: code, text: name, lang: code }));
+  select.value = LANGUAGES.some((l) => l.code === settings.language) ? settings.language : "";
+  select.addEventListener("change", () => {
+    settings.language = select.value;
+    void save();
+    applyLanguage();
+  });
+  return h("div", { class: "row" }, h("label", { text: t("Language") }), select);
 }
 
 // ── Shortcuts section ─────────────────────────────────────────────────────────
 
 const SHORTCUTS_UI = {
-  title: "Shortcuts",
-  hint: "Work from any app. Click a shortcut to change it, then press the new keys — Esc cancels, Backspace removes it.",
-  global: "From anywhere",
-  island: "In the open island",
-  recording: "Press keys…",
-  none: "None",
-  reset: "Reset to defaults",
-  inUse: "In use by another app",
-  duplicate: "Used twice",
-  invalid: "Not a valid shortcut",
-  unavailable: "Not available",
-  types: (ch: string) => `Types “${ch}”`,
+  get title() { return t("Shortcuts"); },
+  get hint() { return t("Work from any app. Click a shortcut to change it, then press the new keys — Esc cancels, Backspace removes it."); },
+  get global() { return t("From anywhere"); },
+  get island() { return t("In the open island"); },
+  get recording() { return t("Press keys…"); },
+  get none() { return t("None"); },
+  get reset() { return t("Reset to defaults"); },
+  get inUse() { return t("In use by another app"); },
+  get duplicate() { return t("Used twice"); },
+  get invalid() { return t("Not a valid shortcut"); },
+  get unavailable() { return t("Not available"); },
+  types: (ch: string) => t("Types “{char}”", { char: ch }),
   typesNote: (keys: string, ch: string) =>
-    `${keys} types “${ch}” on your keyboard, so it can't be a shortcut. Pick another key.`,
-  needsModifier: "Hold Ctrl, Alt or the Windows key with it.",
-  unsupportedKey: "That key can't be used in a shortcut.",
-  wayland:
-    "Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:",
-  noDisplay: "No display server was found, so global shortcuts are off.",
-} as const;
+    t("{keys} types “{char}” on your keyboard, so it can't be a shortcut. Pick another key.", { keys, char: ch }),
+  get needsModifier() { return t("Hold Ctrl, Alt or the Windows key with it."); },
+  get unsupportedKey() { return t("That key can't be used in a shortcut."); },
+  get wayland() {
+    return t("Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:");
+  },
+  get noDisplay() { return t("No display server was found, so global shortcuts are off."); },
+};
 
 function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
   let report = initial;
@@ -1043,7 +1066,7 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
       const tag = binding.enabled ? tagFor(d.id, dups) : null;
       list.append(h("div", { class: binding.enabled ? "row shortcut" : "row shortcut off" },
         sw,
-        h("span", { class: "shortcut-name", text: SHORTCUT_TEXT[d.id] }),
+        h("span", { class: "shortcut-name", text: t(SHORTCUT_TEXT[d.id]) }),
         ...(tag ? [tag] : []),
         keycap,
       ));
@@ -1064,7 +1087,7 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
   const islandList = h("div", { class: "shortcut-list" });
   for (const row of ISLAND_SHORTCUTS) {
     islandList.append(h("div", { class: "row shortcut" },
-      h("span", { class: "shortcut-name", text: row.description }),
+      h("span", { class: "shortcut-name", text: t(row.description) }),
       h("span", { class: "keycap static", text: row.keys }),
     ));
   }
@@ -1080,14 +1103,16 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     },
   });
 
-  void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => {
-    report = fresh;
-    if (!stopRecording) draw();
-  });
-  void onEvent<Settings>("settings-changed", (s) => {
-    settings = { ...settings, ...s };
-    if (!stopRecording) draw();
-  });
+  // The events are listened to once (see main); only the section on screen redraws.
+  shortcutsListener = {
+    report(fresh) {
+      report = fresh;
+      if (!stopRecording) draw();
+    },
+    settingsChanged() {
+      if (!stopRecording) draw();
+    },
+  };
 
   draw();
   return h(
@@ -1108,11 +1133,11 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
 /** Settings → General → Weekly recap. The prefs live with the history in Rust. */
 function recapRows(): HTMLElement[] {
   const T = {
-    label: "Weekly recap",
-    keep: "Keep a history of my coding sessions",
-    clear: "Clear history",
-    cleared: "History cleared.",
-    about: "Counts and project names only — never commands, files or prompts. Kept on this computer for 12 weeks.",
+    label: t("Weekly recap"),
+    keep: t("Keep a history of my coding sessions"),
+    clear: t("Clear history"),
+    cleared: t("History cleared."),
+    about: t("Counts and project names only — never commands, files or prompts. Kept on this computer for 12 weeks."),
   };
   const feedback = h("span", { class: "hint" });
   const sw = toggle(true, (v) => { void Bridge.recapSetEnabled(v); });
@@ -1150,6 +1175,47 @@ function recapRows(): HTMLElement[] {
   ];
 }
 
+// ── Language ──────────────────────────────────────────────────────────────────
+
+/** The shortcuts section on screen, told about the events listened to once in main. */
+let shortcutsListener: { report(fresh: ShortcutsReport): void; settingsChanged(): void } | null = null;
+
+/**
+ * Shows the language Settings asks for. A change redraws the window in place,
+ * where it was scrolled to: nothing reloads, nothing is written.
+ */
+function applyLanguage() {
+  setLanguage(resolveLanguage(settings.language, systemLanguages()));
+}
+
+function applyDirection() {
+  document.documentElement.dir = isRtl() ? "rtl" : "ltr";
+  document.title = t("Settings — Coucou");
+}
+
+let rendering: Promise<void> | null = null;
+let renderAgain = false;
+
+/** Redraws every section from fresh state, keeping the scroll position. */
+async function rerender() {
+  if (rendering) {
+    renderAgain = true;
+    return;
+  }
+  const scroll = document.scrollingElement?.scrollTop ?? 0;
+  rendering = render();
+  try {
+    await rendering;
+  } finally {
+    rendering = null;
+  }
+  if (document.scrollingElement) document.scrollingElement.scrollTop = scroll;
+  if (renderAgain) {
+    renderAgain = false;
+    await rerender();
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1158,6 +1224,28 @@ async function main() {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
   }
+  setLanguage(resolveLanguage(settings.language, systemLanguages()));
+  applyDirection();
+  onLanguageChange(() => {
+    applyDirection();
+    void rerender();
+  });
+  await render();
+
+  void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
+  void onEvent<Settings>("settings-changed", (s) => {
+    const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    settings = { ...settings, ...s };
+    shortcutsListener?.settingsChanged();
+    for (const redraw of declaredViews) redraw();
+    const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    if (before !== after) localRedraw?.();
+    applyLanguage();
+  });
+}
+
+/** Reads what the sections show and draws them all. */
+async function render() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, planRelayInstalled: false, settingsPath: "", hookPath: "", hookReady: false,
   };
@@ -1195,6 +1283,9 @@ async function main() {
   }
   const customKey = (await Bridge.secretPresent(CUSTOM_SERVER_KEY)) ?? false;
 
+  declaredViews.length = 0;
+  localRedraw = null;
+  shortcutsListener = null;
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
@@ -1210,17 +1301,9 @@ async function main() {
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",
-      text: "No telemetry. Network requests only go to the services you configure yourself.",
+      text: t("No telemetry. Network requests only go to the services you configure yourself."),
     }),
   );
-
-  void onEvent<Settings>("settings-changed", (s) => {
-    const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
-    settings = { ...settings, ...s };
-    for (const redraw of declaredViews) redraw();
-    const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
-    if (before !== after) localRedraw?.();
-  });
 }
 
 void main();

@@ -31,32 +31,31 @@ export interface CodexPlanUsage extends PlanUsage {
   planType?: string;
 }
 
+import { dayMonth, t, weekdayShort } from "../i18n/i18n";
+
 const DAY_MS = 86_400_000;
 
-/** Every user-visible string of the gauges, in one place. */
+/** Every user-visible string of the gauges, in the current language (src/i18n). */
 export const PLAN_TEXT = {
-  claudeTitle: "Claude plan",
-  codexTitle: "Codex plan",
-  claudePillTitle: "Claude plan usage",
-  codexPillTitle: "Codex plan usage",
-  waiting: "Waiting for a response from Claude Code",
-  askingCodex: "Asking Codex…",
-  justNow: "just now",
-  minAgo: (n: number) => `${n} min ago`,
-  hAgo: (n: number) => `${n} h ago`,
-  fiveHours: "5 hours",
-  week: "Week",
-  resets: "Resets",
-  resetting: "Resetting…",
-  inHM: (h: number, m: number) => `in ${h} h ${m}`,
-  inM: (m: number) => `in ${m} min`,
-  available: (n: number) => `${n} available`,
-  until: (date: string) => ` · until ${date}`,
+  get claudeTitle() { return t("Claude plan"); },
+  get codexTitle() { return t("Codex plan"); },
+  get claudePillTitle() { return t("Claude plan usage"); },
+  get codexPillTitle() { return t("Codex plan usage"); },
+  get waiting() { return t("Waiting for a response from Claude Code"); },
+  get askingCodex() { return t("Asking Codex…"); },
+  get justNow() { return t("just now"); },
+  minAgo: (n: number) => t("{n} min ago", { n }),
+  hAgo: (n: number) => t("{n} h ago", { n }),
+  get fiveHours() { return t("5 hours"); },
+  get week() { return t("Week"); },
+  get resets() { return t("Resets"); },
+  get resetting() { return t("Resetting…"); },
+  inHM: (h: number, m: number) => t("in {h} h {m}", { h, m }),
+  inM: (m: number) => t("in {m} min", { m }),
+  available: (n: number) => t("{n} available", { n }),
+  until: (date: string) => t(" · until {date}", { date }),
   none: "—",
 };
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const asObj = (v: unknown): Record<string, unknown> | null =>
@@ -165,7 +164,7 @@ export function resetLabel(w: PlanWindow, weekly: boolean, now = Date.now()): st
   if (secs <= 0) return PLAN_TEXT.resetting;
   if (weekly) {
     const d = new Date(w.resetsAt);
-    return `${WEEKDAYS[d.getDay()]} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${weekdayShort(d.getDay())} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
   const hours = Math.floor(secs / 3600);
   const mins = Math.floor((secs % 3600) / 60);
@@ -189,7 +188,7 @@ export function codexResetsLabel(u: CodexPlanUsage | null): string {
   let text = PLAN_TEXT.available(u.resetCredits);
   if (u.resetCredits > 0 && u.resetCreditExpiresAt != null) {
     const d = new Date(u.resetCreditExpiresAt);
-    text += PLAN_TEXT.until(`${MONTHS[d.getMonth()]} ${d.getDate()}`);
+    text += PLAN_TEXT.until(dayMonth(d.getMonth(), d.getDate()));
   }
   return text;
 }

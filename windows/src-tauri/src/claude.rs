@@ -15,6 +15,7 @@ use reqwest::Url;
 use serde_json::{json, Value};
 
 use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
+use crate::i18n::{t, tf};
 use crate::{net, secrets};
 
 /// Credential store entry of the Anthropic API key.
@@ -121,15 +122,16 @@ fn interpret(response: &Value) -> Result<(Vec<Value>, String), String> {
         let why = response
             .pointer("/stop_details/explanation")
             .and_then(Value::as_str)
-            .unwrap_or("Claude declined this one.");
-        return Err(why.to_string());
+            .map(str::to_string)
+            .unwrap_or_else(|| t("Claude declined this one."));
+        return Err(why);
     }
     let blocks = response
         .get("content")
         .and_then(Value::as_array)
         .cloned()
-        .ok_or("Unexpected API response.")?;
-    let text = response_text(&blocks).ok_or("No response text.")?;
+        .ok_or_else(|| t("Unexpected API response."))?;
+    let text = response_text(&blocks).ok_or_else(|| t("No response text."))?;
     Ok((blocks, text))
 }
 
@@ -141,7 +143,7 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
-    let key = secrets::get(KEY).ok_or_else(|| "API key missing. Open settings.".to_string())?;
+    let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
     let endpoint = endpoint()?;
 
     let turn = chat.begin(chat::ANTHROPIC);
@@ -168,7 +170,7 @@ async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> 
         .json(body)
         .send()
         .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
 
     let status = response.status();
     if !status.is_success() {
@@ -177,7 +179,7 @@ async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> 
         return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    serde_json::from_slice(&bytes).map_err(|e| format!("Bad API response: {e}"))
+    serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))
 }
 
 /// The models on the user's Anthropic account, newest first, as the API lists them.
@@ -189,14 +191,14 @@ pub async fn models(key: &str) -> Result<Vec<ModelInfo>, String> {
         .header("anthropic-version", ANTHROPIC_VERSION)
         .send()
         .await
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
         return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    let json: Value = serde_json::from_slice(&bytes).map_err(|_| "Unexpected API response.".to_string())?;
+    let json: Value = serde_json::from_slice(&bytes).map_err(|_| t("Unexpected API response."))?;
     Ok(parse_models(&json))
 }
 

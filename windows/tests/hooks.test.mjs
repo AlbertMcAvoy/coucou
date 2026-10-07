@@ -102,12 +102,12 @@ test("a tool call shows as working, labelled with what it acts on", () => {
     hook({ hook_event_name: "PreToolUse", cwd: "/p", tool_name, tool_input });
     return task().steps.at(-1);
   };
-  assert.equal(step("Bash", { command: "npm run build" }), "Exécute · npm run build");
+  assert.equal(step("Bash", { command: "npm run build" }), "Runs · npm run build");
   assert.equal(task().state, "working");
-  assert.equal(step("Bash", { command: "c".repeat(50) }), `Exécute · ${"c".repeat(40)}`);
-  assert.equal(step("Read", { file_path: "C:\\Users\\me\\proj\\.env" }), "Lit · .env");
-  assert.equal(step("Grep", { pattern: "x", path: "src/island/" }), "Recherche · island");
-  assert.equal(step("WebSearch", { query: "tauri" }), "Recherche web · tauri");
+  assert.equal(step("Bash", { command: "c".repeat(50) }), `Runs · ${"c".repeat(40)}`);
+  assert.equal(step("Read", { file_path: "C:\\Users\\me\\proj\\.env" }), "Reads · .env");
+  assert.equal(step("Grep", { pattern: "x", path: "src/island/" }), "Searches · island");
+  assert.equal(step("WebSearch", { query: "tauri" }), "Searches the web · tauri");
   assert.equal(step("Foo", {}), "Foo");
   assert.equal(step(undefined, undefined), "Tool");
 });
@@ -117,7 +117,7 @@ test("only the last 20 steps are kept", () => {
     hook({ hook_event_name: "PreToolUse", cwd: "/p", tool_name: "Bash", tool_input: { command: `c${i}` } });
   }
   assert.equal(task().steps.length, 20);
-  assert.equal(task().steps.at(-1), "Exécute · c24");
+  assert.equal(task().steps.at(-1), "Runs · c24");
   assert.equal(task().stepIndex, 19);
 });
 
@@ -214,7 +214,7 @@ test("a tagged agent gets its own pill next to Claude Code's", () => {
   assert.equal(agent.name, "Gemini CLI");
   assert.equal(agent.source, "agent");
   assert.equal(agent.state, "working");
-  assert.deepEqual(agent.steps, ["Exécute · ls"]);
+  assert.deepEqual(agent.steps, ["Runs · ls"]);
   assert.match(agent.color, /^#[0-9A-F]{6}$/);
   // Claude Code's own pill is not the one that moved.
   assert.equal(task().name, "VS Code");

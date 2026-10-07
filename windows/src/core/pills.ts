@@ -9,15 +9,16 @@
 // nothing at all.
 
 import type { AgentSource } from "./state";
+import { N_ } from "../i18n/i18n";
 
 export type PillCategory = "workspace" | "agent" | "ai" | "service";
 
-/** Section titles, in display order. */
+/** Section titles (English keys, shown with `t()`), in display order. */
 export const PILL_CATEGORIES: { id: PillCategory; title: string }[] = [
-  { id: "workspace", title: "Where you code" },
-  { id: "agent", title: "Agents" },
-  { id: "ai", title: "AI for the chat" },
-  { id: "service", title: "Services" },
+  { id: "workspace", title: N_("Where you code") },
+  { id: "agent", title: N_("Agents") },
+  { id: "ai", title: N_("AI for the chat") },
+  { id: "service", title: N_("Services") },
 ];
 
 /**
@@ -45,7 +46,7 @@ export interface PillDefinition {
   name: string;
   color: string;
   category: PillCategory;
-  /** Label next to the pill name in the idle card header. */
+  /** Label next to the pill name in the idle card header (an English key, shown with `t()`). */
   subtitle: string;
   source: AgentSource;
   support: PillSupport;
@@ -71,63 +72,63 @@ const ACCENT = {
 export const PILL_CATALOG: readonly PillDefinition[] = [
   // ── Where you code ─────────────────────────────────────────────────────────
   { id: "integration_claude", name: "VS Code", color: "#F5F6F8", category: "workspace",
-    subtitle: "Integration", source: "claudeCode", support: "yes", connect: hooks },
+    subtitle: N_("Integration"), source: "claudeCode", support: "yes", connect: hooks },
   // Claude Code in Cursor's terminal: the same hooks as Claude Code.
   { id: "agent_cursor", name: "Cursor", color: "#C0C4CC", category: "workspace",
-    subtitle: "Integration", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_antigravity", name: "Antigravity", color: "#E879F9", category: "workspace",
-    subtitle: "Integration", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_codex", name: "Codex", color: "#2DD4BF", category: "workspace",
-    subtitle: "Integration", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   // ── Agents ─────────────────────────────────────────────────────────────────
   { id: "agent_gemini", name: "Gemini CLI", color: "#8AB4F8", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_copilot", name: "Copilot CLI", color: "#818CF8", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_muse", name: "Muse Code", color: "#38BDF8", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // A plugin that starts the relay, written from Settings → Agents (agents.rs).
   { id: "agent_opencode", name: "OpenCode", color: "#4ADE80", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_amp", name: "Amp", color: "#F59E0B", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_hermes", name: "Hermes", color: "#C084FC", category: "agent",
-    subtitle: "Agent", source: "agent", support: "yes", connect: hooks },
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // Claude Code sessions run from the Claude desktop app: the relay tags them
   // from CLAUDE_CODE_ENTRYPOINT, so there is nothing to install. The app has no
   // Linux build.
   { id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757", category: "agent",
-    subtitle: "Agent", source: "agent", support: "windows", connect: none },
+    subtitle: N_("Agent"), source: "agent", support: "windows", connect: none },
   // ── AI for the chat ────────────────────────────────────────────────────────
   { id: "ai_anthropic", name: "Anthropic", color: ACCENT.anthropic, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "yes", connect: key("anthropic-api-key") },
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("anthropic-api-key") },
   // The chat talks to each of them (src-tauri/src/chat.rs): a key for the
   // cloud ones, a connected server for the local ones.
   { id: "ai_google", name: "Google AI", color: ACCENT.google, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "yes", connect: key("google-api-key") },
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("google-api-key") },
   { id: "ai_openai", name: "OpenAI", color: ACCENT.openai, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "yes", connect: key("openai-api-key") },
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("openai-api-key") },
   { id: "ai_ollama", name: "Ollama", color: ACCENT.ollama, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "yes", connect: server("ollamaUrl") },
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: server("ollamaUrl") },
   { id: "ai_lmstudio", name: "LM Studio", color: ACCENT.lmstudio, category: "ai",
-    subtitle: "Chat", source: "n8n", support: "yes", connect: server("lmstudioUrl") },
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: server("lmstudioUrl") },
   // ── Services ───────────────────────────────────────────────────────────────
   { id: "integration_resend", name: "Resend", color: "#22C55E", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("resend-api-key") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("resend-api-key") },
   { id: "integration_n8n", name: "n8n", color: "#F29B38", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("n8n-api-key") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("n8n-api-key") },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("vercel-token") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("vercel-token") },
   { id: "integration_github", name: "GitHub", color: "#F4505E", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("github-token") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("github-token") },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("notion-api-key") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("notion-api-key") },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("calcom-api-key") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
-    subtitle: "Integration", source: "n8n", support: "yes", connect: key("stripe-api-key") },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: "Integration", source: "n8n", support: "no", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
@@ -175,7 +176,7 @@ export function sessionSubtitle(id: string): string {
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";
-    default: return "Agent";
+    default: return N_("Agent");
   }
 }
 

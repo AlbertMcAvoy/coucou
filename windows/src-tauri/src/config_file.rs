@@ -19,6 +19,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::i18n::{t, tf};
+
 /// What an edit wants a file to become.
 pub struct Change {
     /// The current contents as the diff shows them.
@@ -60,7 +62,7 @@ pub fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(None),
-        Err(err) => Err(format!("Can't read {}: {err}", path.display())),
+        Err(err) => Err(tf("Can't read {path}: {error}", &[("path", &path.display().to_string()), ("error", &err.to_string())])),
     }
 }
 
@@ -75,9 +77,10 @@ pub fn parse_json(bytes: Option<&[u8]>, label: &str) -> Result<Value, String> {
     }
     match serde_json::from_slice::<Value>(text) {
         Ok(v) if v.is_object() => Ok(v),
-        Ok(_) => Err(format!("{label} isn't a JSON object — Coucou won't touch it.")),
-        Err(err) => Err(format!(
-            "{label} isn't valid JSON ({err}). Fix or move it, then try again — Coucou won't overwrite it."
+        Ok(_) => Err(tf("{file} isn't a JSON object — Coucou won't touch it.", &[("file", label)])),
+        Err(err) => Err(tf(
+            "{file} isn't valid JSON ({error}). Fix or move it, then try again — Coucou won't overwrite it.",
+            &[("file", label), ("error", &err.to_string())],
         )),
     }
 }
@@ -116,7 +119,7 @@ pub fn text_edit<'a>(
             None => None,
             Some(b) => Some(
                 std::str::from_utf8(b)
-                    .map_err(|_| format!("{label} isn't UTF-8 text — Coucou won't touch it."))?,
+                    .map_err(|_| tf("{file} isn't UTF-8 text — Coucou won't touch it.", &[("file", &label)]))?,
             ),
         };
         let after = change(current)?;
@@ -158,8 +161,8 @@ pub fn preview(edits: &[FileEdit]) -> Result<Plan, String> {
         let after = change.after.clone().unwrap_or_default();
         let mut diff = unified_diff(&change.before, after.trim_end_matches('\n'));
         match (&current, &change.after) {
-            (Some(_), None) => diff = format!("The file is removed.\n{diff}"),
-            (None, None) => diff = "No change.".into(),
+            (Some(_), None) => diff = format!("{}\n{diff}", t("The file is removed.")),
+            (None, None) => diff = t("No change."),
             _ => {}
         }
         if edits.len() > 1 {
@@ -190,15 +193,15 @@ pub fn preview(edits: &[FileEdit]) -> Result<Plan, String> {
 pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String> {
     let wanted: Vec<&str> = expected.split(':').collect();
     if wanted.len() != edits.len() {
-        return Err("The preview is out of date. Nothing was written — review the new diff.".into());
+        return Err(t("The preview is out of date. Nothing was written — review the new diff."));
     }
     let mut planned = Vec::new();
     for (file, want) in edits.iter().zip(wanted) {
         let current = read(&file.path)?;
         if fingerprint_of(current.as_deref()) != want {
-            return Err(format!(
-                "{} changed since the preview. Nothing was written — review the new diff.",
-                file.path.display()
+            return Err(tf(
+                "{path} changed since the preview. Nothing was written — review the new diff.",
+                &[("path", &file.path.display().to_string())],
             ));
         }
         let change = (file.edit)(current.as_deref())?;
@@ -209,7 +212,12 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
     for (file, current, _) in &planned {
         if let Some(bytes) = current {
             let copy = back_up(&file.path, bytes)
-                .map_err(|e| format!("Backup of {} failed, nothing was written: {e}", file.path.display()))?;
+                .map_err(|e| {
+                    tf(
+                        "Backup of {path} failed, nothing was written: {error}",
+                        &[("path", &file.path.display().to_string()), ("error", &e.to_string())],
+                    )
+                })?;
             backups.push(copy);
         }
     }
@@ -217,9 +225,13 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
     for (file, current, after) in planned {
         match after {
             Some(text) => replace(&file.path, text.as_bytes())
-                .map_err(|e| format!("Write to {} failed: {e}", file.path.display()))?,
+                .map_err(|e| {
+                    tf("Write to {path} failed: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
+                })?,
             None if current.is_some() => std::fs::remove_file(&file.path)
-                .map_err(|e| format!("Could not remove {}: {e}", file.path.display()))?,
+                .map_err(|e| {
+                    tf("Could not remove {path}: {error}", &[("path", &file.path.display().to_string()), ("error", &e.to_string())])
+                })?,
             None => {}
         }
     }

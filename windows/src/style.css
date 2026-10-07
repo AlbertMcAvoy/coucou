@@ -4,7 +4,12 @@
 :root {
   color-scheme: dark;
 
-  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", sans-serif;
+  /* After the Latin fonts: the scripts of the other interface languages —
+     Devanagari and Bengali (Nirmala UI), Simplified Chinese (Microsoft YaHei)
+     on Windows, the Noto families on Linux. Arabic and Cyrillic are in Segoe UI. */
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Segoe UI Emoji", "Nirmala UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 
   --ink: #f5f6f8;        /* primary text */
@@ -2319,4 +2324,23 @@ input[type="range"]::-webkit-slider-thumb {
   width: 28px;
   height: 28px;
   pointer-events: none;
+}
+
+/* ── Arabic: right to left ─────────────────────────────────────────────────────
+   i18n.ts sets <html data-dir="rtl">. The text of the cards reads and aligns
+   right to left; Mochi, the pills, the header and the cards themselves keep
+   their places, and code, commands and the contribution grid stay left to
+   right. A chat message follows its own text's direction (an English answer
+   stays left to right). */
+html[data-dir="rtl"] #views :is(.stack, .int-card, .plan-card, .drop-body, .up-card) {
+  direction: rtl;
+}
+
+html[data-dir="rtl"] #views :is(.code, .gh-grid, .diff-card, .md-pre) {
+  direction: ltr;
+}
+
+html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-item, .reply .md-quote, .chat-input) {
+  unicode-bidi: plaintext;
+  text-align: start;
 }
