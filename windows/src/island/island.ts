@@ -73,7 +73,6 @@ export class Island {
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
-  private homeCollapseAt: number | null = null;
 
   // Bot hover → love (IslandWindowController.botHoverIn)
   private botHovering = false;
@@ -315,7 +314,6 @@ export class Island {
     if (State.mode !== "expanded") this.setMode("expanded");
     else this.animateGeometry(false);
     State.lastActivity = performance.now();
-    this.homeCollapseAt = null;
     State.notify();
   }
 
@@ -638,13 +636,9 @@ export class Island {
     if (inIsland && !this.wasInIsland) {
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
-      this.homeCollapseAt = null;
     }
     if (!inIsland && this.wasInIsland) {
       this.fsm.mouseLeft();
-      if (this.fsm.state === "home" && !State.isPinned) {
-        this.homeCollapseAt = performance.now() + State.settings.autoCloseInterval * 1000;
-      }
     }
     this.wasInIsland = inIsland;
 
@@ -870,13 +864,16 @@ export class Island {
   }
 
   private updateCountdown(nowMs: number) {
-    if (State.mode !== "expanded" || State.isPinned || this.homeCollapseAt == null) {
+    // The state machine's own deadline, so the bar follows an auto-close delay
+    // edited while the countdown runs.
+    const dueAt = this.fsm.homeCollapseDueAt;
+    if (State.mode !== "expanded" || State.isPinned || dueAt == null) {
       this.countdown.style.width = "0px";
       return;
     }
-    const autoClose = State.settings.autoCloseInterval;
+    const autoClose = this.fsm.homeToPetitDelay;
     const windowS = Math.min(10, autoClose * 0.6);
-    const remaining = (this.homeCollapseAt - nowMs) / 1000;
+    const remaining = (dueAt - nowMs) / 1000;
     this.countdown.style.width =
       remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
   }
