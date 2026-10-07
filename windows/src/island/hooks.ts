@@ -1,11 +1,14 @@
-// Claude Code hook events → island state.
+// Hook events from Claude Code and every other agent → island state.
 // Port of HookServer.processEvent / processPermissionRequest from the macOS app.
 // Difference from macOS: no terminal filter. On Windows the hook fires from any
 // terminal (Windows Terminal, VS Code, PowerShell…) and all of them are handled.
+// The relay has already mapped every agent's events and fields onto Claude
+// Code's (hook/src/normalize.rs), so one handler serves them all.
 
 import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
+import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 
 const CLAUDE_ID = "integration_claude";
@@ -16,11 +19,12 @@ let pendingTimeout: number | null = null;
 /** Takes the approval or question card down and gives the island back. */
 function dropPendingCard(island: Island): void {
   if (!State.pendingApproval) return;
+  const pill = State.pendingApproval.pillId;
   State.pendingApproval = null;
   State.isPinned = false;
   island.dropPin();
-  State.updateTask(CLAUDE_ID, "working");
-  State.setPillBadge(CLAUDE_ID, null);
+  State.updateTask(pill, "working");
+  State.setPillBadge(pill, null);
   if (State.view === "approval" || State.view === "question") {
     island.setView(State.defaultView());
   }
@@ -38,56 +42,23 @@ function cancelStopTimer(id: string): boolean {
   return true;
 }
 
+/** Events after which a pending permission request of the same session is moot. */
+const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
   session_id?: string;
   cwd?: string;
   message?: string;
+  /** What an agent said last, on Stop (Hermes, Codex). */
+  last_assistant_message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
-}
-
-/** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
-function validateAgent(raw: string | undefined): string | null {
-  if (!raw || raw.length > 24 || raw === "claude") return null;
-  if (!/^[a-z0-9-]+$/.test(raw)) return null;
-  return raw;
-}
-
-const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
-
-const KNOWN_AGENT_COLORS: Record<string, string> = {
-  gemini: "#8AB4F8",
-  antigravity: "#E879F9",
-  cursor: "#C0C4CC",
-  codex: "#2DD4BF",
-  opencode: "#38BDF8",
-};
-
-const KNOWN_AGENT_NAMES: Record<string, string> = {
-  gemini: "Gemini CLI",
-  antigravity: "Antigravity",
-  cursor: "Cursor",
-  codex: "Codex",
-  opencode: "OpenCode",
-};
-
-function agentColor(name: string): string {
-  if (KNOWN_AGENT_COLORS[name]) return KNOWN_AGENT_COLORS[name];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
-  }
-  return FALLBACK_COLORS[Math.abs(h) % FALLBACK_COLORS.length];
-}
-
-function agentDisplayName(name: string): string {
-  return KNOWN_AGENT_NAMES[name] ?? name;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -245,7 +216,7 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, agentDisplayName(validAgent!), agentColor(validAgent!));
+      State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
     } else {
       upsert(projectName, cwd);
     }
@@ -259,6 +230,22 @@ function handleHook(island: Island, payload: HookPayload) {
   const supersedeStop = () => {
     if (cancelStopTimer(agentId)) State.setPillBadge(agentId, null);
   };
+
+  // The turn that asked for a permission is over — answered in the terminal,
+  // interrupted, or a new prompt — so the card would be lying. It goes, and the
+  // relay is released without a decision. Same rule as the Mac.
+  const pending = State.pendingApproval;
+  if (
+    pending &&
+    TURN_OVER.has(name) &&
+    pending.pillId === agentId &&
+    pending.sessionId === (payload.session_id ?? "")
+  ) {
+    if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+    if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
+    dropPendingCard(island);
+  }
 
   switch (name) {
     case "SessionStart":
@@ -324,9 +311,11 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
     }
 
-    case "Stop":
+    case "Stop": {
       State.updateTask(agentId, "finished");
-      if (payload.message) State.appendStep(agentId, payload.message.slice(0, 60));
+      // Agents report their last words as `last_assistant_message` (Hermes, Codex).
+      const said = payload.message ?? (isExternalAgent ? payload.last_assistant_message : undefined);
+      if (said) State.appendStep(agentId, said.slice(0, 60));
       Sound.play("finish");
       if (focused) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
@@ -343,6 +332,14 @@ function handleHook(island: Island, payload: HookPayload) {
           }
         }, 5200),
       );
+      break;
+    }
+
+    case "Interrupt":
+      // Codex: the user stopped the turn. Back to idle, nothing to celebrate.
+      supersedeStop();
+      State.updateTask(agentId, "idle");
+      State.setPillBadge(agentId, null);
       break;
 
     case "StopFailure":
@@ -374,10 +371,10 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "PermissionRequest": {
-      // External agents do not get an approval card — showing one would look like
-      // a Claude Code request. Decline immediately so the agent re-asks in its
-      // terminal. Approval support for other agents will come with Codex support.
-      if (isExternalAgent) {
+      // Only Claude Code and the agents the relay can answer for (Codex, Copilot
+      // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
+      // declined at once, so the agent asks in its own terminal.
+      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
@@ -390,18 +387,20 @@ function handleHook(island: Island, payload: HookPayload) {
         if (requestId) void Bridge.approvalDecline(requestId);
         break;
       }
-      upsert(projectName, cwd);
+      ensurePill();
       supersedeStop();
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
       // Claude Code asking a question is not a permission to grant: the island
-      // shows the options and sends back the one that was picked.
-      const questions = askedQuestions(tool, input);
+      // shows the options and sends back the one that was picked. Only Claude
+      // Code asks questions this way.
+      const questions = isExternalAgent ? null : askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
       State.pendingApproval = {
         requestId,
         sessionId: payload.session_id ?? "",
+        pillId: agentId,
         tool,
         command: approvalTarget(tool, input),
         ...(questions ? { questions } : {}),
@@ -409,16 +408,16 @@ function handleHook(island: Island, payload: HookPayload) {
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
-      State.updateTask(CLAUDE_ID, view);
+      State.updateTask(agentId, view);
       State.isPinned = true;
       Sound.play(view);
-      if (focused) {
+      if (State.focusId === agentId) {
         island.alert(view);
       } else {
-        // Another agent holds the view, so the card would yank it away. The badge
+        // Another pill holds the view, so the card would yank it away. The badge
         // is the signal instead — but it has to be on screen for that to mean
-        // anything, hence the reveal. We just told the relay a human can act.
-        State.setPillBadge(CLAUDE_ID, "approval");
+        // anything, hence the reveal. Clicking the pill brings the card up.
+        State.setPillBadge(agentId, "approval");
         island.reveal();
       }
       // Coucou answers within 108 s or not at all; after that the terminal has

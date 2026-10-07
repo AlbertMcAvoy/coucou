@@ -242,10 +242,85 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
 });
 
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
-  hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "gemini", tool_name: "Bash" });
-  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
-  assert.deepEqual(sent("approval_ack"), []);
-  assert.equal(State.pendingApproval, null);
+  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
+    calls.length = 0;
+    hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: agent, tool_name: "Bash" });
+    assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], agent);
+    assert.deepEqual(sent("approval_ack"), [], agent);
+    assert.equal(State.pendingApproval, null, agent);
+  }
+});
+
+test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "muse"]) {
+    State.pendingApproval = null;
+    State.focusId = CLAUDE;
+    calls.length = 0;
+    asked = [];
+    hook({
+      hook_event_name: "PermissionRequest", request_id: `r-${agent}`, session_id: "s1",
+      coucou_agent: agent, tool_name: "Bash", tool_input: { command: "npm publish" },
+    });
+    const id = `agent_${agent}`;
+    assert.deepEqual(State.pendingApproval, {
+      requestId: `r-${agent}`, sessionId: "s1", pillId: id, tool: "Bash", command: "Bash · npm publish",
+    });
+    assert.deepEqual(sent("approval_ack"), [{ requestId: `r-${agent}` }]);
+    assert.deepEqual(sent("approval_decline"), []);
+    // Behind Claude Code's pill: badged and revealed, the view is not taken.
+    assert.equal(task(id).state, "approval");
+    assert.equal(task(id).pillBadge, "approval");
+    assert.deepEqual(asked, ["reveal"]);
+    // Claude Code's pill is untouched.
+    assert.equal(task().state, "idle");
+    assert.equal(task().pillBadge ?? null, null);
+  }
+});
+
+test("an agent's card comes up at once when its pill has the focus", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "s1", coucou_agent: "codex" });
+  State.setFocus("agent_codex");
+  asked = [];
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", coucou_agent: "codex", tool_name: "Bash" });
+  assert.deepEqual(asked, ["alert:approval"]);
+});
+
+test("only Claude Code's questions become a question card", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", coucou_agent: "codex",
+    tool_name: "AskUserQuestion",
+    tool_input: { questions: [{ question: "Which?", options: [{ label: "A" }, { label: "B" }] }] },
+  });
+  assert.equal(State.pendingApproval.questions, undefined);
+  assert.equal(task("agent_codex").state, "approval");
+});
+
+test("the end of the turn takes a waiting card down and releases the relay", () => {
+  for (const end of ["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]) {
+    State.pendingApproval = null;
+    calls.length = 0;
+    hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", coucou_agent: "codex", tool_name: "Bash" });
+    // Another session's turn ending changes nothing.
+    hook({ hook_event_name: end, session_id: "other", coucou_agent: "codex" });
+    assert.equal(State.pendingApproval?.requestId, "r1", end);
+    hook({ hook_event_name: end, session_id: "s1", coucou_agent: "codex" });
+    assert.equal(State.pendingApproval, null, end);
+    assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], end);
+    mock.timers.runAll();
+  }
+});
+
+test("Codex's Interrupt puts its pill back to idle", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", coucou_agent: "codex", prompt: "go" });
+  assert.equal(task("agent_codex").state, "thinking");
+  hook({ hook_event_name: "Interrupt", session_id: "s1", coucou_agent: "codex" });
+  assert.equal(task("agent_codex").state, "idle");
+});
+
+test("an agent's last words show when it stops", () => {
+  hook({ hook_event_name: "SessionStart", coucou_agent: "hermes" });
+  hook({ hook_event_name: "Stop", coucou_agent: "hermes", last_assistant_message: "All done, tests pass." });
+  assert.deepEqual(task("agent_hermes").steps, ["All done, tests pass."]);
 });
 
 // ── Permission requests ───────────────────────────────────────────────────────
@@ -266,6 +341,7 @@ test("a permission request puts the card up, says exactly what it authorises, an
   assert.deepEqual(State.pendingApproval, {
     requestId: "r1",
     sessionId: "s1",
+    pillId: CLAUDE,
     tool: "Write",
     command: "Write · C:\\Users\\me\\proj\\.env",
   });

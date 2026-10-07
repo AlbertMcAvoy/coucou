@@ -29,6 +29,8 @@ export interface AgentTask {
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
+  /** The pill the request belongs to: Claude Code's, or an agent's (Codex…). */
+  pillId: string;
   tool: string;
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */

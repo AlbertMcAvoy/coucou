@@ -104,11 +104,12 @@ export class Island {
 
   /** The request has its answer: the card goes and the session carries on. */
   private closeApproval() {
+    const pill = State.pendingApproval?.pillId ?? "integration_claude";
     State.pendingApproval = null;
     State.isPinned = false;
     this.fsm.pinned = false;
-    State.updateTask("integration_claude", "working");
-    State.setPillBadge("integration_claude", null);
+    State.updateTask(pill, "working");
+    State.setPillBadge(pill, null);
     this.setView(State.defaultView());
   }
 
@@ -122,6 +123,10 @@ export class Island {
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
+        // A pill badged with a waiting request opens on its card: that is how a
+        // request that arrived behind another pill gets answered.
+        const req = State.pendingApproval;
+        if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
       },
       openTerminal: () => {
         const cwd = State.focusTask?.sessionCwd ?? null;
