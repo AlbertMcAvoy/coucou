@@ -314,6 +314,62 @@ function linkRow(accent: string, highlight: boolean, url: unknown, tip: string, 
   return row;
 }
 
+// ── News ──────────────────────────────────────────────────────────────────────
+
+/** The news unfolded on a card, kept while the card is rebuilt. */
+const unfolded = new Set<string>();
+
+/**
+ * One piece of news, highlighted in `accent`. With what changed attached, a
+ * click unfolds those changes under it and the ↗ opens its page; without, a
+ * click opens it.
+ */
+function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
+  const label = String(n.label ?? "");
+  const url = typeof n.url === "string" ? n.url : "";
+  const changes = Array.isArray(n.changes) ? (n.changes as { text?: string; by?: string }[]) : [];
+  if (changes.length === 0) {
+    return [linkRow(accent, true, url, label,
+      h("span", { class: "int-name", text: label }),
+      h("span", { class: "int-ago", text: timeAgo(n.at) }),
+    )];
+  }
+
+  const key = `${label}@${String(n.at ?? "")}`;
+  const open = h("button", {
+    class: "icon-btn int-open",
+    title: t("Open"),
+    onclick: (e: Event) => {
+      e.stopPropagation();
+      if (url) void Bridge.openUrl(url);
+    },
+  }, svg(ICONS.arrowUpRight, 8));
+  const row = listRow(accent, true,
+    h("span", { class: "int-chevron" }, svg(ICONS.chevronRight, 7, { stroke: 2.6 })),
+    h("span", { class: "int-name", text: label }),
+    h("span", { class: "int-ago", text: timeAgo(n.at) }),
+    open,
+  );
+  row.title = `${label}\n${changes.length} ${changes.length === 1 ? "detail" : "details"} — click to show`;
+  row.style.cursor = "pointer";
+  const detail = h("div", { class: "int-changes" },
+    ...changes.map((c) => h("div", {
+      class: "int-change",
+      title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
+      text: c.text ?? "",
+    })),
+  );
+  const show = (on: boolean) => {
+    detail.hidden = !on;
+    row.classList.toggle("open", on);
+    if (on) unfolded.add(key);
+    else unfolded.delete(key);
+  };
+  show(unfolded.has(key));
+  row.addEventListener("click", () => show(detail.hidden));
+  return [row, detail];
+}
+
 // ── GitLab ────────────────────────────────────────────────────────────────────
 
 /**
@@ -345,10 +401,7 @@ function gitlabCard(): HTMLElement {
   for (const n of arr("integration_gitlab", "news")) {
     if (typeof n.todoId === "number") toldTodos.add(n.todoId);
     if (typeof n.mrId === "number") toldMrs.add(n.mrId);
-    rows.append(linkRow(n.success === false ? "#F4505E" : "#22C55E", true, n.url, String(n.label ?? ""),
-      h("span", { class: "int-name", text: String(n.label ?? "") }),
-      h("span", { class: "int-ago", text: timeAgo(n.at) }),
-    ));
+    rows.append(...newsRow(n, n.success === false ? "#F4505E" : "#22C55E"));
     shown++;
   }
   for (const t of arr("integration_gitlab", "todos")) {

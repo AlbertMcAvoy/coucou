@@ -403,7 +403,10 @@ own window.
   your merge requests being approved or merged, someone else commenting on or
   updating a merge request you authored, are assigned or review, and your
   latest pipelines. Everything new in a minute arrives as one notification; the
-  pill lists your to-dos and those merge requests, five at a time.
+  pill lists your to-dos and those merge requests, five at a time. The
+  notification's Details, and a click on a piece of news in the pill, unfold
+  what happened: the comment or what was done on an MR (commits pushed,
+  approval, title changed…), what a mention said, the jobs a pipeline failed on.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

@@ -1216,7 +1216,8 @@ export class Island {
     // The view outlives the card: once the island folds back into its bar it
     // still says "gitlab" until the next opening resets it. Only an open card
     // counts, or Mochi stays orange on the bar.
-    return State.mode === "expanded" && State.view === "gitlab";
+    // The unfolded card is still GitLab's news.
+    return State.mode === "expanded" && (State.view === "gitlab" || State.view === "news-details");
   }
 
   private get shownTask(): AgentTask | null {
