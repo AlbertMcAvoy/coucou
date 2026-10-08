@@ -33,6 +33,9 @@ jobs:
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
 
+      - name: Test open on hover
+        run: bash scripts/test-island-hover.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
