@@ -26,8 +26,10 @@ fn wants_json(agent: &str) -> bool {
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
     if event != "PermissionRequest" {
+        // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
+        // (and the user's Always Allow): Coucou never allows a tool by itself.
         if agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse" {
-            return Some(r#"{"decision":"allow"}"#.to_string());
+            return Some(r#"{"decision":"ask"}"#.to_string());
         }
         return wants_json(agent).then(|| "{}".to_string());
     }
@@ -144,16 +146,16 @@ mod tests {
     fn allows(out: &str) -> bool {
         let v: Value = serde_json::from_str(out).expect("every reply is JSON");
         let text = v.to_string();
-        text.contains("allow") || v.get("decision").is_some() || v.get("permission").is_some() || v.get("continue").is_some()
+        // Any decision counts as one, except "ask" (Antigravity's PreToolUse): that hands the
+        // choice back to the agent's own prompt.
+        let decided = v.get("decision").map_or(false, |d| d.as_str() != Some("ask"));
+        text.contains("allow") || decided || v.get("permission").is_some() || v.get("continue").is_some()
     }
 
     #[test]
     fn nothing_is_ever_allowed_without_a_decision() {
         for agent in AGENTS {
             for event in EVENTS {
-                if *agent == "antigravity" && *event == "PreToolUse" {
-                    continue;
-                }
                 if let Some(out) = stdout(agent, event, None, None) {
                     assert!(!allows(&out), "{agent:?} {event} printed {out} with nobody clicking");
                 }
@@ -171,9 +173,6 @@ mod tests {
     fn a_decision_only_counts_on_a_permission_request_from_an_agent_that_takes_one() {
         for agent in AGENTS {
             for event in EVENTS.iter().filter(|e| **e != "PermissionRequest") {
-                if *agent == "antigravity" && *event == "PreToolUse" {
-                    continue;
-                }
                 if let Some(out) = stdout(agent, event, Some("allow"), None) {
                     assert!(!allows(&out), "{agent:?} {event}: {out}");
                 }
@@ -202,9 +201,9 @@ mod tests {
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
         assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
         assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
-        // Antigravity requires {"decision":"allow"} on PreToolUse to avoid denying tool execution;
+        // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
         // other lifecycle events receive "{}".
-        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"allow"}"#);
+        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
         for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");
         }

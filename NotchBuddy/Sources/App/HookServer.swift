@@ -3377,9 +3377,10 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Antigravity requires {"decision":"allow"} on PreToolUse to avoid denying tool execution
+    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
+    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
     if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"allow"}\\n')
+        sys.stdout.write('{"decision":"ask"}\\n')
         sys.stdout.flush()
     elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
@@ -3681,9 +3682,10 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Antigravity requires {"decision":"allow"} on PreToolUse to avoid denying tool execution
+    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
+    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
     if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"allow"}\\n')
+        sys.stdout.write('{"decision":"ask"}\\n')
         sys.stdout.flush()
     elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
