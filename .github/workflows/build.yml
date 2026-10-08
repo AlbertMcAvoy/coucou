@@ -63,6 +63,9 @@ jobs:
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
+      - name: Pill colour tests
+        run: bash scripts/test-pill-colors.sh
+
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh
 
