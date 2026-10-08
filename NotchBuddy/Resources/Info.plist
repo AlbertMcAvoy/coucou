@@ -46,6 +46,10 @@
 	<string>Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Coucou uses the microphone when you dictate a message in the chat.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Coucou turns your voice into the text of a chat message.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 </dict>
