@@ -20,11 +20,14 @@ mod net;
 mod openai_compat;
 mod pipe;
 mod platform;
+#[cfg(target_os = "linux")]
+mod portal;
 mod recap;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod sounds;
 mod spotify;
 mod tray;
 #[cfg(windows)]
@@ -712,6 +715,10 @@ pub fn run() {
             desktop::desktop_mochi_fly_out,
             desktop::desktop_mochi_fly_home,
             desktop::desktop_mochi_set_asleep,
+            sounds::custom_sounds,
+            sounds::custom_sound,
+            sounds::reveal_sounds_folder,
+            sounds::reload_sounds,
             spotify::spotify_refresh,
             spotify::spotify_control,
             spotify::spotify_open,

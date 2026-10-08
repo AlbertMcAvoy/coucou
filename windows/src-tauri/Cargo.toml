@@ -50,6 +50,7 @@ libc = "0.2"
 # The GTK that Tauri already runs on, to reach its window for layer-shell and
 # the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
 gtk = "0.18"
-# The Spotify pill talks MPRIS on the session bus (spotify.rs). libdbus, the
-# version keyring already pulls in, so nothing new is downloaded.
+# libdbus, which keyring's Secret Service already links, so nothing new is
+# downloaded: Wayland global shortcuts through the XDG GlobalShortcuts portal
+# (portal.rs) and the Spotify pill over MPRIS (spotify.rs).
 dbus = "0.9.12"

@@ -59,6 +59,14 @@ export const Bridge = {
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
+  /** Which of these sounds have a file of the user's own in the sounds folder. */
+  customSounds: (names: readonly string[]) => call<string[]>("custom_sounds", { names }),
+  /** The user's file for one sound, as raw bytes. */
+  customSound: (name: string) => call<ArrayBuffer>("custom_sound", { name }),
+  revealSoundsFolder: () => call<void>("reveal_sounds_folder"),
+  /** Tells the island to read the sounds folder again ("sounds-changed"). */
+  reloadSounds: () => call<void>("reload_sounds"),
+
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
@@ -195,8 +203,9 @@ export const Bridge = {
   /** X11: top-left corner, physical pixels. */
   desktopDragMove: (x: number, y: number) => call<void>("desktop_mochi_drag_move", { x, y }),
   desktopDragEnd: (x: number, y: number) => call<void>("desktop_mochi_drag_end", { x, y }),
-  /** From the island to his spot. False: no spot on any connected display. */
-  desktopFlyOut: () => call<boolean>("desktop_mochi_fly_out"),
+  /** From the island to his spot. False: no spot on any connected display.
+   *  `anywhere`: the first-visit corner then, rather than staying home. */
+  desktopFlyOut: (anywhere = false) => call<boolean>("desktop_mochi_fly_out", { anywhere }),
   /** To the island, then hidden. `forget`: he lives in the island again. */
   desktopFlyHome: (forget: boolean) => call<boolean>("desktop_mochi_fly_home", { forget }),
   /** Asleep, the cursor poll stops. */
@@ -218,14 +227,19 @@ export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffl
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"
-  | "typesCharacter" | "unsupported" | "notPorted";
+  | "typesCharacter" | "unsupported" | "notPorted"
+  /** Wayland: handed to the desktop's portal, no answer yet / left out by it. */
+  | "pending" | "refused";
 
 export interface ShortcutsReport {
-  actions: { id: string; status: ShortcutStatus; typed?: string }[];
-  /** "wayland" or "no-display" when no global shortcut can be registered. */
+  /** `trigger`: on Wayland, the keys the desktop says run it, in its words. */
+  actions: { id: string; status: ShortcutStatus; typed?: string; trigger?: string }[];
+  /** "wayland" or "no-display" when no key grab can be made. */
   blocked: string | null;
   /** `<executable> --shortcut`: append an action id for a desktop shortcut. */
   command: string;
+  /** Wayland: the shortcuts went to the desktop's GlobalShortcuts portal. */
+  portal?: "pending" | "active" | null;
 }
 
 /** How the desktop Mochi's window works here (platform::DesktopMode). */
