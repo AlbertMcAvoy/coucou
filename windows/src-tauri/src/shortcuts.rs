@@ -638,9 +638,10 @@ mod wayland {
             assert_eq!(of(&r, "goToAlert").trigger, None);
             // Left out of the answer.
             assert_eq!(of(&r, "muteToggle").status, Status::Refused);
+            assert_eq!(of(&r, "desktopToggle").status, Status::Refused);
             // Never handed over: untouched.
             assert_eq!(of(&r, "toggleIsland").status, Status::Off);
-            assert_eq!(of(&r, "desktopToggle").status, Status::NotPorted);
+            assert_eq!(of(&r, "attachFrontWindow").status, Status::NotPorted);
         }
 
         #[test]
