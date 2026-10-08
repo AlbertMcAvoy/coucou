@@ -204,14 +204,19 @@ export const Bridge = {
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"
-  | "typesCharacter" | "unsupported" | "notPorted";
+  | "typesCharacter" | "unsupported" | "notPorted"
+  /** Wayland: handed to the desktop's portal, no answer yet / left out by it. */
+  | "pending" | "refused";
 
 export interface ShortcutsReport {
-  actions: { id: string; status: ShortcutStatus; typed?: string }[];
-  /** "wayland" or "no-display" when no global shortcut can be registered. */
+  /** `trigger`: on Wayland, the keys the desktop says run it, in its words. */
+  actions: { id: string; status: ShortcutStatus; typed?: string; trigger?: string }[];
+  /** "wayland" or "no-display" when no key grab can be made. */
   blocked: string | null;
   /** `<executable> --shortcut`: append an action id for a desktop shortcut. */
   command: string;
+  /** Wayland: the shortcuts went to the desktop's GlobalShortcuts portal. */
+  portal?: "pending" | "active" | null;
 }
 
 /** How the desktop Mochi's window works here (platform::DesktopMode). */
