@@ -188,6 +188,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
+            if ClaudeHost.activate(task.hostApp) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -229,13 +230,7 @@ struct OverviewView: View {
         case "agent_gemini", "agent_antigravity",
              "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
             #if !APPSTORE
-            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-            if let hit = terminalBundleIds.compactMap({ id in
-                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-            }).first {
-                hit.activate(options: .activateIgnoringOtherApps)
-            }
+            TerminalTarget.activate(sessionBundleId: nil)
             #endif
         case "ai_anthropic":
             switchChatProvider(.anthropic)
@@ -259,13 +254,7 @@ struct OverviewView: View {
                 }
             } else {
                 #if !APPSTORE
-                let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                         "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                if let hit = terminalBundleIds.compactMap({ id in
-                    NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                }).first {
-                    hit.activate(options: .activateIgnoringOtherApps)
-                }
+                TerminalTarget.activate(sessionBundleId: task.sessionBundleId)
                 #endif
             }
         }
@@ -625,11 +614,10 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                            let activated = terminalBundleIds.compactMap { id in
-                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                            if activated == nil {
+                            // The app the session runs in (its terminal, or VS Code), then any known terminal
+                            let task = state.focusTask
+                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -1966,7 +1954,8 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(PillCatalog.definition(for: task.id)?.name ?? task.name)
+                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp)
+                                                         : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
                     Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
@@ -1988,7 +1977,12 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude" {
+                    if task.id == "integration_claude", task.hostApp != nil {
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.7))
+                            .buttonStyle(.plain)
+                    } else if task.id == "integration_claude" {
                         Button("Open Visual Studio Code") { openVSCode() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
@@ -3805,9 +3799,9 @@ struct AgentPill: View {
 
     private var effectiveColor: String { task.color }
 
-    // VS Code pill always shows "VS Code" label regardless of active project name
+    // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
     private var displayName: String {
-        task.id == "integration_claude" ? "VS Code" : task.name
+        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp) : task.name
     }
 
     var body: some View {
