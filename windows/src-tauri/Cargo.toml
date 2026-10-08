@@ -50,3 +50,8 @@ libc = "0.2"
 # The GTK that Tauri already runs on, to reach its window for layer-shell and
 # the input region. libgtk-layer-shell itself is called directly (platform/linux.rs).
 gtk = "0.18"
+# "Open terminal" (platform/linux_focus.rs): KWin's scripting over D-Bus, and
+# EWMH on X11. Both already in the tree (keyring, global-hotkey): nothing new
+# to download or build.
+dbus = "0.9.12"
+x11rb = { version = "0.13", default-features = false }

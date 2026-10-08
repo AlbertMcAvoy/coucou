@@ -222,17 +222,33 @@ fn open_in_vscode(path: Option<String>) -> bool {
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
-/// runs in, when it was found (Windows, see session_window.rs); otherwise opens
-/// the folder in VS Code, as before.
+/// runs in, when it was found (see session_window.rs); otherwise opens the
+/// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
-    if let Some(owner) = session_id.as_deref().and_then(session_window::lookup) {
-        let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default();
-        if platform::focus_process_window(owner, folder) {
+    let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
+        return open_in_vscode(path);
+    };
+    let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
+    #[cfg(windows)]
+    {
+        if platform::focus_session_window(&owners, &folder) {
             return true;
         }
+        open_in_vscode(path)
     }
-    open_in_vscode(path)
+    // Linux asks the display server, KWin or the terminal, which can take a
+    // moment: never on the UI thread a sync command runs on. VS Code still
+    // opens when none of them could bring the window forward.
+    #[cfg(target_os = "linux")]
+    {
+        std::thread::spawn(move || {
+            if !platform::focus_session_window(&owners, &folder) {
+                open_in_vscode(path);
+            }
+        });
+        true
+    }
 }
 
 /// The Claude Desktop pill's target: the Claude app (Windows only — it has no

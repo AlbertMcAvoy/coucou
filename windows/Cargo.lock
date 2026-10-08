@@ -612,6 +612,7 @@ dependencies = [
 name = "coucou"
 version = "0.2.0"
 dependencies = [
+ "dbus",
  "gtk",
  "keyring",
  "libc",
@@ -627,6 +628,7 @@ dependencies = [
  "webview2-com",
  "windows 0.61.3",
  "windows-core 0.62.2",
+ "x11rb",
 ]
 
 [[package]]
