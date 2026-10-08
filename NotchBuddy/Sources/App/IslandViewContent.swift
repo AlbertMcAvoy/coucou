@@ -4021,110 +4021,60 @@ struct MusicCardView: View {
                     .buttonStyle(.plain)
                     .padding(.leading, 108)
                     .padding(.top, 2)
-            } else if let title = controller.trackTitle {
-                nowPlaying(title)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.top, 4)
-        // Music doesn't announce seeks made in its own window: re-read when the card shows
-        .onAppear { controller.refresh() }
-    }
-
-    private let red = Color(hex: "#FA2D48")
-
-    // The card is 98 pt tall: artwork row, progress row, controls row (same layout as Spotify).
-    private func nowPlaying(_ title: String) -> some View {
-        let subtitle = [controller.artist, controller.album].compactMap { $0 }.joined(separator: " · ")
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 9) {
-                NowPlayingArtwork(image: controller.artwork, accent: red)
-                    .frame(width: 36, height: 36)
-                    .onTapGesture { controller.openMusic() }
-                    .help(controller.album.map { "\($0) — open Music" } ?? "Open Music")
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 5) {
-                        Circle().fill(red).frame(width: 6, height: 6)
+            } else {
+                // Line 1: dot + title
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#FA2D48"))
+                        .frame(width: 7, height: 7)
+                    if let title = controller.trackTitle {
                         Text(title)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(Color(hex: "#F5F6F8"))
                             .lineLimit(1).truncationMode(.tail)
-                        if let fav = controller.favorited {
-                            NowPlayingIconButton(icon: fav ? "heart.fill" : "heart", size: 9,
-                                                 tint: fav ? red : Color(hex: "#6B7079"),
-                                                 help: fav ? "Remove from favorites" : "Favorite") {
-                                controller.toggleFavorite()
-                            }
-                        }
+                            .frame(maxWidth: 150, alignment: .leading)
                     }
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
+                }
+                .padding(.top, 6)
+                .padding(.leading, 108)
+
+                // Line 2: artist
+                if let artist = controller.artist {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .padding(.leading, 108)
+                }
+
+                // Line 3: controls
+                HStack(spacing: 8) {
+                    Button(action: { MusicController.shared.previousTrack() }) {
+                        Image(systemName: "backward.fill")
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#8E939C"))
-                            .lineLimit(1).truncationMode(.tail)
                     }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.trailing, 24)   // the ↗ button sits top-right
-            .padding(.top, 6)
-
-            // Position runs on its own clock only while playing and on screen
-            TimelineView(.animation(minimumInterval: 0.5, paused: !appState.musicPlaying)) { context in
-                NowPlayingProgress(
-                    position: controller.position(at: context.date),
-                    duration: controller.duration,
-                    accent: red,
-                    canSeek: controller.duration > 0,
-                    onSeek: { controller.seek(to: $0) }
-                )
-            }
-            .padding(.top, 7)
-
-            controls
-                .padding(.top, 4)
-        }
-        .padding(.leading, 108)
-        .padding(.trailing, 12)
-    }
-
-    private var controls: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 10) {
-                NowPlayingIconButton(icon: "shuffle", size: 10,
-                                     tint: controller.shuffling ? red : Color(hex: "#6B7079"),
-                                     help: controller.shuffling ? "Shuffle on" : "Shuffle off") {
-                    controller.setShuffling(!controller.shuffling)
-                }
-                NowPlayingIconButton(icon: "backward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Previous") {
-                    controller.previousTrack()
-                }
-                Button(action: { controller.playPause() }) {
-                    ZStack {
-                        Circle().fill(Color(hex: "#F5F6F8"))
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.playPause() }) {
                         Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 8.5, weight: .bold))
-                            .foregroundColor(Color(hex: "#0E0F11"))
-                            .offset(x: appState.musicPlaying ? 0 : 1)
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#FA2D48"))
                     }
-                    .frame(width: 20, height: 20)
+                    .buttonStyle(.plain)
+                    Button(action: { MusicController.shared.nextTrack() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(NowPlayingPressStyle())
-                .help(appState.musicPlaying ? String(localized: "Pause") : String(localized: "Play"))
-                NowPlayingIconButton(icon: "forward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Next") {
-                    controller.nextTrack()
-                }
-                NowPlayingIconButton(icon: controller.repeatMode == .one ? "repeat.1" : "repeat", size: 10,
-                                     tint: controller.repeatMode == .off ? Color(hex: "#6B7079") : red,
-                                     help: controller.repeatMode == .off ? "Repeat off"
-                                         : controller.repeatMode == .all ? "Repeat all" : "Repeat one") {
-                    controller.cycleRepeat()
-                }
+                .padding(.leading, 108)
+                .padding(.top, 6)
             }
-            Spacer(minLength: 8)
-            NowPlayingVolume(volume: controller.volume, accent: red) { controller.setVolume($0) }
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
     }
 }
 #endif
