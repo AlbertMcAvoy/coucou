@@ -68,8 +68,11 @@ You can also [build it yourself](#build-it-yourself).
 | `Ctrl+Alt+→` / `Ctrl+Alt+←` | Next / previous pill |
 | `Ctrl+Alt+S` | Mutes or unmutes Mochi |
 | `Ctrl+Alt+G` | Opens the wardrobe |
+| `Ctrl+Alt+D` | Sends Mochi to the desktop, or brings him home |
 | `Ctrl+Alt+N` | Opens and closes the island (off until you turn it on) |
 | In the open island: `Ctrl+→` `Ctrl+←`, `Ctrl+1`–`Ctrl+9` | Switch pills |
+| In the open island: `Ctrl+↓` `Ctrl+↑`, `Ctrl+O` | Walk the open GitHub list, open the highlighted row |
+| In the open island: `Ctrl+E` | Opens the latest edit's diff, or closes the diff |
 | In the open island: `Ctrl+Enter`, `Ctrl+K` | Send, start a new chat |
 | In the open island: `Ctrl+,`, `Ctrl+P` | Settings, keep the island open |
 
@@ -93,7 +96,9 @@ for one, puts `ą` on `AltGr+A` and `ś` on `AltGr+S`. The recorder refuses such
 a combination too.
 
 Older Intel graphics drivers rotate the screen on `Ctrl+Alt+←` / `→`; if yours
-still does, those two show up as *In use*.
+still does, those two show up as *In use*. On Linux, Xfce and MATE keep
+`Ctrl+Alt+D` to show the desktop, so there **Send Mochi to the desktop** shows
+up as *In use* until you give it other keys.
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a question from Claude Code shows its options to
@@ -431,19 +436,21 @@ own window.
   never the file itself. Counts and diffs come from Claude Code's Edit,
   MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
   Claude Desktop); other agents' edits show as plain steps.
-- The GitHub lists are clicked, not walked with the arrow keys, and there is no
-  iPhone to keep fetching them while the pill is off.
+- There is no iPhone to keep fetching the GitHub lists while the pill is off.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
   Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
-  terminal" here. Not in this version: sending Mochi to the desktop from the
-  keyboard (drag him out instead) and attaching the front window (their ids are
-  kept for later), moving through a card's
-  list (`⌘↑` `⌘↓` `⌘O`) and the diff (`⌘E`). The island only reads its own
-  shortcuts while it has the keyboard: in the chat, or after a global shortcut
-  opened it. **Go to alert** brings up any agent's waiting card on its own pill;
-  **Toggle the island** folds a waiting card rather than dropping it, like `Esc`
-  in the island.
+  terminal" here. Not in this version: attaching the front window (its id is
+  kept for later). The island only reads its own shortcuts while it has the
+  keyboard: in the chat, or after a global shortcut opened it. `Ctrl+↓`
+  `Ctrl+↑` `Ctrl+O` walk the GitHub lists, as on the Mac, and the highlighted
+  row scrolls into view where the Mac's three-row list doesn't follow it; in the
+  chat field `Ctrl+↑` `Ctrl+↓` keep moving the cursor. **Go to alert** brings
+  up any agent's waiting card on its own pill; **Toggle the island** folds a
+  waiting card rather than dropping it, like `Esc` in the island. **Send Mochi
+  to the desktop** (`Ctrl+Alt+D`, the Mac's `⌃⌥D`)
+  flies him to his spot, or to the bottom-right corner when that spot was on a
+  display that is gone; pressed again, he flies home.
 - Weekly recap:
   - Sharing happens inside the island instead of a separate panel, and Save
     writes straight into Pictures (or Downloads) instead of asking where. There
@@ -467,8 +474,7 @@ own window.
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
 - Mochi on the desktop doesn't dance: there is no music integration to dance
-  to. Dropping him on a window doesn't attach it to the chat, and the Mac's
-  ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
+  to, and dropping him on a window doesn't attach it to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse
   move, which wakes him and gives the rest back to the desktop.
 
@@ -518,7 +524,8 @@ What changes on Linux:
   (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
   that display; on X11 it is an ordinary always-on-top window that goes
   anywhere. **GNOME on Wayland** has no layer-shell and lets no app place its
-  own window, so there Mochi can't leave the island: dragging him does nothing.
+  own window, so there Mochi can't leave the island: dragging him does nothing,
+  and the desktop shortcut only makes him grumble.
 - **Claude Code hooks** go through `~/.local/share/coucou/bin/coucou-hook` and a
   Unix socket at `$XDG_RUNTIME_DIR/coucou.sock`. Both ends check that the other
   runs as the same user. Every other agent uses the same relay, single-quoted
@@ -548,8 +555,8 @@ What changes on Linux:
   for any shortcut that doesn't work):
   `coucou --shortcut openChat` (or the AppImage's path) runs the action in the
   Coucou that is already open. The ids are `toggleIsland`, `openChat`,
-  `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle` and
-  `wardrobeToggle`.
+  `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle`,
+  `desktopToggle` and `wardrobeToggle`.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
 - **Plan usage**: the status line relay is `~/.local/share/coucou/bin/coucou-hook
   --statusline` and runs your previous status line with `/bin/sh -c`, like Claude

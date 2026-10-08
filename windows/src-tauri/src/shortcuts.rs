@@ -19,6 +19,7 @@
 //   Ctrl+Alt+Space   open the chat           Ctrl+Alt+→ / ←  next / previous pill
 //   Ctrl+Alt+A       waiting permission      Ctrl+Alt+S      mute Mochi
 //   Ctrl+Alt+T       open the terminal       Ctrl+Alt+G      wardrobe
+//   Ctrl+Alt+D       Mochi to the desktop, or home again (the Mac's ⌃⌥D)
 //   Ctrl+Alt+N       open / close the island (off by default, as on the Mac)
 //
 // ⌃⌥[ and ⌃⌥] became the arrows (brackets are AltGr characters almost
@@ -66,8 +67,7 @@ pub const ACTIONS: &[ActionDef] = &[
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
     action("muteToggle", "Ctrl+Alt+S", true, true),
-    // Mochi on the desktop is not in this version.
-    action("desktopToggle", "Ctrl+Alt+D", true, false),
+    action("desktopToggle", "Ctrl+Alt+D", true, true),
     action("wardrobeToggle", "Ctrl+Alt+G", true, true),
 ];
 
@@ -731,10 +731,10 @@ mod tests {
     }
 
     #[test]
-    fn the_actions_not_ported_yet_are_reserved_not_registered() {
+    fn the_action_not_ported_yet_is_reserved_not_registered() {
         let plan = plan(&Bindings::new(), never);
         for (def, outcome) in plan {
-            let reserved = matches!(def.id, "attachFrontWindow" | "desktopToggle");
+            let reserved = def.id == "attachFrontWindow";
             assert_eq!(def.ported, !reserved);
             match outcome {
                 Ok(_) => assert!(def.ported && def.enabled_by_default, "{}", def.id),
@@ -853,7 +853,8 @@ mod tests {
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "wardrobeToggle"])), Some("wardrobeToggle"));
         assert_eq!(from_args(&args(&["coucou", "--shortcut"])), None);
         assert_eq!(from_args(&args(&["coucou", "--shortcut", "rm -rf"])), None);
-        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), None);
+        assert_eq!(from_args(&args(&["coucou", "--shortcut", "desktopToggle"])), Some("desktopToggle"));
+        assert_eq!(from_args(&args(&["coucou", "--shortcut", "attachFrontWindow"])), None);
         assert_eq!(from_args(&args(&["coucou"])), None);
     }
 }
