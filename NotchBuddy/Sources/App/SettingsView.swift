@@ -135,6 +135,7 @@ struct SettingsView: View {
     @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
     #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
+    @State private var customSoundCount = SoundEngine.shared.customized.count
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -288,6 +289,24 @@ struct SettingsView: View {
                         .frame(width: 36, alignment: .trailing)
                         .monospacedDigit()
                 }
+                HStack(spacing: 8) {
+                    Button("Open sounds folder") { SoundEngine.shared.revealCustomFolder() }
+                    Button("Reload sounds") {
+                        SoundEngine.shared.reload()
+                        customSoundCount = SoundEngine.shared.customized.count
+                        SoundEngine.shared.play("pop")
+                    }
+                    if customSoundCount > 0 {
+                        Text(String(format: String(localized: "%lld custom"), Int64(customSoundCount)))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .disabled(!state.soundEnabled)
+                Text("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(6)
         }
