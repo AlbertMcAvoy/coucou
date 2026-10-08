@@ -3377,8 +3377,11 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Gemini CLI, Antigravity, Muse Code and Copilot CLI expect {} on stdout (empty = no decision)
-    if agent in ('gemini', 'antigravity', 'muse', 'copilot'):
+    # Antigravity requires {"decision":"allow"} on PreToolUse to avoid denying tool execution
+    if agent == 'antigravity' and event == 'PreToolUse':
+        sys.stdout.write('{"decision":"allow"}\\n')
+        sys.stdout.flush()
+    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()
 
@@ -3678,8 +3681,11 @@ def main():
     except Exception:
         pass  # Always exit cleanly — never block the agent
 
-    # Gemini CLI, Antigravity, Muse Code and Copilot CLI expect {} on stdout (empty = no decision)
-    if agent in ('gemini', 'antigravity', 'muse', 'copilot'):
+    # Antigravity requires {"decision":"allow"} on PreToolUse to avoid denying tool execution
+    if agent == 'antigravity' and event == 'PreToolUse':
+        sys.stdout.write('{"decision":"allow"}\\n')
+        sys.stdout.flush()
+    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
         sys.stdout.write('{}\\n')
         sys.stdout.flush()
 
