@@ -401,7 +401,8 @@ own window.
 - No global keyboard shortcuts yet: a waiting card is folded with its **⌃** or
   `Esc` in the island, and reopened by clicking the island or Open in the tray.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out.
+  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
+  nothing to read it from yet.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -462,8 +463,10 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop doesn't dance: there is no music integration to dance
-  to. Dropping him on a window doesn't attach it to the chat, and the Mac's
+- Mochi on the desktop dances only on Linux, to Spotify; on Windows there is
+  no music integration to dance to yet. While he dances he stays awake (the
+  Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
+  to the chat, and the Mac's
   ⌃⌥D shortcut isn't there — drag him out, double-click him home. While he
   sleeps, the transparent square around him (120 px) takes the first mouse
   move, which wakes him and gives the rest back to the desktop.
@@ -533,6 +536,20 @@ What changes on Linux:
   `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle` and
   `wardrobeToggle`.
 - **Keys** live in the Secret Service (GNOME Keyring, KWallet).
+- **Spotify** (Settings → Integrations) is read over MPRIS, Spotify's D-Bus
+  interface on the session bus: the pill shows the track and plays, pauses
+  or skips on hover, the card has the cover, the progress bar (drag to
+  seek), shuffle, previous, next, repeat and the volume, and Mochi dances
+  while it plays — in the compact island, on the Spotify card, on the pill
+  and on the desktop. Nothing is polled: one thread waits on the bus for
+  Spotify's own signals while the pill is declared, and stops when it isn't.
+  **Open Spotify** brings it forward or starts `spotify` from your `PATH`,
+  else the Flatpak (`com.spotify.Client`) or the Snap; without one, **Get
+  Spotify** opens its download page. Covers come from Spotify's image CDN
+  (or a local track's file) and are fetched by Coucou itself, not the page.
+  Spotify builds that don't report the position over MPRIS show the bar
+  from where the track started; the Mac's Automation prompt has no
+  equivalent here.
 - **Plan usage**: the status line relay is `~/.local/share/coucou/bin/coucou-hook
   --statusline` and runs your previous status line with `/bin/sh -c`, like Claude
   Code. Codex is found on `$PATH`, in `~/.local/bin`, npm's global prefix, Volta,
