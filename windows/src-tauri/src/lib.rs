@@ -25,6 +25,7 @@ mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod sounds;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -710,6 +711,10 @@ pub fn run() {
             desktop::desktop_mochi_fly_out,
             desktop::desktop_mochi_fly_home,
             desktop::desktop_mochi_set_asleep,
+            sounds::custom_sounds,
+            sounds::custom_sound,
+            sounds::reveal_sounds_folder,
+            sounds::reload_sounds,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
