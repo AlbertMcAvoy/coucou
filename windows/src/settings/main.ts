@@ -10,6 +10,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
@@ -870,6 +871,20 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // Your own sounds: the folder, a reload, and how many are replaced.
+  const customCount = h("span", { class: "hint" });
+  const countCustom = () =>
+    void Bridge.customSounds(SOUND_NAMES).then((own) => {
+      const n = own?.length ?? 0;
+      customCount.textContent = n > 0 ? t("{0} custom", { 0: n }) : "";
+    });
+  countCustom();
+  const soundsFolder = h("button", { text: t("Open sounds folder"), onclick: () => void Bridge.revealSoundsFolder() });
+  const reloadSounds = h("button", {
+    text: t("Reload sounds"),
+    onclick: () => void Bridge.reloadSounds().then(() => window.setTimeout(countCustom, 300)),
+  });
+
   const autoClose = h("input", {
     type: "number", min: "5", max: "120", step: "1",
     value: String(Math.round(settings.autoCloseInterval)),
@@ -916,6 +931,13 @@ function generalSection(): HTMLElement {
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
+    h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
+    h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Open on hover") }),
+      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -975,6 +997,17 @@ const SHORTCUTS_UI = {
     return t("Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:");
   },
   get noDisplay() { return t("No display server was found, so global shortcuts are off."); },
+  get portalPending() {
+    return t("Asking your desktop to register the shortcuts. It may show its own window to confirm them.");
+  },
+  get portalActive() {
+    return t("These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.");
+  },
+  get portalFallback() {
+    return t("If one doesn't work, you can also add it in your system's keyboard settings with these commands:");
+  },
+  desktopKeys: (keys: string) => t("Desktop: {keys}", { keys }),
+  get refused() { return t("Not set by your desktop"); },
 };
 
 function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
@@ -999,6 +1032,9 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
       case "invalid": return h("span", { class: "tag err", text: SHORTCUTS_UI.invalid });
       case "typesCharacter": return h("span", { class: "tag warn", text: SHORTCUTS_UI.types(st.typed ?? "?") });
       case "unsupported": return h("span", { class: "tag", text: SHORTCUTS_UI.unavailable });
+      case "refused": return h("span", { class: "tag warn", text: SHORTCUTS_UI.refused });
+      // Wayland: the desktop may run it on other keys than the ones asked for.
+      case "active": return st.trigger ? h("span", { class: "tag", text: SHORTCUTS_UI.desktopKeys(st.trigger) }) : null;
       default: return null;
     }
   }
@@ -1081,12 +1117,27 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     }
 
     clear(blockedNote);
-    if (report?.blocked === "wayland") {
-      const commands = h("div", { class: "diff" });
+    const commands = (command: string) => {
+      const list = h("div", { class: "diff" });
       for (const d of SHORTCUTS) {
-        if (d.ported) commands.append(h("div", { class: "ctx", text: `${report.command} ${d.id}` }));
+        if (d.ported) list.append(h("div", { class: "ctx", text: `${command} ${d.id}` }));
       }
-      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.wayland }), commands);
+      return list;
+    };
+    if (report?.portal) {
+      // Wayland, through the desktop's GlobalShortcuts portal; the commands
+      // stay as a way around a shortcut the desktop didn't take.
+      const active = report.portal === "active";
+      blockedNote.append(
+        h("div", {
+          class: active ? "notice ok" : "notice",
+          text: active ? SHORTCUTS_UI.portalActive : SHORTCUTS_UI.portalPending,
+        }),
+        h("div", { class: "hint", text: SHORTCUTS_UI.portalFallback }),
+        commands(report.command),
+      );
+    } else if (report?.blocked === "wayland") {
+      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.wayland }), commands(report.command));
     } else if (report?.blocked) {
       blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.noDisplay }));
     }
