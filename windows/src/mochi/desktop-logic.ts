@@ -19,6 +19,8 @@ export interface DesktopSnapshot {
   soundVolume: number;
   /** Tray → Pause: he dozes off and stays asleep. */
   paused: boolean;
+  /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
+  dancing: boolean;
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */
