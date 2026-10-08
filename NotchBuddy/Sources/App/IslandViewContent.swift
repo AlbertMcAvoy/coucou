@@ -1175,6 +1175,9 @@ struct PromptView: View {
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
 
+    #if !APPSTORE
+    @State private var dictation = MacDictation()
+    #endif
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: .indigo)
@@ -1259,6 +1262,24 @@ struct PromptView: View {
                         .focused($focused)
                         .onSubmit { sendMessage() }
 
+                    #if !APPSTORE
+                    // Dictate instead of typing (on-device speech recognition when available)
+                    Button {
+                        Task { await dictation.toggle(startingFrom: text) }
+                    } label: {
+                        Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(dictation.isRecording ? Color(hex: "#F4505E") : Color(hex: "#8E939C"))
+                            .frame(width: 18, height: 18)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(dictation.isRecording ? String(localized: "Stop dictation") : String(localized: "Dictate"))
+                    .onChange(of: dictation.transcript) { _, _ in
+                        if dictation.isRecording { text = dictation.text }
+                    }
+                    #endif
+
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 11, weight: .semibold))
@@ -1303,6 +1324,9 @@ struct PromptView: View {
     }
 
     private func sendMessage() {
+        #if !APPSTORE
+        dictation.stop()
+        #endif
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         text = ""
