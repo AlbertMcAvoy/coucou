@@ -403,7 +403,8 @@ own window.
   process to the terminal or editor that runs it. A session in a classic
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
-  as it does when `code` is on your `PATH` and nothing was found.
+  as it does when `code` is on your `PATH` and nothing was found. Linux walks
+  the same tree; what it can bring forward depends on the desktop (see Linux).
 - Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
   X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
@@ -578,7 +579,20 @@ What changes on Linux:
   where it is missing, the island says so and Save still works.
 - What the Windows build leaves out, this one does too: sending a file by
   email and dragging Mochi onto a window.
-- **Open terminal** opens the folder in VS Code: Wayland lets no app bring
-  another app's window forward, and X11 would need a window-manager client this
-  build doesn't carry.
+- **Open terminal** walks up from the relay through `/proc` (stopping at
+  systemd, logins, ssh, session managers and panels, and at any process of
+  another user) to the terminal or editor the session runs in, then brings its
+  window forward — the one titled after the session's folder if it has several:
+  - **X11** (any desktop): EWMH — the window whose `_NET_WM_PID` is the nearest
+    ancestor gets a `_NET_ACTIVE_WINDOW` request, on its workspace. A terminal
+    that doesn't set `_NET_WM_PID` (some old `xterm` builds) isn't found.
+  - **KDE Plasma on Wayland**: a few lines of KWin script, loaded over D-Bus
+    from `$XDG_RUNTIME_DIR`, activate the window by process ID and are unloaded
+    right after; Plasma 5 and 6.
+  - **kitty**, anywhere: its tab is selected too when remote control listens on
+    a socket (`allow_remote_control` and `listen_on` in kitty.conf).
+  - **GNOME on Wayland** and other Wayland compositors let no app bring another
+    app's native window forward (an XWayland one, such as VS Code's by default,
+    still can be). There, and for a session under tmux, screen or ssh, whose
+    terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
