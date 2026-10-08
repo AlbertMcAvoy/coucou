@@ -399,8 +399,11 @@ own window.
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found.
-- No global keyboard shortcuts yet: a waiting card is folded with its **⌃** or
-  `Esc` in the island, and reopened by clicking the island or Open in the tray.
+- Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
+  X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
+  [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
+  the island, and reopened by clicking the island, Open in the tray or **Go to
+  alert**.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
   is left out.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
@@ -522,13 +525,27 @@ What changes on Linux:
   for `sh`, and its config under `~` (see Supported agents). A config that is a
   symlink (dotfiles) is written through to its target, with its permissions
   kept.
-- **Global shortcuts** are X11 key grabs, so they work in an X11 session.
+- **Global shortcuts** are X11 key grabs in an X11 session.
   On X11, AltGr is a modifier of its own and never clashes with `Ctrl+Alt`;
   combinations the desktop already uses (GNOME's `Ctrl+Alt+T` terminal and
-  `Ctrl+Alt+←`/`→` workspace switching) show up as *In use*. Wayland has no
-  key grabs — the GlobalShortcuts portal isn't supported yet — so nothing is
-  registered there, and **Settings → Shortcuts** lists commands to bind in your
-  desktop's own keyboard settings instead:
+  `Ctrl+Alt+←`/`→` workspace switching) show up as *In use*.
+  Wayland has no key grabs, so there Coucou hands its shortcuts to the desktop
+  through the XDG **GlobalShortcuts portal** (`xdg-desktop-portal`, with a
+  backend that has it: KDE Plasma 6, GNOME 48+, Hyprland, COSMIC…). Each
+  shortcut goes with its description and your keys as the preferred trigger;
+  the desktop may show its own window to confirm them or to pick other keys,
+  and it has the last word: a shortcut it already knows keeps the keys it was
+  given there, and you change them in the desktop's own shortcut settings.
+  **Settings → Shortcuts** says the shortcuts are registered with the desktop,
+  shows next to each one the keys the desktop reports (*Desktop: …*), and flags
+  one it left out. Changing or turning off a shortcut in Coucou binds the new
+  set in a new portal session. Coucou names itself `fr.louisraille.coucou` to
+  the portal where the portal allows it (`xdg-desktop-portal` 1.19+); a
+  desktop that wants an app name may otherwise refuse.
+  Where there is no such portal, or the desktop refuses, nothing is registered
+  and **Settings → Shortcuts** lists commands to bind in your
+  desktop's own keyboard settings instead (they are shown with the portal too,
+  for any shortcut that doesn't work):
   `coucou --shortcut openChat` (or the AppImage's path) runs the action in the
   Coucou that is already open. The ids are `toggleIsland`, `openChat`,
   `goToAlert`, `jumpToTerminal`, `nextPill`, `prevPill`, `muteToggle` and

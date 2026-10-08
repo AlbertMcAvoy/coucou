@@ -612,6 +612,7 @@ dependencies = [
 name = "coucou"
 version = "0.2.0"
 dependencies = [
+ "dbus",
  "gtk",
  "keyring",
  "libc",

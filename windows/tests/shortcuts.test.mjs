@@ -64,6 +64,14 @@ test("the defaults are the same on both sides of the bridge", () => {
   );
 });
 
+test("the descriptions the Wayland portal shows are the labels Settings shows", () => {
+  const rust = readFileSync(new URL("../src-tauri/src/shortcuts.rs", import.meta.url), "utf8");
+  const rows = Object.fromEntries(
+    [...rust.matchAll(/^\s*"(\w+)" => n_\("([^"]+)"\),/gm)].map(([, id, text]) => [id, text]),
+  );
+  assert.deepEqual(rows, Object.fromEntries(SHORTCUTS.map((d) => [d.id, SHORTCUT_TEXT[d.id]])));
+});
+
 // testEnabledByDefault
 test("only the island toggle is off by default; the two not ported yet are reserved", () => {
   for (const d of SHORTCUTS) {

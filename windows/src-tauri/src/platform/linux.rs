@@ -588,10 +588,10 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
 
 /// Global shortcuts are X11 key grabs. A Wayland session has no such thing: a
 /// grab made through XWayland only sees keys typed into other X11 windows, so
-/// it would look registered and never fire. The XDG GlobalShortcuts portal is
-/// the Wayland way and isn't wired up yet, so on Wayland nothing is registered
-/// and Settings explains how to bind `coucou --shortcut <id>` in the desktop's
-/// own keyboard settings instead.
+/// it would look registered and never fire. On Wayland the shortcuts go to the
+/// desktop through the XDG GlobalShortcuts portal instead (portal.rs), and
+/// where there is none Settings explains how to bind `coucou --shortcut <id>`
+/// in the desktop's own keyboard settings.
 pub fn global_shortcuts_blocked() -> Option<&'static str> {
     let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
     let wayland = set("WAYLAND_DISPLAY")
