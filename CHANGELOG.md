@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Apple Music (macOS, GitHub build): the card gets the album cover, the album, a progress bar you drag or click to seek, shuffle, repeat (all or one), volume and a heart to favorite the track, in the same layout as Spotify. The cover comes from Music itself, or from Apple's public catalog for a track that has none — thanks @JhoanG956
+- Spotify (macOS, GitHub build): a new pill with the album cover, title, artist and album, a progress bar you drag or click to seek, play/pause, previous/next, shuffle, repeat and volume. It follows Spotify's own notification, so nothing polls, and it never opens Spotify by itself. The cover shows even before you allow Automation, through Spotify's public oEmbed; Mochi dances while it plays — thanks @JhoanG956
+
 ## Windows and Linux 0.2.0 — October 8, 2026
 
 The Windows and Linux app catches up with the Mac, from 0.1.1 to 0.2.1 — everything except Apple Music and the iPhone, which depend on macOS and iCloud.
