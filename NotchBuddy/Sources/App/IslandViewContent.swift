@@ -230,13 +230,7 @@ struct OverviewView: View {
         case "agent_gemini", "agent_antigravity",
              "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
             #if !APPSTORE
-            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                     "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-            if let hit = terminalBundleIds.compactMap({ id in
-                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-            }).first {
-                hit.activate(options: .activateIgnoringOtherApps)
-            }
+            TerminalTarget.activate(sessionBundleId: nil)
             #endif
         case "ai_anthropic":
             switchChatProvider(.anthropic)
@@ -260,13 +254,7 @@ struct OverviewView: View {
                 }
             } else {
                 #if !APPSTORE
-                let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2",
-                                         "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                if let hit = terminalBundleIds.compactMap({ id in
-                    NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                }).first {
-                    hit.activate(options: .activateIgnoringOtherApps)
-                }
+                TerminalTarget.activate(sessionBundleId: task.sessionBundleId)
                 #endif
             }
         }
@@ -626,16 +614,10 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            // The terminal the session runs in, when the hooks told us
-                            if state.focusTask?.id == "integration_claude", ClaudeHost.activate(state.focusTask?.hostApp) {
-                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
-                                return
-                            }
-                            let terminalBundleIds = ["com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty", "com.mitchellh.ghostty"]
-                            let activated = terminalBundleIds.compactMap { id in
-                                NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-                            }.first.map { $0.activate(options: .activateIgnoringOtherApps) }
-                            if activated == nil {
+                            // The app the session runs in (its terminal, or VS Code), then any known terminal
+                            let task = state.focusTask
+                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
