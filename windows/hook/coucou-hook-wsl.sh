@@ -14,6 +14,8 @@ EXE=/mnt/c/Users/YOUR_WINDOWS_USER/AppData/Local/Coucou/bin/coucou-hook.exe
 [ -f "$EXE" ] || exit 0
 # Coucou's own Claude Code runs (Mochi's chat) are not sessions to show.
 [ -n "$COUCOU_INTERNAL" ] && exit 0
-# Tells the relay which distro the session lives in.
-WSLENV="${WSLENV:+$WSLENV:}WSL_DISTRO_NAME" "$EXE" "$@"
+# Tells the relay which distro the session lives in, and how Claude Code was
+# started: Claude Desktop runs sessions in WSL too, and CLAUDE_CODE_ENTRYPOINT is
+# what puts them on its pill. WSL interop only passes what WSLENV lists.
+WSLENV="${WSLENV:+$WSLENV:}WSL_DISTRO_NAME:CLAUDE_CODE_ENTRYPOINT" "$EXE" "$@"
 exit 0
