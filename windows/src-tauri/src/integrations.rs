@@ -874,7 +874,7 @@ pub fn gitlab_base() -> Result<String, String> {
     if base.starts_with("https://") || base.starts_with("http://") {
         Ok(base)
     } else {
-        Err("The GitLab URL must start with https://".into())
+        Err(crate::i18n::t("The GitLab URL must start with https://"))
     }
 }
 
@@ -914,19 +914,21 @@ struct GitlabMemory {
 static GITLAB: std::sync::LazyLock<Mutex<GitlabMemory>> = std::sync::LazyLock::new(Default::default);
 
 /// What a to-do is about, in words, and whether it is bad news.
-fn gitlab_todo_kind(action: &str) -> (&'static str, bool) {
-    match action {
-        "review_requested" => ("Review requested", true),
-        "assigned" => ("Assigned to you", true),
-        "mentioned" | "directly_addressed" => ("Mentioned", true),
-        "build_failed" => ("Pipeline failed", false),
-        "unmergeable" => ("Can't be merged", false),
-        "merge_train_removed" => ("Out of the merge train", false),
-        "approval_required" => ("Approval needed", true),
-        "review_submitted" => ("Reviewed", true),
-        "member_access_requested" => ("Access requested", true),
-        _ => ("To-do", true),
-    }
+fn gitlab_todo_kind(action: &str) -> (String, bool) {
+    use crate::i18n::n_;
+    let (kind, ok) = match action {
+        "review_requested" => (n_("Review requested"), true),
+        "assigned" => (n_("Assigned to you"), true),
+        "mentioned" | "directly_addressed" => (n_("Mentioned"), true),
+        "build_failed" => (n_("Pipeline failed"), false),
+        "unmergeable" => (n_("Can't be merged"), false),
+        "merge_train_removed" => (n_("Out of the merge train"), false),
+        "approval_required" => (n_("Approval needed"), true),
+        "review_submitted" => (n_("Reviewed"), true),
+        "member_access_requested" => (n_("Access requested"), true),
+        _ => (n_("To-do"), true),
+    };
+    (crate::i18n::t(kind), ok)
 }
 
 // ── News kept across restarts ──
@@ -972,7 +974,8 @@ fn s(v: &Value, key: &str) -> String {
 /// first, with what the user is on each: author, assignee, reviewer.
 fn gitlab_involved(authored: &[Value], assigned: &[Value], reviewing: &[Value]) -> Vec<Value> {
     let mut items: Vec<Value> = Vec::new();
-    let sources = [(authored, "Yours"), (assigned, "Assigned"), (reviewing, "Review")];
+    // English keys: the card shows them in the interface language.
+    let sources = [(authored, crate::i18n::n_("Yours")), (assigned, crate::i18n::n_("Assigned")), (reviewing, crate::i18n::n_("Review"))];
     for (list, role) in sources {
         for mr in list.iter().filter(|m| s(m, "state") == "opened") {
             let Some(id) = mr.get("id").and_then(Value::as_i64) else { continue };
@@ -1045,7 +1048,7 @@ fn gitlab_note_text(note: &Value) -> Option<String> {
         return None;
     }
     if !note["system"].as_bool().unwrap_or(false) {
-        return Some(format!("Comment: “{}”", gitlab_plain(&body)));
+        return Some(crate::i18n::tf("Comment: “{text}”", &[("text", &gitlab_plain(&body))]));
     }
     // "added 2 commits\n\n<ul><li>abc1234 - Fix login</li>…</ul>\n\n[Compare…](…)"
     if body.starts_with("added ") && body.contains("<li>") {
@@ -1071,7 +1074,11 @@ fn gitlab_failed_jobs(jobs: &[Value]) -> Vec<Value> {
         .filter(|j| s(j, "status") == "failed" || s(j, "status").is_empty())
         .map(|j| {
             let (name, stage) = (s(j, "name"), s(j, "stage"));
-            let text = if stage.is_empty() || stage == name { format!("{name} failed") } else { format!("{stage}: {name} failed") };
+            let text = if stage.is_empty() || stage == name {
+                crate::i18n::tf("{name} failed", &[("name", &name)])
+            } else {
+                crate::i18n::tf("{stage}: {name} failed", &[("stage", &stage), ("name", &name)])
+            };
             json!({ "text": text, "by": "" })
         })
         .take(GITLAB_CHANGES_KEEP)
@@ -1085,25 +1092,28 @@ fn gitlab_project_of(url: &str) -> String {
 
 /// What started a pipeline, in words.
 fn gitlab_pipeline_source(source: &str) -> String {
+    use crate::i18n::t;
     match source {
-        "push" => "Push".into(),
-        "web" => "Run from GitLab".into(),
-        "merge_request_event" => "Merge request".into(),
-        "schedule" => "Schedule".into(),
+        "push" => t("Push"),
+        "web" => t("Run from GitLab"),
+        "merge_request_event" => t("Merge request"),
+        "schedule" => t("Scheduled"),
         "api" => "API".into(),
-        "trigger" => "Trigger".into(),
-        "parent_pipeline" | "pipeline" => "Parent pipeline".into(),
-        "" => "Pipeline".into(),
+        "trigger" => t("Trigger"),
+        "parent_pipeline" | "pipeline" => t("Parent pipeline"),
+        "" => t("Pipeline"),
         other => other.replace('_', " "),
     }
 }
 
 /// A pipeline's duration in seconds, as "4 min 12 s".
 fn gitlab_took(secs: i64) -> String {
+    use crate::i18n::tf;
+    let (h, m, s) = ((secs / 3600).to_string(), (secs % 3600 / 60).to_string(), (secs % 60).to_string());
     match secs {
-        s if s < 60 => format!("{s} s"),
-        s if s < 3600 => format!("{} min {} s", s / 60, s % 60),
-        s => format!("{} h {} min", s / 3600, s % 3600 / 60),
+        x if x < 60 => tf("{seconds} s", &[("seconds", &s)]),
+        x if x < 3600 => tf("{minutes} min {seconds} s", &[("minutes", &m), ("seconds", &s)]),
+        _ => tf("{hours} h {minutes} min", &[("hours", &h), ("minutes", &m)]),
     }
 }
 
@@ -1180,12 +1190,18 @@ fn gitlab_fresh(
         if !ok {
             failed_projects.push(project.to_string());
         }
-        let verb = if ok { "Pipeline passed" } else { "Pipeline failed" };
         let reference = p["ref"].as_str().unwrap_or("");
+        let vars = [("project", project), ("ref", reference)];
+        let label = if ok {
+            crate::i18n::tf("Pipeline passed: {project} · {ref}", &vars)
+        } else {
+            crate::i18n::tf("Pipeline failed: {project} · {ref}", &vars)
+        };
         let url = p["url"].as_str().unwrap_or("").to_string();
-        let mut item = news(format!("{verb}: {project} · {reference}"), url, ok, None, None);
+        let mut item = news(label, url, ok, None, None);
         let sha: String = p["sha"].as_str().unwrap_or("").chars().take(8).collect();
-        let started = format!("{} on {reference}", gitlab_pipeline_source(p["source"].as_str().unwrap_or("")));
+        let source = gitlab_pipeline_source(p["source"].as_str().unwrap_or(""));
+        let started = crate::i18n::tf("{source} on {ref}", &[("source", &source), ("ref", reference)]);
         let started = if sha.is_empty() { started } else { format!("{started} · {sha}") };
         item["changes"] = json!([{ "text": started, "by": "" }]);
         // How long it took, and which jobs failed, are asked for afterwards
@@ -1229,7 +1245,7 @@ fn gitlab_fresh(
                 changes.push(json!({ "text": format!("“{body}”"), "by": by }));
             }
             // Where, and from whom.
-            let from = if by.is_empty() { String::new() } else { format!("from {by}") };
+            let from = if by.is_empty() { String::new() } else { crate::i18n::tf("from {name}", &[("name", &by)]) };
             let place: Vec<&str> = [project.as_str(), from.as_str()].into_iter().filter(|x| !x.is_empty()).collect();
             if !place.is_empty() {
                 changes.push(json!({ "text": place.join(" · "), "by": "" }));
@@ -1273,16 +1289,21 @@ fn gitlab_fresh(
             if let (true, Some((was, had))) = (primed, &before) {
                 let branches = format!("{} → {}", s(mr, "source_branch"), s(mr, "target_branch"));
                 if state == "merged" && was != "merged" {
-                    let mut item = news(format!("Merged: {title}"), url.clone(), true, None, Some(id));
+                    let mut item = news(crate::i18n::tf("Merged: {title}", &[("title", &title)]), url.clone(), true, None, Some(id));
                     let by = mr.get("merged_by").map(|a| s(a, "name")).unwrap_or_default();
-                    let text = if by.is_empty() { branches.clone() } else { format!("Merged by {by} · {branches}") };
+                    let text = if by.is_empty() {
+                        branches.clone()
+                    } else {
+                        crate::i18n::tf("Merged by {name} · {branches}", &[("name", &by), ("branches", &branches)])
+                    };
                     item["changes"] = json!([{ "text": text, "by": by }]);
                     fresh.push(item);
                 }
                 for name in now_approvers.iter().filter(|n| !had.contains(n)) {
-                    let mut item = news(format!("Approved by {name}: {title}"), url.clone(), true, None, Some(id));
+                    let label = crate::i18n::tf("Approved by {name}: {title}", &[("name", name), ("title", &title)]);
+                    let mut item = news(label, url.clone(), true, None, Some(id));
                     item["changes"] = json!([
-                        { "text": format!("Approvals so far: {}", now_approvers.join(", ")), "by": "" },
+                        { "text": crate::i18n::tf("Approvals so far: {names}", &[("names", &now_approvers.join(", "))]), "by": "" },
                         { "text": branches.clone(), "by": "" },
                     ]);
                     fresh.push(item);
@@ -1313,7 +1334,7 @@ fn gitlab_fresh(
             let Some(latest) = others.first() else { continue };
             let name = latest.get("author").map(|a| s(a, "name")).unwrap_or_default();
             let commented = others.iter().any(|n| !n["system"].as_bool().unwrap_or(false));
-            let verb = if commented { "Comment by" } else { "Updated by" };
+
             let title = mr["title"].as_str().unwrap_or("");
             let url = mr["url"].as_str().unwrap_or("").to_string();
             // What they did, oldest first (the notes come newest first).
@@ -1325,7 +1346,13 @@ fn gitlab_fresh(
                     changes.push(json!({ "text": text, "by": by }));
                 }
             }
-            let mut item = news(format!("{verb} {name}: {title}"), url, true, None, Some(id));
+            let vars = [("name", name.as_str()), ("title", title)];
+            let label = if commented {
+                crate::i18n::tf("Comment by {name}: {title}", &vars)
+            } else {
+                crate::i18n::tf("Updated by {name}: {title}", &vars)
+            };
+            let mut item = news(label, url, true, None, Some(id));
             item["changes"] = json!(changes);
             fresh.push(item);
         }
@@ -1380,12 +1407,12 @@ async fn poll_gitlab(app: AppHandle) {
 
     let user = match get("user".into()).await {
         Ok(r) if r.status().is_success() => r.json::<Value>().await.unwrap_or(json!({})),
-        Ok(r) => return fail(status_error(r.status().as_u16(), "Token lacks the read_api scope")),
+        Ok(r) => return fail(status_error(r.status().as_u16(), &crate::i18n::t("Token lacks the read_api scope"))),
         // Without the URL: a self-hosted address is the user's business, not the log's.
-        Err(e) => return fail(format!("No connection: {}", e.without_url())),
+        Err(e) => return fail(crate::i18n::tf("No connection: {error}", &[("error", &e.without_url().to_string())])),
     };
     let Some(username) = user.get("username").and_then(Value::as_str).map(str::to_string) else {
-        return fail("Unexpected answer from GitLab — check the URL".into());
+        return fail(crate::i18n::t("Unexpected answer from GitLab — check the URL"));
     };
 
     // ── The To-Do list ──
@@ -1503,7 +1530,7 @@ async fn poll_gitlab(app: AppHandle) {
         lines.extend(item["changes"].as_array().cloned().unwrap_or_default());
         if let Ok(r) = get(format!("projects/{project}/pipelines/{pipeline}")).await {
             if let Some(secs) = r.json::<Value>().await.ok().and_then(|p| p["duration"].as_i64()) {
-                lines.push(json!({ "text": format!("Took {}", gitlab_took(secs)), "by": "" }));
+                lines.push(json!({ "text": crate::i18n::tf("Took {duration}", &[("duration", &gitlab_took(secs))]), "by": "" }));
             }
         }
         item["changes"] = json!(lines);
@@ -1531,7 +1558,11 @@ async fn poll_gitlab(app: AppHandle) {
         let labels: Vec<String> = fresh.iter().filter_map(|n| n["label"].as_str().map(str::to_string)).collect();
         IntegrationEvent {
             success: fresh.iter().all(|n| n["success"].as_bool().unwrap_or(true)),
-            label: if labels.len() == 1 { labels[0].clone() } else { format!("{} GitLab updates", labels.len()) },
+            label: if labels.len() == 1 {
+                labels[0].clone()
+            } else {
+                crate::i18n::tn("{count} GitLab update", "{count} GitLab updates", labels.len() as u64, &[])
+            },
             detail: Some(labels.join("\n")),
         }
     });
