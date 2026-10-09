@@ -317,6 +317,10 @@ mod tests {
         let script = d.relay_script();
         assert!(script.contains(r"EXE='/mnt/c/Users/O'\''Brien/AppData/Local/Coucou/bin/coucou-hook.exe'"));
         assert!(script.contains("WSLENV="), "the distro name must still be forwarded");
+        assert!(
+            script.contains(":CLAUDE_CODE_ENTRYPOINT\""),
+            "a Claude Desktop session in WSL must reach the relay as one"
+        );
         assert!(!script.contains('\r'), "a CRLF script breaks sh");
         assert_eq!(
             d.unc("/home/me/.claude/settings.json"),
