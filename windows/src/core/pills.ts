@@ -176,6 +176,16 @@ export function isComingSoon(id: string): boolean {
   return pillDefinition(id)?.support === "soon";
 }
 
+/**
+ * True for the pills of an agent: the tools you code in, the agents, and any
+ * tagged agent the catalog doesn't know (`agent_…`). Not a service, not a chat
+ * provider.
+ */
+export function isAgentPill(id: string): boolean {
+  const def = pillDefinition(id);
+  return def ? def.category === "workspace" || def.category === "agent" : id.startsWith("agent_");
+}
+
 /** True for pills whose sessions arrive as hook events (Mac #183). */
 export function isHookPill(id: string): boolean {
   return pillDefinition(id)?.connect.kind === "hooks";
