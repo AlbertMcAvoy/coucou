@@ -4,7 +4,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DEFAULT_MAIN_PILL, MAX_DECLARED, NO_MAIN_PILL, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
-  isComingSoon, isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
+  isAgentPill, isComingSoon, isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
   toggleDeclared,
 } from "../src/core/pills.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
@@ -71,6 +71,13 @@ test("the pills Windows always had keep their IDs, names, colours and sources", 
     assert.deepEqual([def.id, def.name, def.color, def.source], [id, name, color, source]);
     assert.equal(def.support, "yes");
   }
+});
+
+test("agents are the tools you code in, the agents and tagged agents — not services or chat providers", () => {
+  for (const id of ["integration_claude", "agent_cursor", "agent_claude-desktop", "agent_gemini", "agent_something-new"]) {
+    assert.ok(isAgentPill(id), id);
+  }
+  for (const id of ["integration_github", "integration_gitlab", "ai_anthropic", "ai_ollama"]) assert.ok(!isAgentPill(id), id);
 });
 
 test("IDs are unique", () => {

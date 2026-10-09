@@ -10,6 +10,7 @@ import {
   QUESTION_PICKER_H,
   type BotEmoteName, type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
+import { isAgentPill } from "../core/pills";
 import { Sound } from "../core/sound";
 import { State, applyTheme, type AgentTask } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
@@ -1190,13 +1191,14 @@ export class Island {
         this.engine.slotHVel = 0;
       }
     }
-    // Only the main Mochi is dressed — the one of the main tool's pill (Settings →
-    // Active pills): a focused integration pill shows its own colours, unless
-    // the wardrobe is open (BotCanvasView.showOutfit, macOS).
-    // In the wardrobe the hovered outfit swaps in at once, without the drop-in.
+    // Mochi is dressed for every agent — the main tool, Claude Desktop, a CLI
+    // agent — and plain for a service or a chat provider, whose colours he
+    // takes (the Mac dresses only the main tool's pill). In the wardrobe the
+    // hovered outfit swaps in at once, without the drop-in.
     const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
-    const mainFocused = State.focusId == null || State.focusId === State.mainPillId;
-    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
+    const shown = this.shownTask;
+    const agentShown = shown == null || isAgentPill(shown.id);
+    const showOutfit = agentShown || State.mode !== "expanded" || inWardrobe;
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
     this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
     // Dances while music plays: always in the compact island, expanded only on
