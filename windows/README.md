@@ -174,6 +174,10 @@ first launch after installing, if WSL has distributions, Coucou opens the
 settings on that section once. Looking at a distribution starts it, so Coucou
 only does that while the settings window is open.
 
+Claude Desktop runs some sessions in WSL as well: they reach Coucou the same way
+and land on the Claude Desktop pill, the relay script passing on how Claude
+Code was started.
+
 Each hook costs about 0.3 s for the WSL → Windows hop.
 
 ### Plan usage
