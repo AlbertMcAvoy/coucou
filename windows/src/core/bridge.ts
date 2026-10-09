@@ -124,6 +124,20 @@ export const Bridge = {
   /** Same rules as hooksApply: an explicit click, and only for the diff that was shown. */
   statusLineApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("status_line_apply", { install, fingerprint }),
+
+  // ── Claude Code under WSL ─────────────────────────────────────────────────
+  /** Installed distros. Listing them starts nothing. */
+  wslDistros: () => call<string[]>("wsl_distros"),
+  /** Starts the distro if it isn't running — only call it while the window is on screen. */
+  wslStatus: (distro: string) => callOrThrow<WslStatus>("wsl_status", { distro }),
+  /** The diff of the distro's settings.json and relay script. */
+  wslHooksPreview: (distro: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_hooks_preview", { distro, install }),
+  /** Writes both — explicit click only, and only for the diff that was shown. */
+  wslHooksApply: (distro: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_hooks_apply", { distro, install, fingerprint }),
+  /** The section the settings window was opened for, once ("" for none). */
+  takeSettingsSection: () => call<string>("take_settings_section"),
   /**
    * Asks the Codex CLI (`codex app-server`) for its plan limits, as Codex's
    * /status does. The raw `account/rateLimits/read` result, or null when Codex
@@ -337,6 +351,17 @@ export interface AgentHookPlan {
   backup: string;
   path: string;
   fingerprint: string;
+}
+
+export interface WslStatus {
+  distro: string;
+  installed: boolean;
+  /** Linux paths, as the user knows them. */
+  settingsPath: string;
+  relayPath: string;
+  relayReady: boolean;
+  /** The distro could not be reached; nothing else is meaningful then. */
+  error: string | null;
 }
 
 export interface HookPreview {

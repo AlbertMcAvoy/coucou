@@ -4648,6 +4648,94 @@
    "pt-BR": "Vidro: uma ilha branca e fosca",
    "ru": "Стекло: белый матовый остров",
    "id": "Kaca: pulau putih yang buram"
+  },
+  "Looking for WSL distributions…": {
+   "zh-Hans": "正在查找 WSL 发行版…",
+   "hi": "WSL डिस्ट्रीब्यूशन खोजे जा रहे हैं…",
+   "es": "Buscando distribuciones de WSL…",
+   "ar": "جارٍ البحث عن توزيعات WSL…",
+   "fr": "Recherche des distributions WSL…",
+   "bn": "WSL ডিস্ট্রিবিউশন খোঁজা হচ্ছে…",
+   "pt-BR": "Procurando distribuições do WSL…",
+   "ru": "Поиск дистрибутивов WSL…",
+   "id": "Mencari distribusi WSL…"
+  },
+  "Claude Code running inside WSL reaches Coucou through a small relay script in the distribution. Install it to see those sessions in the island and approve their permissions.": {
+   "zh-Hans": "在 WSL 中运行的 Claude Code 通过发行版里的一个小中继脚本连接 Coucou。安装它，即可在岛中看到这些会话并批准它们的权限请求。",
+   "hi": "WSL के अंदर चल रहा Claude Code डिस्ट्रीब्यूशन में एक छोटी रिले स्क्रिप्ट के ज़रिए Coucou तक पहुँचता है। उन सेशन को आइलैंड में देखने और उनकी अनुमतियाँ स्वीकृत करने के लिए इसे इंस्टॉल करें।",
+   "es": "Claude Code dentro de WSL llega a Coucou a través de un pequeño script de relevo en la distribución. Instálalo para ver esas sesiones en la isla y aprobar sus permisos.",
+   "ar": "يصل Claude Code الذي يعمل داخل WSL إلى Coucou عبر سكربت ترحيل صغير في التوزيعة. ثبّته لترى تلك الجلسات في الجزيرة وتوافق على أذوناتها.",
+   "fr": "Claude Code dans WSL joint Coucou par un petit script relais dans la distribution. Installez-le pour voir ces sessions dans l'île et y approuver leurs permissions.",
+   "bn": "WSL-এর ভেতরে চলা Claude Code ডিস্ট্রিবিউশনের একটি ছোট রিলে স্ক্রিপ্টের মাধ্যমে Coucou-তে পৌঁছায়। সেই সেশনগুলো আইল্যান্ডে দেখতে ও তাদের অনুমতি দিতে এটি ইনস্টল করুন।",
+   "pt-BR": "O Claude Code dentro do WSL chega ao Coucou por um pequeno script de retransmissão na distribuição. Instale-o para ver essas sessões na ilha e aprovar as permissões delas.",
+   "ru": "Claude Code внутри WSL связывается с Coucou через небольшой скрипт-ретранслятор в дистрибутиве. Установите его, чтобы видеть эти сеансы на острове и одобрять их разрешения.",
+   "id": "Claude Code di dalam WSL terhubung ke Coucou lewat skrip relay kecil di distribusinya. Pasang untuk melihat sesi-sesi itu di pulau dan menyetujui izinnya."
+  },
+  "No WSL distribution found. Install one with `wsl --install`, then refresh.": {
+   "zh-Hans": "未找到 WSL 发行版。用 `wsl --install` 安装一个，然后刷新。",
+   "hi": "कोई WSL डिस्ट्रीब्यूशन नहीं मिला। `wsl --install` से एक इंस्टॉल करें, फिर रीफ़्रेश करें।",
+   "es": "No se encontró ninguna distribución de WSL. Instala una con `wsl --install` y actualiza.",
+   "ar": "لم يُعثر على أي توزيعة WSL. ثبّت واحدة بالأمر `wsl --install` ثم حدّث.",
+   "fr": "Aucune distribution WSL trouvée. Installez-en une avec `wsl --install`, puis actualisez.",
+   "bn": "কোনো WSL ডিস্ট্রিবিউশন পাওয়া যায়নি। `wsl --install` দিয়ে একটি ইনস্টল করুন, তারপর রিফ্রেশ করুন।",
+   "pt-BR": "Nenhuma distribuição do WSL encontrada. Instale uma com `wsl --install` e atualize.",
+   "ru": "Дистрибутивы WSL не найдены. Установите один командой `wsl --install` и обновите.",
+   "id": "Tidak ada distribusi WSL. Pasang satu dengan `wsl --install`, lalu muat ulang."
+  },
+  "The hooks are there but the relay script is missing or out of date. Reinstall to fix it.": {
+   "zh-Hans": "hooks 已存在，但中继脚本缺失或已过时。重新安装即可修复。",
+   "hi": "hooks मौजूद हैं पर रिले स्क्रिप्ट गायब या पुरानी है। ठीक करने के लिए फिर से इंस्टॉल करें।",
+   "es": "Los hooks están, pero el script de relevo falta o está desactualizado. Reinstala para arreglarlo.",
+   "ar": "الخطافات موجودة لكن سكربت الترحيل مفقود أو قديم. أعد التثبيت لإصلاحه.",
+   "fr": "Les hooks sont là, mais le script relais manque ou n'est pas à jour. Réinstallez pour corriger.",
+   "bn": "hooks আছে কিন্তু রিলে স্ক্রিপ্ট নেই বা পুরোনো। ঠিক করতে আবার ইনস্টল করুন।",
+   "pt-BR": "Os hooks estão lá, mas o script de retransmissão está faltando ou desatualizado. Reinstale para corrigir.",
+   "ru": "Хуки на месте, но скрипта-ретранслятора нет или он устарел. Переустановите, чтобы исправить.",
+   "id": "Hook sudah ada tetapi skrip relay hilang atau usang. Pasang ulang untuk memperbaikinya."
+  },
+  "This is exactly what will change in {distro}: its settings.json, and the relay script its hooks run. Your own hooks are left untouched.": {
+   "zh-Hans": "以下正是 {distro} 中将要更改的内容：它的 settings.json，以及其 hooks 运行的中继脚本。你自己的 hooks 不会被改动。",
+   "hi": "{distro} में ठीक यही बदलेगा: उसकी settings.json, और वह रिले स्क्रिप्ट जिसे उसके hooks चलाते हैं। आपके अपने hooks नहीं छुए जाते।",
+   "es": "Esto es exactamente lo que cambiará en {distro}: su settings.json y el script de relevo que ejecutan sus hooks. Tus propios hooks no se tocan.",
+   "ar": "هذا بالضبط ما سيتغير في {distro}: ملف settings.json الخاص بها، وسكربت الترحيل الذي تشغّله خطافاتها. خطافاتك الخاصة لن تُمس.",
+   "fr": "Voici exactement ce qui change dans {distro} : son settings.json, et le script relais que lancent ses hooks. Vos propres hooks ne sont pas touchés.",
+   "bn": "{distro}-এ ঠিক এটাই বদলাবে: এর settings.json, আর এর hooks যে রিলে স্ক্রিপ্ট চালায়। আপনার নিজের hooks অপরিবর্তিত থাকে।",
+   "pt-BR": "Isto é exatamente o que vai mudar em {distro}: o settings.json dela e o script de retransmissão que os hooks executam. Seus próprios hooks não são tocados.",
+   "ru": "Вот что именно изменится в {distro}: его settings.json и скрипт-ретранслятор, который запускают хуки. Ваши собственные хуки не затрагиваются.",
+   "id": "Inilah persis yang akan berubah di {distro}: settings.json-nya, dan skrip relay yang dijalankan hook-nya. Hook Anda sendiri tidak disentuh."
+  },
+  "This removes Coucou's entries and the relay script only. Your own hooks are left untouched.": {
+   "zh-Hans": "这只会移除 Coucou 的条目和中继脚本。你自己的 hooks 不会被改动。",
+   "hi": "यह केवल Coucou की प्रविष्टियाँ और रिले स्क्रिप्ट हटाता है। आपके अपने hooks नहीं छुए जाते।",
+   "es": "Esto solo quita las entradas de Coucou y el script de relevo. Tus propios hooks no se tocan.",
+   "ar": "هذا يزيل مدخلات Coucou وسكربت الترحيل فقط. خطافاتك الخاصة لن تُمس.",
+   "fr": "Ceci retire uniquement les entrées de Coucou et le script relais. Vos propres hooks ne sont pas touchés.",
+   "bn": "এটি শুধু Coucou-র এন্ট্রি আর রিলে স্ক্রিপ্ট সরায়। আপনার নিজের hooks অপরিবর্তিত থাকে।",
+   "pt-BR": "Isto remove apenas as entradas do Coucou e o script de retransmissão. Seus próprios hooks não são tocados.",
+   "ru": "Удаляются только записи Coucou и скрипт-ретранслятор. Ваши собственные хуки не затрагиваются.",
+   "id": "Ini hanya menghapus entri Coucou dan skrip relay. Hook Anda sendiri tidak disentuh."
+  },
+  "{name} isn't an installed WSL distribution.": {
+   "zh-Hans": "{name} 不是已安装的 WSL 发行版。",
+   "hi": "{name} कोई इंस्टॉल किया हुआ WSL डिस्ट्रीब्यूशन नहीं है।",
+   "es": "{name} no es una distribución de WSL instalada.",
+   "ar": "{name} ليست توزيعة WSL مثبّتة.",
+   "fr": "{name} n'est pas une distribution WSL installée.",
+   "bn": "{name} কোনো ইনস্টল করা WSL ডিস্ট্রিবিউশন নয়।",
+   "pt-BR": "{name} não é uma distribuição do WSL instalada.",
+   "ru": "{name} — не установленный дистрибутив WSL.",
+   "id": "{name} bukan distribusi WSL yang terpasang."
+  },
+  "Can't reach {name}. Start it once from a terminal, then refresh.": {
+   "zh-Hans": "无法连接 {name}。先在终端里启动一次，然后刷新。",
+   "hi": "{name} तक नहीं पहुँच सकते। इसे एक बार टर्मिनल से शुरू करें, फिर रीफ़्रेश करें।",
+   "es": "No se puede acceder a {name}. Ábrela una vez desde un terminal y actualiza.",
+   "ar": "تعذّر الوصول إلى {name}. شغّلها مرة من الطرفية ثم حدّث.",
+   "fr": "Impossible de joindre {name}. Lancez-la une fois depuis un terminal, puis actualisez.",
+   "bn": "{name}-এ পৌঁছানো যাচ্ছে না। একবার টার্মিনাল থেকে চালু করুন, তারপর রিফ্রেশ করুন।",
+   "pt-BR": "Não foi possível acessar {name}. Inicie-a uma vez pelo terminal e atualize.",
+   "ru": "Не удаётся связаться с {name}. Запустите его один раз из терминала и обновите.",
+   "id": "Tidak bisa menjangkau {name}. Jalankan sekali dari terminal, lalu muat ulang."
   }
  }
 }

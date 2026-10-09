@@ -32,6 +32,7 @@ mod spotify;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
+mod wsl;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -51,6 +52,9 @@ use settings::Settings;
 pub struct Shared {
     pub settings: Mutex<Settings>,
     pub gate: Arc<PollGate>,
+    /// Section the settings window should scroll to. Kept until the window
+    /// takes it, because the first-launch offer can fire before its page loads.
+    pub settings_section: Mutex<String>,
 }
 
 #[derive(Serialize)]
@@ -70,7 +74,9 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let mut settings = shared.settings.lock().unwrap().clone();
     // The real state of ~/.claude/settings.json wins over whatever we stored.
     let hooks_status = hooks::status();
-    settings.hooks_installed = hooks_status.installed;
+    // WSL is taken on trust from the last write or refresh: asking every distro
+    // here would start their VMs just to draw a dot.
+    settings.hooks_installed = hooks_status.installed || !settings.wsl_hooks.is_empty();
     settings.plan_relay_installed = hooks_status.plan_relay_installed;
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
@@ -93,6 +99,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
+        // Nor which distros have hooks: wsl_hooks_apply and wsl_status keep that.
+        settings.wsl_hooks = current.wsl_hooks.clone();
+        settings.wsl_prompted = current.wsl_prompted;
         *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -341,8 +350,13 @@ fn hooks_status() -> HookStatus {
 
 /// Pill ID → whether that agent's hooks reach Coucou. Read-only.
 #[tauri::command]
-fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
-    agent_hooks::status()
+fn agent_hooks_status(shared: State<Shared>) -> std::collections::HashMap<String, bool> {
+    let mut status = agent_hooks::status();
+    // Claude Code under WSL counts too (taken on trust, see `boot`).
+    if !shared.settings.lock().unwrap().wsl_hooks.is_empty() {
+        status.insert("integration_claude".to_string(), true);
+    }
+    status
 }
 
 /// Returns the diff the user has to look at before anything is written.
@@ -364,7 +378,7 @@ fn hooks_apply(
     let backup = hooks::write(install, &fingerprint)?;
     let updated = {
         let mut current = shared.settings.lock().unwrap();
-        current.hooks_installed = install;
+        current.hooks_installed = install || !current.wsl_hooks.is_empty();
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));
         }
@@ -372,6 +386,95 @@ fn hooks_apply(
     };
     let _ = app.emit("settings-changed", updated);
     Ok(backup)
+}
+
+// ── Claude Code under WSL ─────────────────────────────────────────────────────
+// Every one of these may start a distro, which takes seconds: they run off the
+// main thread so the windows stay responsive meanwhile.
+
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())
+}
+
+/// Installed distros. Cheap: listing them starts nothing.
+#[tauri::command]
+async fn wsl_distros() -> Vec<String> {
+    blocking(wsl::distros).await.unwrap_or_default()
+}
+
+#[tauri::command]
+async fn wsl_status(app: AppHandle, distro: String) -> Result<wsl::WslStatus, String> {
+    let status = blocking(move || wsl::status(&distro)).await?;
+    if status.error.is_none() {
+        remember_wsl_hooks(&app, &status.distro, status.installed);
+    }
+    Ok(status)
+}
+
+#[tauri::command]
+async fn wsl_hooks_preview(distro: String, install: bool) -> Result<HookPreview, String> {
+    blocking(move || wsl::preview(&distro, install)).await?
+}
+
+/// Only ever called from an explicit click in the settings window, with the
+/// fingerprint of the diff that was shown.
+#[tauri::command]
+async fn wsl_hooks_apply(app: AppHandle, distro: String, install: bool, fingerprint: String) -> Result<String, String> {
+    let name = distro.clone();
+    let backup = blocking(move || wsl::write(&name, install, &fingerprint)).await??;
+    remember_wsl_hooks(&app, &distro, install);
+    Ok(backup)
+}
+
+/// Keeps `wsl_hooks` in step with what a distro really has, so the Claude pill
+/// knows hooks exist without asking WSL at every launch.
+fn remember_wsl_hooks(app: &AppHandle, distro: &str, installed: bool) {
+    let shared = app.state::<Shared>();
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        let had = current.wsl_hooks.iter().any(|d| d == distro);
+        if had == installed {
+            return;
+        }
+        if installed {
+            current.wsl_hooks.push(distro.to_string());
+        } else {
+            current.wsl_hooks.retain(|d| d != distro);
+        }
+        current.hooks_installed = hooks::status().installed || !current.wsl_hooks.is_empty();
+        if let Err(err) = settings::save(&current) {
+            log::line(format!("could not save settings: {err}"));
+        }
+        current.clone()
+    };
+    let _ = app.emit("settings-changed", updated);
+}
+
+/// First launch after installing: if WSL has distros and none is hooked up yet,
+/// open the settings on the WSL section. Offered once; nothing is written until
+/// the user reviews the diff and clicks, as everywhere else.
+fn offer_wsl_setup(app: AppHandle) {
+    std::thread::spawn(move || {
+        let shared = app.state::<Shared>();
+        {
+            let current = shared.settings.lock().unwrap();
+            if current.wsl_prompted || !current.wsl_hooks.is_empty() {
+                return;
+            }
+        }
+        if wsl::distros().is_empty() {
+            return;
+        }
+        {
+            let mut current = shared.settings.lock().unwrap();
+            current.wsl_prompted = true;
+            if let Err(err) = settings::save(&current) {
+                log::line(format!("could not save settings: {err}"));
+            }
+        }
+        log::line("WSL detected — offering to set up its Claude Code hooks");
+        show_settings_section(&app, "wsl");
+    });
 }
 
 // ── Other agents' hooks and plugins ──────────────────────────────────────────
@@ -677,13 +780,27 @@ fn create_settings_window(app: &AppHandle) {
 }
 
 pub fn show_settings_window(app: &AppHandle) {
+    show_settings_section(app, "");
+}
+
+/// Shows the settings window and tells it which section to scroll to ("" for
+/// none). The window also refreshes what is slow to compute (WSL) on this cue.
+fn show_settings_section(app: &AppHandle, section: &str) {
     let Some(win) = app.get_webview_window("settings") else {
         log::line("settings window missing");
         return;
     };
+    *app.state::<Shared>().settings_section.lock().unwrap() = section.to_string();
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    let _ = app.emit_to("settings", "settings-shown", ());
+}
+
+/// The section asked for by the last `show_settings_section`, once.
+#[tauri::command]
+fn take_settings_section(shared: State<Shared>) -> String {
+    std::mem::take(&mut *shared.settings_section.lock().unwrap())
 }
 
 #[tauri::command]
@@ -718,6 +835,7 @@ pub fn run() {
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
+            settings_section: Mutex::new(String::new()),
         })
         .manage(Pending::default())
         .manage(Chat::default())
@@ -770,6 +888,11 @@ pub fn run() {
             open_youtrack,
             youtrack_saved_searches,
             open_settings_window,
+            take_settings_section,
+            wsl_distros,
+            wsl_status,
+            wsl_hooks_preview,
+            wsl_hooks_apply,
             set_paused,
             shortcuts_status,
             shortcuts_suspend,
@@ -836,6 +959,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            offer_wsl_setup(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())

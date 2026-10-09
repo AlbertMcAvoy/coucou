@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport, type WslStatus } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -238,6 +238,143 @@ function claudeSection(status: HookStatus): HTMLElement {
   draw();
   return section;
 }
+
+// ── WSL section ───────────────────────────────────────────────────────────────
+// Claude Code running inside a WSL distro. Each distro gets its own relay script
+// and its own ~/.claude/settings.json, through the same reviewed diff as above.
+// Asking a distro for its state starts it, so this only runs while the window
+// is on screen (the "settings-shown" cue), never at launch.
+
+/** What the distros said the last time the window was shown; null before that. */
+let wslStatuses: WslStatus[] | null = null;
+let wslLooking = false;
+/** The WSL section on screen, redrawn when the statuses come in. */
+let wslRedraw: (() => void) | null = null;
+
+async function refreshWsl() {
+  if (wslLooking) return;
+  wslLooking = true;
+  wslRedraw?.();
+  try {
+    const names = (await Bridge.wslDistros()) ?? [];
+    const found: WslStatus[] = [];
+    for (const distro of names) {
+      try {
+        found.push(await Bridge.wslStatus(distro));
+      } catch (err) {
+        found.push({ distro, installed: false, settingsPath: "", relayPath: "", relayReady: false, error: String(err) });
+      }
+    }
+    wslStatuses = found;
+  } finally {
+    wslLooking = false;
+    wslRedraw?.();
+  }
+}
+
+/** The hooks of one distro: its settings.json and the relay script, in one diff. */
+function wslChange(st: WslStatus): Change {
+  return {
+    preview: (install) => Bridge.wslHooksPreview(st.distro, install),
+    apply: (install, fingerprint) => Bridge.wslHooksApply(st.distro, install, fingerprint),
+    get installText() {
+      return t("This is exactly what will change in {distro}: its settings.json, and the relay script its hooks run. Your own hooks are left untouched.", { distro: st.distro });
+    },
+    get removeText() { return t("This removes Coucou's entries and the relay script only. Your own hooks are left untouched."); },
+    get installButton() { return t("Back up and write"); },
+    get removeButton() { return t("Back up and remove"); },
+    done: (backup) => backup
+      ? t("Done. Previous settings saved as {backup}. Open a new Claude Code session to pick the hooks up.", { backup })
+      : t("Done. Open a new Claude Code session to pick the hooks up."),
+  };
+}
+
+function wslSection(hookReady: boolean): HTMLElement {
+  const head = h("h2", {});
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+  const section = h("section", { id: "wsl" }, head, body);
+
+  function draw() {
+    clear(head);
+    head.append(statusDot((wslStatuses ?? []).some((s) => s.installed)), h("span", { text: "WSL" }));
+    clear(body);
+    if (!wslStatuses) {
+      body.append(h("div", { class: "hint", text: t("Looking for WSL distributions…") }));
+      return;
+    }
+    body.append(h("div", {
+      class: "hint",
+      text: wslStatuses.length
+        ? t("Claude Code running inside WSL reaches Coucou through a small relay script in the distribution. Install it to see those sessions in the island and approve their permissions.")
+        : t("No WSL distribution found. Install one with `wsl --install`, then refresh."),
+    }));
+    for (const st of wslStatuses) body.append(distroBlock(st));
+    const refresh = h("button", { text: t("Refresh"), onclick: () => void refreshWsl() }) as HTMLButtonElement;
+    refresh.disabled = wslLooking;
+    body.append(h("div", { class: "row" }, refresh));
+  }
+
+  function distroBlock(st: WslStatus): HTMLElement {
+    const block = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
+    block.append(h("div", { class: "row" },
+      statusDot(st.installed),
+      h("span", { style: "font-weight:600", text: st.distro }),
+    ));
+    if (st.error) {
+      block.append(h("div", { class: "notice warn", text: st.error.replace(/^Error:\s*/, "") }));
+      return block;
+    }
+    block.append(
+      h("div", { class: "row" },
+        h("label", { text: "settings.json" }),
+        h("span", { class: "path", text: st.settingsPath }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: t("Relay") }),
+        h("span", { class: "path", text: st.relayPath }),
+        statusDot(st.relayReady),
+      ),
+    );
+    if (st.installed && !st.relayReady) {
+      block.append(h("div", {
+        class: "notice warn",
+        text: t("The hooks are there but the relay script is missing or out of date. Reinstall to fix it."),
+      }));
+    }
+
+    const change = wslChange(st);
+    const review = (install: boolean) => {
+      clear(block);
+      block.append(h("div", { class: "row" }, h("span", { style: "font-weight:600", text: st.distro })));
+      const inner = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
+      block.append(inner);
+      void reviewChange(inner, change, install, draw, () => void refreshWsl());
+    };
+    const install = h("button", {
+      class: "primary",
+      text: st.installed ? t("Reinstall hooks…") : t("Install hooks…"),
+      onclick: () => review(true),
+    }) as HTMLButtonElement;
+    // Same rule as Windows: no hooks pointing at a relay that isn't there.
+    if (!hookReady) {
+      install.disabled = true;
+      install.title = t("The relay isn't installed yet.");
+    }
+    const actions = h("div", { class: "row" }, install);
+    if (st.installed) {
+      actions.append(h("button", { class: "danger", text: t("Uninstall hooks…"), onclick: () => review(false) }));
+    }
+    block.append(actions);
+    return block;
+  }
+
+  wslRedraw = draw;
+  draw();
+  return section;
+}
+
+/** WSL is a Windows thing: WebView2 says "Windows" in its user agent, WebKitGTK says "Linux". */
+const HAS_WSL = /Windows/.test(navigator.userAgent);
 
 // ── Plan usage section ────────────────────────────────────────────────────────
 
@@ -1555,6 +1692,23 @@ async function main() {
   });
   await render();
 
+  // Every time the window comes up: look at WSL again (slow, so only while
+  // someone is looking) and scroll to the section it was opened for, if any.
+  const shown = (target: string) => {
+    if (HAS_WSL) void refreshWsl();
+    const el = target ? document.getElementById(target) : null;
+    // The section may be in a tab that isn't open: open it first.
+    const panel = el?.closest(".panel");
+    if (panel?.hasAttribute("hidden")) document.getElementById(panel.id.replace(/^panel-/, "tab-"))?.click();
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  void onEvent<null>("settings-shown", async () => shown((await Bridge.takeSettingsSection()) ?? ""));
+  // The first-launch offer can show the window before this page has loaded; the
+  // section it left behind says so. Otherwise the window starts hidden, and
+  // nothing here may start a distro then.
+  const pending = (await Bridge.takeSettingsSection()) ?? "";
+  if (pending) shown(pending);
+
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
@@ -1615,7 +1769,8 @@ async function render() {
   const tabs = tabbed([
     { id: "general", label: t("General"),
       content: [...generalSections(), activePillsSection(connected), shortcutsSection(shortcutReport)] },
-    { id: "agents", label: t("Agents"), content: [claudeSection(status), agentsSection(agents), planSection(status)] },
+    { id: "agents", label: t("Agents"),
+      content: [claudeSection(status), ...(HAS_WSL ? [wslSection(status.hookReady)] : []), agentsSection(agents), planSection(status)] },
     { id: "chat", label: t("Chat"),
       content: [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)] },
     { id: "integrations", label: t("Integrations"), content: [integrationsSection(present)] },

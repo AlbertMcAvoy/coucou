@@ -157,6 +157,8 @@ export interface Settings {
   };
   /** "dark", the island as on macOS, or "glass": white and frosted. */
   theme: "dark" | "glass";
+  /** WSL distros whose Claude Code has Coucou's hooks. Rust owns it too. */
+  wslHooks?: string[];
 }
 
 /** Puts `theme` on the page: style.css and settings.css key off `data-theme`. */

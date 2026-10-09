@@ -11,6 +11,10 @@
 //
 // Reading, the diff, the backup and the write itself live in config_file.rs,
 // shared with every other agent's installer (agents.rs).
+//
+// The same entries serve a Claude Code running under WSL (wsl.rs): there the
+// settings.json is the distro's, reached through \\wsl.localhost, and each
+// hook runs the relay script Coucou puts in it.
 
 use std::path::{Path, PathBuf};
 
@@ -71,7 +75,11 @@ pub fn settings_path() -> PathBuf {
 /// read-only paths like `status()`, which must never fail loudly; anything that
 /// writes goes through `config_file`, which surfaces the error instead.
 fn read_settings_lossy() -> Value {
-    config_file::read(&settings_path())
+    read_settings_lossy_at(&settings_path())
+}
+
+fn read_settings_lossy_at(path: &Path) -> Value {
+    config_file::read(path)
         .ok()
         .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
         .unwrap_or_else(|| json!({}))
@@ -108,6 +116,11 @@ fn status_line_is_ours(v: &Value) -> bool {
 /// `hooks` (or one of its events) that is not what Claude Code documents is
 /// refused rather than replaced.
 fn merged(existing: &Value) -> Result<Value, String> {
+    merged_with(existing, &hook_command)
+}
+
+/// `merged`, each event running `command(event)`.
+fn merged_with(existing: &Value, command: &dyn Fn(&str) -> String) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = match root.get("hooks") {
         None => Map::new(),
@@ -125,7 +138,7 @@ fn merged(existing: &Value) -> Result<Value, String> {
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": command(event),
                 "timeout": timeout,
             }]
         }));
@@ -172,29 +185,42 @@ fn without_ours(existing: &Value) -> Result<Value, String> {
 }
 
 fn edits(install: bool) -> Vec<FileEdit<'static>> {
-    vec![FileEdit {
-        path: settings_path(),
+    vec![hooks_edit(settings_path(), hook_command, install)]
+}
+
+/// Adds (or removes) Coucou's hooks in the settings.json at `path`, each event
+/// running `command(event)` there.
+pub fn hooks_edit(
+    path: PathBuf,
+    command: impl Fn(&str) -> String + 'static,
+    install: bool,
+) -> FileEdit<'static> {
+    FileEdit {
+        path,
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            if install { merged(current).map(Some) } else { without_ours(current).map(Some) }
+            if install { merged_with(current, &command).map(Some) } else { without_ours(current).map(Some) }
         }),
-    }]
+    }
+}
+
+/// Whether the settings.json at `path` has any of Coucou's hooks.
+pub fn installed_at(path: &Path) -> bool {
+    has_our_hooks(&read_settings_lossy_at(path))
+}
+
+fn has_our_hooks(settings: &Value) -> bool {
+    settings
+        .get("hooks")
+        .and_then(Value::as_object)
+        .map(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(entry_is_ours))
+        .unwrap_or(false)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 pub fn status() -> HookStatus {
     let current = read_settings_lossy();
-    let installed = current
-        .get("hooks")
-        .and_then(Value::as_object)
-        .map(|hooks| {
-            hooks
-                .values()
-                .filter_map(Value::as_array)
-                .flatten()
-                .any(entry_is_ours)
-        })
-        .unwrap_or(false);
+    let installed = has_our_hooks(&current);
     let hook_path = settings::hook_exe_path();
     HookStatus {
         installed,

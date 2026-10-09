@@ -79,6 +79,11 @@ pub struct Settings {
     /// "dark" (the island as on macOS) or "glass" (white, frosted). Kept as it
     /// comes: the island reads anything else as "dark".
     pub theme: String,
+    /// WSL distros whose Claude Code has Coucou's hooks, as last written or seen.
+    /// Owned by the Rust side (see `save_settings`), like `desktop_mochi`.
+    pub wsl_hooks: Vec<String>,
+    /// The first-launch offer to set up WSL was made (it is made once).
+    pub wsl_prompted: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -141,6 +146,8 @@ impl Default for Settings {
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
             theme: "dark".into(),
+            wsl_hooks: Vec::new(),
+            wsl_prompted: false,
         }
     }
 }
@@ -420,7 +427,9 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "theme": "glass"
+  "theme": "glass",
+  "wslHooks": ["Ubuntu"],
+  "wslPrompted": true
 }"##;
 
     fn custom() -> Value {
@@ -827,6 +836,8 @@ mod tests {
                 "language",
                 "desktopMochi",
                 "theme",
+                "wslHooks",
+                "wslPrompted",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
