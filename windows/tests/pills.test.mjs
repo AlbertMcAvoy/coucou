@@ -3,7 +3,7 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_MAIN_PILL, MAX_DECLARED, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
+  DEFAULT_MAIN_PILL, MAX_DECLARED, NO_MAIN_PILL, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
   isComingSoon, isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
   toggleDeclared,
 } from "../src/core/pills.ts";
@@ -254,6 +254,31 @@ test("switching the main pill frees its slot and the old main pill goes when idl
   assert.equal(ids()[0], "agent_codex");
   assert.ok(!ids().includes("integration_claude"));
   assert.equal(State.focusId, "agent_codex");
+});
+
+test("with no main tool nothing stays on for it, and focus rests on the first pill", () => {
+  assert.deepEqual(sanitizeDeclared({ mainPill: NO_MAIN_PILL, activeIntegrations: [] }).mainPill, NO_MAIN_PILL);
+  assert.deepEqual(chooseMainPill({ mainPill: "agent_cursor", activeIntegrations: [] }, NO_MAIN_PILL),
+    { mainPill: NO_MAIN_PILL, activeIntegrations: [] });
+  State.settings.mainPill = NO_MAIN_PILL;
+  State.settings.activeIntegrations = ["agent_claude-desktop", "integration_github"];
+  State.loadIntegrationTasks();
+  assert.deepEqual(ids(), ["agent_claude-desktop", "integration_github"]);
+  assert.equal(State.focusId, "agent_claude-desktop");
+
+  // A Claude Code session in a terminal brings its pill, which goes when it ends.
+  State.upsertWorkspacePill("integration_claude", "proj", "C:\proj");
+  assert.ok(ids().includes("integration_claude"));
+  State.removeTask("integration_claude");
+  assert.ok(!ids().includes("integration_claude"));
+});
+
+test("with no main tool and nothing declared, the island has no pill to focus", () => {
+  State.settings.mainPill = NO_MAIN_PILL;
+  State.settings.activeIntegrations = [];
+  State.loadIntegrationTasks();
+  assert.deepEqual(ids(), []);
+  assert.equal(State.focusTask, null);
 });
 
 test("a pill in the middle of a session stays until the session ends", () => {

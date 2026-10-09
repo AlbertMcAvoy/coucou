@@ -12,7 +12,7 @@ import {
 import { DEFAULT_SETTINGS, applyTheme, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  MAX_DECLARED, NO_MAIN_PILL, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -421,6 +421,8 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   const slots = h("div", { class: "hint" });
   const main = h("select", {}) as HTMLSelectElement;
   for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
+  // No pill stays on for where you code; a session still shows its own.
+  main.append(h("option", { value: NO_MAIN_PILL, text: t("None") }));
   main.addEventListener("change", () => {
     const next = chooseMainPill(settings, main.value);
     if (!next) return;

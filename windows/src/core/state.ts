@@ -397,6 +397,15 @@ class AppState {
   }
 
   /**
+   * Where focus rests: the main pill, or — with no main tool (Settings →
+   * Active pills → None) — the first pill there is.
+   */
+  get restingFocus(): string {
+    const main = this.mainPillId;
+    return this.tasks.some((t) => t.id === main) ? main : (this.tasks[0]?.id ?? main);
+  }
+
+  /**
    * True for a pill that stays when its session ends: the main pill and the
    * declared ones go back to idle instead of going away.
    */
@@ -427,7 +436,7 @@ class AppState {
       if (def) t.color = pillColor(def.id, def.color, this.settings.pillColors);
     }
     this.tasks = orderPills(this.tasks, d.mainPill);
-    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = d.mainPill;
+    if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = this.restingFocus;
     this.notify();
   }
 
@@ -454,7 +463,7 @@ class AppState {
     }
     this.tasks.splice(idx, 1);
     this.clearSessionDiffs(id);
-    if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? this.mainPillId;
+    if (this.focusId === id) this.focusId = this.restingFocus;
     this.notify();
   }
 
@@ -503,7 +512,7 @@ class AppState {
     const next = toggleDeclared(sanitizeDeclared(this.settings, this.os), id, this.os);
     if (!next) return;
     this.settings.activeIntegrations = next;
-    if (!next.includes(id) && this.focusId === id) this.focusId = this.mainPillId;
+    if (!next.includes(id) && this.focusId === id) this.focusId = this.restingFocus;
     this.loadIntegrationTasks();
   }
 

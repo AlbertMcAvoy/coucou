@@ -93,7 +93,7 @@ async function main() {
     island.applySettings();
     State.loadIntegrationTasks();
     // A new main tool comes to the front, as on macOS.
-    if (State.mainPillId !== previousMain) State.setFocus(State.mainPillId);
+    if (State.mainPillId !== previousMain) State.setFocus(State.restingFocus);
     void refreshConfigured();
   });
 

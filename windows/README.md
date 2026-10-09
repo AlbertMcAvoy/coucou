@@ -131,7 +131,9 @@ answer on one line, still, until the next prompt.
 
 **Settings… → Active pills** lists the tools you use, from the same catalog as
 the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
-which is always there and doesn't take a slot, then declare up to four more:
+which is always there and doesn't take a slot, or **None** if you'd rather no
+pill stay on for it (a session there still shows up while it runs), then
+declare up to four more:
 agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
 Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
 and the services under **Integrations**. A pill fed by hooks says whether its

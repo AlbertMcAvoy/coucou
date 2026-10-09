@@ -146,6 +146,12 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
 
+/**
+ * No main tool: no workspace pill stays on. A Claude Code session still brings
+ * its own pill for as long as it lasts, like any pill that isn't declared.
+ */
+export const NO_MAIN_PILL = "none";
+
 /** How many declared pills may sit next to the main one. */
 export const MAX_DECLARED = 4;
 
@@ -205,7 +211,7 @@ export interface Declared {
  */
 export function sanitizeDeclared(d: Declared, os: HostOs = HOST_OS): Declared {
   const mains = new Set(mainPillChoices(os).map((p) => p.id));
-  const mainPill = mains.has(d.mainPill) ? d.mainPill : DEFAULT_MAIN_PILL;
+  const mainPill = d.mainPill === NO_MAIN_PILL || mains.has(d.mainPill) ? d.mainPill : DEFAULT_MAIN_PILL;
   const offered = new Set(availablePills(os).map((p) => p.id));
   const activeIntegrations: string[] = [];
   for (const id of d.activeIntegrations ?? []) {
@@ -234,7 +240,7 @@ export function toggleDeclared(d: Declared, id: string, os: HostOs = HOST_OS): s
  * new one leaves the declared list so it does not take a slot twice.
  */
 export function chooseMainPill(d: Declared, id: string, os: HostOs = HOST_OS): Declared | null {
-  if (!mainPillChoices(os).some((p) => p.id === id)) return null;
+  if (id !== NO_MAIN_PILL && !mainPillChoices(os).some((p) => p.id === id)) return null;
   return { mainPill: id, activeIntegrations: d.activeIntegrations.filter((x) => x !== id) };
 }
 
