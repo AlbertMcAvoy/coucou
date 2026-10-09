@@ -110,6 +110,11 @@ pub struct Settings {
     /// "dark" (the island as on macOS) or "glass" (white, frosted). Kept as it
     /// comes: the island reads anything else as "dark".
     pub theme: String,
+    /// WSL distros whose Claude Code has Coucou's hooks, as last written or seen.
+    /// Owned by the Rust side (see `save_settings`), like `desktop_mochi`.
+    pub wsl_hooks: Vec<String>,
+    /// The first-launch offer to set up WSL was made (it is made once).
+    pub wsl_prompted: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -183,6 +188,8 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             theme: "dark".into(),
+            wsl_hooks: Vec::new(),
+            wsl_prompted: false,
         }
     }
 }
@@ -473,7 +480,9 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "theme": "glass"
+  "theme": "glass",
+  "wslHooks": ["Ubuntu"],
+  "wslPrompted": true
 }"##;
 
     fn custom() -> Value {
@@ -985,6 +994,8 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "theme",
+                "wslHooks",
+                "wslPrompted",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
