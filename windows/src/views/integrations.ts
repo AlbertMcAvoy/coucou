@@ -12,7 +12,7 @@ import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
-import { N_, language, t } from "../i18n/i18n";
+import { N_, language, t, tn } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -121,7 +121,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
       h("button", {
         class: "link-btn",
         style: `color:${task.color}d9`,
-        text: "Open GitLab",
+        text: t("Open {name}", { name: "GitLab" }),
         onclick: () => void Bridge.openGitlab(),
       }),
     );
@@ -349,7 +349,7 @@ function newsRow(n: Record<string, unknown>, accent: string): HTMLElement[] {
     open,
   );
   row.title = changes.length > 0
-    ? `${label}\n${changes.length} ${changes.length === 1 ? "detail" : "details"} — click to show`
+    ? `${label}\n${tn("{count} detail — click to show", "{count} details — click to show", changes.length)}`
     : label;
   row.style.cursor = "pointer";
   const detail = h("div", { class: "int-changes" },
@@ -386,12 +386,12 @@ function gitlabCard(): HTMLElement {
     "button",
     {
       class: "int-total int-review",
-      title: "Your GitLab To-Do list",
+      title: t("Your GitLab To-Do list"),
       onclick: () => void Bridge.openGitlab("/dashboard/todos"),
     },
     h("span", {
       style: count > 0 ? "color:#FC6D26" : "color:var(--dim-3)",
-      text: `${count}${d.todosCapped ? "+" : ""} to do`,
+      text: t("{count} to do", { count: `${count}${d.todosCapped ? "+" : ""}` }),
     }),
   );
 
@@ -420,8 +420,9 @@ function gitlabCard(): HTMLElement {
   }
   for (const mr of arr("integration_gitlab", "mergeRequests")) {
     if (toldMrs.has(Number(mr.id))) continue;
-    const roles = Array.isArray(mr.roles) ? mr.roles.map(String) : [];
-    const tip = [mr.project, mr.author ? `by ${String(mr.author)}` : "", roles.join(", "), mr.draft ? t("Draft") : ""]
+    // Yours, Assigned, Review: English keys from the poller, shown in the interface language.
+    const roles = Array.isArray(mr.roles) ? mr.roles.map((r: unknown) => t(String(r))) : [];
+    const tip = [mr.project, mr.author ? t("by {name}", { name: String(mr.author) }) : "", roles.join(", "), mr.draft ? t("Draft") : ""]
       .filter(Boolean).join(" · ");
     rows.append(linkRow(mr.draft ? "#6B7079" : "#FC6D26", false, mr.url, tip,
       h("span", { class: "int-name", style: "flex:0 1 auto", text: String(mr.title ?? "") }),
@@ -432,9 +433,9 @@ function gitlabCard(): HTMLElement {
     ));
     shown++;
   }
-  if (shown === 0) rows.append(h("div", { class: "int-empty", text: "Nothing new on GitLab" }));
+  if (shown === 0) rows.append(h("div", { class: "int-empty", text: t("Nothing new on GitLab") }));
   keepScroll(rows, "integration_gitlab");
-  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", "Inbox", extra), rows);
+  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", t("Inbox"), extra), rows);
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
