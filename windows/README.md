@@ -397,8 +397,8 @@ own window.
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
-- GitLab is Windows-only, on gitlab.com or your own instance (Settings… →
-  Integrations, token with the `read_api` scope): your To-Do list (review
+- GitLab, which the Mac doesn't have, on gitlab.com or your own instance
+  (Settings… → Integrations, token with the `read_api` scope): your To-Do list (review
   requests, assignments, mentions, failed pipelines on your merge requests…),
   your merge requests being approved or merged, someone else commenting on or
   updating a merge request you authored, are assigned or review, and every
@@ -410,7 +410,7 @@ own window.
   approval, title changed…), what a mention said, who merged or approved, what
   started a pipeline, how long it took and which jobs failed.
   The pill keeps the last ten pieces of news, details included, through a
-  restart too (in `%LOCALAPPDATA%\Coucou\news-gitlab.json`).
+  restart too (in `news-gitlab.json`, next to the log).
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

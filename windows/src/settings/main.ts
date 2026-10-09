@@ -778,7 +778,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_gitlab", name: "GitLab", color: "#FC6D26",
     fields: [
       { key: "gitlab-url", label: N_("Instance URL"), placeholder: "https://gitlab.com", secret: false },
-      { key: "gitlab-token", label: "Token (read_api)", placeholder: "glpat-…", secret: true },
+      { key: "gitlab-token", label: N_("Token (read_api)"), placeholder: "glpat-…", secret: true },
     ] },
 ];
 

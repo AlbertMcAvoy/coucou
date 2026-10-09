@@ -24,7 +24,7 @@ import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
-import { language, t, tl, type Msg } from "../i18n/i18n";
+import { language, t, tl, tn, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
@@ -731,8 +731,10 @@ function buildGitlabNews(actions: ViewActions): ViewHost {
       details.style.display = (fresh[0]?.changes?.length ?? 0) > 0 ? "" : "none";
       const task = State.tasks.find((t) => t.id === "integration_gitlab") ?? null;
       clear(who);
-      who.append(agentWho(task, fresh.length > 1 ? `${fresh.length} updates` : "GitLab update"));
-      title.textContent = fresh[0]?.label ?? "Nothing new";
+      who.append(agentWho(task, fresh.length > 1
+        ? tn("{count} update", "{count} updates", fresh.length)
+        : t("{name} update", { name: "GitLab" })));
+      title.textContent = fresh[0]?.label ?? t("Nothing new");
       url = fresh[0]?.url ?? "";
       clear(more);
       // A 160 px card holds the title and one more line; "N updates" above
@@ -787,7 +789,7 @@ function buildNewsDetails(actions: ViewActions): ViewHost {
       drawn = key;
       const task = State.tasks.find((t) => t.id === detailsFor) ?? null;
       clear(who);
-      who.append(agentWho(task, "Latest update"));
+      who.append(agentWho(task, t("Latest update")));
       clear(list);
       for (const n of fresh) {
         list.append(h("div", { class: "news-item" },
