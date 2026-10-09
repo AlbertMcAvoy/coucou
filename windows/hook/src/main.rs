@@ -211,6 +211,9 @@ fn add_terminal_context(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Opti
         ("term_session_id", "TERM_SESSION_ID"),
         ("vscode_pid", "VSCODE_PID"),
         ("session_pid", "CLAUDE_CODE_SSE_PORT"),
+        // Set when Claude Code runs under WSL and calls us through interop. It
+        // only reaches us if the caller lists it in WSLENV (coucou-hook-wsl.sh).
+        ("wsl_distro", "WSL_DISTRO_NAME"),
     ] {
         if !map.contains_key(key) {
             map.insert(key.into(), Value::String(env(var).unwrap_or_default()));

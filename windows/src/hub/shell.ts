@@ -339,5 +339,6 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
       void show(current);
     },
     current: () => current,
+    navigate: (page: PageId) => void show(page),
   };
 }
