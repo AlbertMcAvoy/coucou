@@ -36,23 +36,28 @@ class Notifications(private val context: Context) {
     init {
         nm.deleteNotificationChannel("approvals")
         nm.deleteNotificationChannel("approvals_v2")
+        createChannels()
+    }
+
+    /** The channels' names and descriptions are in the app's language (Android shows them in its own settings); made again when it changes. */
+    private fun createChannels() {
         nm.createNotificationChannel(
-            NotificationChannel(CH_LINK, "Connection", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Shows that Coucou is connected to your computer"
+            NotificationChannel(CH_LINK, context.getString(R.string.channel_link), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.channel_link_description)
                 setShowBadge(false)
             },
         )
         nm.createNotificationChannel(
-            NotificationChannel(CH_UPDATES, "Updates", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "An agent finished, failed or has a question"
+            NotificationChannel(CH_UPDATES, context.getString(R.string.channel_updates), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.channel_updates_description)
                 setShowBadge(false)
             },
         )
         // The same request while the pill is on screen: in the shade only, no heads-up and no sound,
         // so the pill and the notification never overlap at the top of the screen.
         nm.createNotificationChannel(
-            NotificationChannel(CH_APPROVAL_QUIET, "Approvals (quiet)", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "A waiting request, kept in the shade while the pill shows it"
+            NotificationChannel(CH_APPROVAL_QUIET, context.getString(R.string.channel_approvals_quiet), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.channel_approvals_quiet_description)
                 setShowBadge(false)
             },
         )
@@ -75,8 +80,8 @@ class Notifications(private val context: Context) {
         vibration = v
         ApprovalChannels.othersThan(v).forEach { nm.deleteNotificationChannel(it) }
         nm.createNotificationChannel(
-            NotificationChannel(ApprovalChannels.id(v), "Approvals", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "An agent is waiting for your permission"
+            NotificationChannel(ApprovalChannels.id(v), context.getString(R.string.channel_approvals), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.channel_approvals_description)
                 val pattern = v.pattern
                 if (pattern != null) {
                     enableVibration(true)
@@ -138,8 +143,13 @@ class Notifications(private val context: Context) {
         return b.build()
     }
 
-    /** The language changed: the next push posts the ongoing notification again, whatever it said before. */
-    fun forgetOngoing() = ongoingGate.forget()
+    /** The language changed: the next push posts the ongoing notification again, whatever it said before, and the channels get their new names. */
+    fun forgetOngoing() {
+        ongoingGate.forget()
+        createChannels()
+        channelFor = null
+        applyApprovalSettings(vibration, keepScreenOff)
+    }
 
     /** Only posted again when what it shows changes ([OngoingGate]); the service's own first post counts as the last one. */
     private val ongoingGate = OngoingGate()

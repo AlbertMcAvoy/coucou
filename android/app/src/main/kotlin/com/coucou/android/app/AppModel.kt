@@ -387,7 +387,7 @@ class AppModel(private val context: Context) : LinkListener {
 
     /** The name the user knows the agent by: the session's own name, else the pill catalog. */
     fun agentName(pillId: String): String =
-        sessions.firstOrNull { it.pillId == pillId }?.agent?.takeIf { it.isNotBlank() } ?: Pills.byId(pillId)?.name ?: "An agent"
+        sessions.firstOrNull { it.pillId == pillId }?.agent?.takeIf { it.isNotBlank() } ?: Pills.byId(pillId)?.name ?: com.coucou.android.core.Texts.t("agent_an_title", "An agent")
 
     val isPaired get() = store.loadPairing() != null
 
