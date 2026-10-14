@@ -136,6 +136,7 @@
     "tab_home": "Home",
     "tab_chat": "Chat",
     "tab_settings": "Settings",
+    "tab_home_alert": "Home, a request is waiting",
     "design_note": "The building blocks of the new look. No other screen uses them yet.",
     "pair_clipboard": "Paste from clipboard",
     "notif_unlock": "Unlock to see the request",

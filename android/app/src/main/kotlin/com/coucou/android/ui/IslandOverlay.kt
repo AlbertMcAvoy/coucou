@@ -62,6 +62,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -319,7 +322,11 @@ class IslandOverlay(
                         Modifier.fillMaxWidth().padding(top = topInset).alpha(open.coerceIn(0.0, 1.0).toFloat()),
                         contentAlignment = Alignment.TopCenter,
                     ) {
-                        Box(Modifier.requiredWidth(px(targetW.toDouble())).wrapContentHeight(Alignment.Top, unbounded = true)) {
+                        // TalkBack reads what the island shows when it appears: a request at once, the rest when it is quiet.
+                        Box(
+                            Modifier.requiredWidth(px(targetW.toDouble())).wrapContentHeight(Alignment.Top, unbounded = true)
+                                .semantics { liveRegion = if (s.kind == IslandSpec.Kind.APPROVAL) LiveRegionMode.Assertive else LiveRegionMode.Polite },
+                        ) {
                             when (s.kind) {
                                 IslandSpec.Kind.WORKING -> WorkingStrip(s)
                                 IslandSpec.Kind.APPROVAL -> RequestCard(s)

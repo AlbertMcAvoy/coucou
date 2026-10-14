@@ -43,6 +43,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,7 @@ import com.coucou.android.link.AskedOption
 import com.coucou.android.link.QuestionRequest
 import com.coucou.android.core.Radii
 import com.coucou.android.core.Spacing
+import com.coucou.android.core.SpokenLabels
 import com.coucou.android.core.TypeScale
 import com.coucou.android.link.ApprovalRequest
 import com.coucou.android.mochi.BotState
@@ -73,15 +78,17 @@ import kotlinx.coroutines.delay
  * panel itself never reach the scrim.
  */
 @Composable
-fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, content: @Composable ColumnScope.() -> Unit) {
+fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, announce: String? = null, content: @Composable ColumnScope.() -> Unit) {
     BackHandler(onBack = onDismiss)
+    val closeLabel = stringResource(R.string.action_close)
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val shape = RoundedCornerShape(topStart = Radii.SHEET.dp, topEnd = Radii.SHEET.dp)
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                .semantics { contentDescription = closeLabel; role = Role.Button },
         )
         AnimatedVisibility(
             visible = shown, modifier = Modifier.align(Alignment.BottomCenter),
@@ -91,6 +98,10 @@ fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, content: @Compos
                 Modifier.fillMaxWidth().clip(shape).background(Color(IslandSurface.PANEL)).border(1.dp, Color.White.copy(alpha = 0.08f), shape)
                     .then(if (wash != null) Modifier.drawBehind { drawWash(wash, 0.45f) } else Modifier)
                     .pointerInput(Unit) { detectTapGestures { } }
+                    // A large font can make the sheet taller than the screen: it scrolls, so Deny and Allow are always reachable.
+                    .verticalScroll(rememberScrollState())
+                    // TalkBack announces the sheet when it rises, so a request is heard without searching for it.
+                    .semantics { if (announce != null) paneTitle = announce }
                     .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 20.dp),
                 content = {
                     Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.2f)))
@@ -128,11 +139,12 @@ fun ApprovalSheet(model: AppModel, r: ApprovalRequest, onAllow: (ApprovalRequest
     val wash = MochiConst.STATES[BotState.APPROVAL]?.color?.let(::rgbColor)
     val name = model.agentName(r.pillId)
     val kind = Pills.byId(r.pillId)?.name.orEmpty()
-    BottomSheetHost(onDismiss, wash) {
+    val announce = SpokenLabels.approval(stringResource(R.string.approval_title), name, stringResource(R.string.approval_wants, ApprovalSheetPlan.action(r.tool)))
+    BottomSheetHost(onDismiss, wash, announce) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             SheetMochi(BotState.APPROVAL, agentColour(model, r.pillId))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (kind.isNotBlank() && kind != name) "$name · $kind" else name, style = TypeScale.SECONDARY.style(dim), maxLines = 1)
+                Text(if (kind.isNotBlank() && kind != name) "$name · $kind" else name, style = TypeScale.SECONDARY.style(dim), maxLines = 2)
                 Text(stringResource(R.string.approval_wants, ApprovalSheetPlan.action(r.tool)), style = TypeScale.TITLE.style(white), maxLines = 3)
             }
         }
@@ -190,7 +202,8 @@ fun QuestionSheet(model: AppModel, pillId: String, onDismiss: () -> Unit, onSend
     val dim = Color(IslandSurface.TEXT_DIM)
     val wash = MochiConst.STATES[BotState.QUESTION]?.color?.let(::rgbColor)
     val request = model.questionFor(pillId)
-    BottomSheetHost(onDismiss, wash) {
+    val announce = stringResource(R.string.question_title, model.agentName(pillId))
+    BottomSheetHost(onDismiss, wash, announce) {
         if (request == null) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 SheetMochi(BotState.QUESTION, agentColour(model, pillId))

@@ -136,6 +136,7 @@
     <string name="tab_home">Home</string>
     <string name="tab_chat">Chat</string>
     <string name="tab_settings">Settings</string>
+    <string name="tab_home_alert">Home, a request is waiting</string>
     <string name="design_note">The building blocks of the new look. No other screen uses them yet.</string>
     <string name="pair_clipboard">Paste from clipboard</string>
     <string name="notif_unlock">Unlock to see the request</string>
