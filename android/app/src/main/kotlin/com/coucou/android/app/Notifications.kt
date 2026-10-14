@@ -17,6 +17,7 @@ import com.coucou.android.core.ApprovalSheetPlan
 import com.coucou.android.core.Glance
 import com.coucou.android.core.GlanceTone
 import com.coucou.android.core.OverlayPolicy
+import com.coucou.android.core.OngoingGate
 import com.coucou.android.core.SafeText
 import com.coucou.android.core.ToolLabels
 import com.coucou.android.link.ApprovalRequest
@@ -82,7 +83,12 @@ class Notifications(private val context: Context) {
      * when expanded, one line per agent ("Claude Code: Working"). Only states, never a command or a path. On a locked
      * screen it shows the plain "Connected" line, like the other notifications of the app.
      */
-    fun ongoing(model: AppModel?): Notification = ongoing(model?.glance())
+    fun ongoing(model: AppModel?): Notification {
+        val g = model?.glance()
+        ongoingGate.forget()
+        ongoingGate.shouldPost(g) // what the service posts is now the last notification
+        return ongoing(g)
+    }
 
     private fun ongoing(g: Glance?): Notification {
         val title = g?.headline ?: context.getString(R.string.status_connecting)
@@ -109,8 +115,11 @@ class Notifications(private val context: Context) {
         return b.build()
     }
 
+    /** Only posted again when what it shows changes ([OngoingGate]); the service's own first post counts as the last one. */
+    private val ongoingGate = OngoingGate()
+
     fun updateOngoing(model: AppModel, g: Glance = model.glance()) {
-        if (model.mode == Mode.PAIRED) runCatching { nm.notify(ONGOING_ID, ongoing(g)) }
+        if (model.mode == Mode.PAIRED && ongoingGate.shouldPost(g)) runCatching { nm.notify(ONGOING_ID, ongoing(g)) }
     }
 
     fun showApproval(r: ApprovalRequest, agentName: String, alert: OverlayPolicy.ApprovalAlert = OverlayPolicy.ApprovalAlert.HEADS_UP) {
