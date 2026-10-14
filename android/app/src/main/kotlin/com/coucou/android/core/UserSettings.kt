@@ -44,6 +44,10 @@ data class UserSettings(
     val vibration: VibrationChoice = VibrationChoice.STANDARD,
     /** Reduce motion: follow the system (default), always, or never. */
     val motion: MotionChoice = MotionChoice.SYSTEM,
+    /** Light, dark or the phone's own. */
+    val theme: ThemeChoice = ThemeChoice.SYSTEM,
+    /** Use the phone's own colours (Material You, Android 12 and later) for the surfaces and text. Off by default. */
+    val dynamicColour: Boolean = false,
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -57,6 +61,8 @@ data class UserSettings(
         private const val NO_WAKE = "no_wake_screen"
         private const val VIBRATION = "vibration_choice"
         private const val MOTION = "motion_choice"
+        private const val THEME = "theme_choice"
+        private const val DYNAMIC = "dynamic_colour"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -74,6 +80,8 @@ data class UserSettings(
                 keepScreenOff = store.getBoolean(NO_WAKE, d.keepScreenOff),
                 vibration = VibrationChoice.parse(store.getString(VIBRATION, d.vibration.key)),
                 motion = MotionChoice.parse(store.getString(MOTION, d.motion.key)),
+                theme = ThemeChoice.parse(store.getString(THEME, d.theme.key)),
+                dynamicColour = store.getBoolean(DYNAMIC, d.dynamicColour),
             )
         }
 
@@ -89,6 +97,8 @@ data class UserSettings(
             store.put(NO_WAKE, s.keepScreenOff)
             store.put(VIBRATION, s.vibration.key)
             store.put(MOTION, s.motion.key)
+            store.put(THEME, s.theme.key)
+            store.put(DYNAMIC, s.dynamicColour)
         }
     }
 }
