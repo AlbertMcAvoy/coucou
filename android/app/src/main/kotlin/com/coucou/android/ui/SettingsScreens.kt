@@ -50,6 +50,8 @@ import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomeText
 import com.coucou.android.core.MotionChoice
 import com.coucou.android.core.QuietHours
+import com.coucou.android.core.ThemeChoice
+import com.coucou.android.core.ThemePolicy
 import com.coucou.android.core.VibrationChoice
 import com.coucou.android.core.RelayLineKind
 import com.coucou.android.core.RelayStatus
@@ -199,6 +201,22 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         item { SectionHeading(stringResource(R.string.settings_section_display)) }
         item {
             Panel {
+                ChoiceRow(
+                    stringResource(R.string.settings_theme),
+                    listOf(
+                        ThemeChoice.SYSTEM to stringResource(R.string.theme_system),
+                        ThemeChoice.LIGHT to stringResource(R.string.theme_light),
+                        ThemeChoice.DARK to stringResource(R.string.theme_dark),
+                    ),
+                    s.theme,
+                ) { model.updateSettings(s.copy(theme = it)) }
+                if (ThemePolicy.dynamicAvailable(android.os.Build.VERSION.SDK_INT)) {
+                    RowDivider()
+                    SettingSwitch(stringResource(R.string.settings_dynamic), stringResource(R.string.settings_dynamic_hint), s.dynamicColour) {
+                        model.updateSettings(s.copy(dynamicColour = it))
+                    }
+                }
+                RowDivider()
                 SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay)
                 RowDivider()
                 ChoiceRow(

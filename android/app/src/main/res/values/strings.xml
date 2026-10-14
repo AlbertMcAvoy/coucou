@@ -201,6 +201,12 @@
     <string name="relay_line_unreachable">Cannot reach the relay. Check your internet connection.</string>
     <string name="relay_line_away">Your computer is not answering through the relay. It may be asleep or have the relay off.</string>
     <string name="settings_section_sound">Sound</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_dynamic">Use my phone\'s colours</string>
+    <string name="settings_dynamic_hint">Takes the surfaces and the text colours from Android (Material You). Mochi and the state colours stay the same.</string>
     <string name="settings_motion">Reduce motion</string>
     <string name="motion_system">System</string>
     <string name="motion_on">On</string>
