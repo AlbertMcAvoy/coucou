@@ -150,9 +150,14 @@ class MainActivity : ComponentActivity() {
         }
         model.resume()
         setContent {
-            CoucouTheme {
-                // The app is dark only: the status bar icons are always light.
-                SideEffect { WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false }
+            CoucouTheme(model.settings.theme, model.settings.dynamicColour) {
+                // Dark icons on a light page; the camera screen is black in both themes, so its icons are light.
+                val lightPage = !tokens().isDark && screen != Screen.SCAN
+                SideEffect {
+                    val bars = WindowCompat.getInsetsController(window, window.decorView)
+                    bars.isAppearanceLightStatusBars = lightPage
+                    bars.isAppearanceLightNavigationBars = lightPage
+                }
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(if (screen == Screen.HOME || screen == Screen.SCAN) WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom) else WindowInsets.safeDrawing)) {
                         val tabs = Nav.tabs()
