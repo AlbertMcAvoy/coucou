@@ -462,6 +462,9 @@ class AppModel(private val context: Context) : LinkListener {
     // ── Keeping the link alive while the phone sleeps (docs/ANDROID_LINK.md, "Keeping the link alive") ──
 
     /** What happened to the link: when it was lost and why, and how often the screen had been off when it was. */
+    /** Whether the phone is on Wi-Fi now, for the sentence that names why the link was lost. */
+    val wifiUp: Boolean get() = netWatch.wifiUp
+
     var health by mutableStateOf(LinkHealth(dropsWhileScreenOff = kv.getInt("link_drops_off", 0))); private set
     /** The screen was off at some point since the link last came up. */
     @Volatile private var screenWasOff = false
