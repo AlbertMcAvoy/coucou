@@ -24,8 +24,8 @@ android {
         targetSdk = 35
         versionCode = 5
         versionName = "0.3.3"
-        // English only: libraries' other languages are left out of the app too.
-        resourceConfigurations += listOf("en")
+        // The app's languages (English and the translations in i18n/translations); the libraries' other languages are left out of the app.
+        resourceConfigurations += listOf("en", "fr", "es", "pt-rBR")
     }
     signingConfigs {
         val keystore = releaseKeystore

@@ -206,6 +206,14 @@ internal object TextIds {
         "relay_line_unreachable" to R.string.relay_line_unreachable,
         "relay_line_away" to R.string.relay_line_away,
         "settings_section_sound" to R.string.settings_section_sound,
+        "channel_link" to R.string.channel_link,
+        "channel_link_description" to R.string.channel_link_description,
+        "channel_updates" to R.string.channel_updates,
+        "channel_updates_description" to R.string.channel_updates_description,
+        "channel_approvals_quiet" to R.string.channel_approvals_quiet,
+        "channel_approvals_quiet_description" to R.string.channel_approvals_quiet_description,
+        "channel_approvals" to R.string.channel_approvals,
+        "channel_approvals_description" to R.string.channel_approvals_description,
         "settings_language" to R.string.settings_language,
         "language_system" to R.string.language_system,
         "language_picker_hint" to R.string.language_picker_hint,
@@ -420,6 +428,7 @@ internal object TextIds {
         "agent_an" to R.string.agent_an,
         "home_decision_allowed" to R.string.home_decision_allowed,
         "home_decision_denied" to R.string.home_decision_denied,
+        "agent_an_title" to R.string.agent_an_title,
     )
 
     val plurals: Map<String, Int> = mapOf(

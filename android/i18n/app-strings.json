@@ -201,6 +201,14 @@
     "relay_line_unreachable": "Cannot reach the relay. Check your internet connection.",
     "relay_line_away": "Your computer is not answering through the relay. It may be asleep or have the relay off.",
     "settings_section_sound": "Sound",
+    "channel_link": "Connection",
+    "channel_link_description": "Shows that Coucou is connected to your computer",
+    "channel_updates": "Updates",
+    "channel_updates_description": "An agent finished, failed or has a question",
+    "channel_approvals_quiet": "Approvals (quiet)",
+    "channel_approvals_quiet_description": "A waiting request, kept in the shade while the pill shows it",
+    "channel_approvals": "Approvals",
+    "channel_approvals_description": "An agent is waiting for your permission",
     "settings_language": "Language",
     "language_system": "System default",
     "language_picker_hint": "Pick the language of Coucou. From Android 13 you can also choose it in Android's own settings, under Apps.",
@@ -414,7 +422,8 @@
     "home_recent_denied": "Denied: %1$s",
     "agent_an": "an agent",
     "home_decision_allowed": "You allowed %1$s to %2$s",
-    "home_decision_denied": "You denied %1$s to %2$s"
+    "home_decision_denied": "You denied %1$s to %2$s",
+    "agent_an_title": "An agent"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},

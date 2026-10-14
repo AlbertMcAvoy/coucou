@@ -201,6 +201,14 @@
     <string name="relay_line_unreachable">Cannot reach the relay. Check your internet connection.</string>
     <string name="relay_line_away">Your computer is not answering through the relay. It may be asleep or have the relay off.</string>
     <string name="settings_section_sound">Sound</string>
+    <string name="channel_link">Connection</string>
+    <string name="channel_link_description">Shows that Coucou is connected to your computer</string>
+    <string name="channel_updates">Updates</string>
+    <string name="channel_updates_description">An agent finished, failed or has a question</string>
+    <string name="channel_approvals_quiet">Approvals (quiet)</string>
+    <string name="channel_approvals_quiet_description">A waiting request, kept in the shade while the pill shows it</string>
+    <string name="channel_approvals">Approvals</string>
+    <string name="channel_approvals_description">An agent is waiting for your permission</string>
     <string name="settings_language">Language</string>
     <string name="language_system">System default</string>
     <string name="language_picker_hint">Pick the language of Coucou. From Android 13 you can also choose it in Android\'s own settings, under Apps.</string>
@@ -415,6 +423,7 @@
     <string name="agent_an">an agent</string>
     <string name="home_decision_allowed">You allowed %1$s to %2$s</string>
     <string name="home_decision_denied">You denied %1$s to %2$s</string>
+    <string name="agent_an_title">An agent</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>
