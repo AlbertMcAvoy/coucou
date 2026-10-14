@@ -33,7 +33,6 @@ import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomePanel
 import com.coucou.android.core.HomeText
 import com.coucou.android.core.IconKind
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Pills
 import com.coucou.android.core.SpokenLabels
 import com.coucou.android.core.Spacing
@@ -87,8 +86,8 @@ fun HeroCard(
 ) {
     val state = focus?.state ?: BotState.SLEEPING
     val wash = MochiConst.STATES[state]?.color?.let(::rgbColor)
-    val dim = Color(IslandSurface.TEXT_DIM)
-    val white = Color(IslandSurface.TEXT)
+    val dim = Color(tokens().heroTextDim)
+    val white = Color(tokens().heroText)
     HeroPanel(wash = wash) {
         Column(
             Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(start = Spacing.INSIDE.dp, end = Spacing.INSIDE.dp, top = 12.dp, bottom = 18.dp),

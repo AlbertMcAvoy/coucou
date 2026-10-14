@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.MotionPolicy
 import com.coucou.android.core.MotionState
 import com.coucou.android.core.Radii
@@ -97,11 +96,12 @@ internal fun DrawScope.drawWash(color: Color, alpha: Float) {
 /** The hero panel at the top of Home: black, hanging from the screen's top edge. */
 @Composable
 fun HeroPanel(modifier: Modifier = Modifier, wash: Color? = null, content: @Composable ColumnScope.() -> Unit) {
+    val t = tokens()
     val shape = RoundedCornerShape(bottomStart = Radii.HERO_BOTTOM.dp, bottomEnd = Radii.HERO_BOTTOM.dp)
     Column(
-        modifier.fillMaxWidth().clip(shape).background(IslandSurface.HERO.c())
-            .border(1.dp, Color.White.copy(alpha = 0.06f), shape)
-            .then(if (wash != null) Modifier.drawBehind { drawWash(wash, 0.5f) } else Modifier),
+        modifier.fillMaxWidth().clip(shape).background(t.hero.c())
+            .border(1.dp, t.heroLine.c(), shape)
+            .then(if (wash != null) Modifier.drawBehind { drawWash(wash, t.washAlpha.toFloat()) } else Modifier),
         content = content,
     )
 }
@@ -118,15 +118,15 @@ fun PillButton(
     enabled: Boolean = true, onDark: Boolean = false, icon: (@Composable () -> Unit)? = null,
 ) {
     val t = tokens()
-    // [onDark]: on the always-black hero panel and island, whatever the theme.
+    // [onDark]: on a hero surface (the hero panel, a sheet, the island): the tokens in force there, dark on the island whatever the theme.
     val bg = when {
-        onDark -> if (kind == PillKind.PRIMARY) IslandSurface.TEXT else IslandSurface.BUTTON
+        onDark -> if (kind == PillKind.PRIMARY) t.heroPrimary else t.heroButton
         kind == PillKind.PRIMARY -> t.primaryButton
         else -> t.secondaryButton
     }
     val fg = when {
         kind == PillKind.DANGER -> t.danger
-        onDark -> if (kind == PillKind.PRIMARY) IslandSurface.ON_PRIMARY else IslandSurface.TEXT
+        onDark -> if (kind == PillKind.PRIMARY) t.heroOnPrimary else t.heroText
         kind == PillKind.PRIMARY -> t.onPrimaryButton
         else -> t.text
     }
