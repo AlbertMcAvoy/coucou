@@ -36,7 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coucou.android.core.IslandSurface
-import com.coucou.android.core.MotionSpec
+import com.coucou.android.core.MotionPolicy
+import com.coucou.android.core.MotionState
 import com.coucou.android.core.Radii
 import com.coucou.android.core.Spacing
 import com.coucou.android.core.Tokens
@@ -54,11 +55,14 @@ fun tokens(): Tokens = LocalTokens.current
 
 internal fun Long.c() = Color(this)
 
-/** True when the user turned animations off (Android's "Remove animations"): springs and slides become plain fades or jumps. */
+/**
+ * True when motion is reduced: Android's "Remove animations" (unless the user chose otherwise in Settings > Reduce motion), or the
+ * Settings choice to always reduce it. Springs and slides become plain fades or jumps, and Mochi stops his idle animations.
+ */
 @Composable
 fun reducedMotion(): Boolean {
     val resolver = androidx.compose.ui.platform.LocalContext.current.contentResolver
-    return MotionSpec.isReduced(android.provider.Settings.Global.getFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+    return MotionPolicy.reduced(MotionState.choice, android.provider.Settings.Global.getFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
 }
 
 /** A step of the type scale as a Compose style. */

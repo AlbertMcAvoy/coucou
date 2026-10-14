@@ -47,6 +47,7 @@ import com.coucou.android.app.AppModel
 import com.coucou.android.app.Mode
 import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomeText
+import com.coucou.android.core.MotionChoice
 import com.coucou.android.core.QuietHours
 import com.coucou.android.core.VibrationChoice
 import com.coucou.android.core.RelayLineKind
@@ -195,7 +196,26 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         if (model.batteryHintVisible) item { BatteryCard(model) }
 
         item { SectionHeading(stringResource(R.string.settings_section_display)) }
-        item { Panel { SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay) } }
+        item {
+            Panel {
+                SettingSwitch(stringResource(R.string.overlay_title), stringResource(R.string.overlay_hint), model.overlayOn, onOverlay)
+                RowDivider()
+                ChoiceRow(
+                    stringResource(R.string.settings_motion),
+                    listOf(
+                        MotionChoice.SYSTEM to stringResource(R.string.motion_system),
+                        MotionChoice.REDUCE to stringResource(R.string.motion_on),
+                        MotionChoice.FULL to stringResource(R.string.motion_off),
+                    ),
+                    s.motion,
+                ) { model.updateSettings(s.copy(motion = it)) }
+                Text(
+                    stringResource(R.string.settings_motion_hint),
+                    Modifier.padding(horizontal = Spacing.INSIDE.dp).padding(bottom = 12.dp),
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
+                )
+            }
+        }
 
         item { SectionHeading(stringResource(R.string.settings_section_sound)) }
         item {

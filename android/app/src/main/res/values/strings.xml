@@ -200,6 +200,11 @@
     <string name="relay_line_unreachable">Cannot reach the relay. Check your internet connection.</string>
     <string name="relay_line_away">Your computer is not answering through the relay. It may be asleep or have the relay off.</string>
     <string name="settings_section_sound">Sound</string>
+    <string name="settings_motion">Reduce motion</string>
+    <string name="motion_system">System</string>
+    <string name="motion_on">On</string>
+    <string name="motion_off">Off</string>
+    <string name="settings_motion_hint">System follows Android\'s Remove animations. When on, Mochi stops idling and the island and sheets simply appear.</string>
     <string name="settings_section_notices">Notices</string>
     <string name="settings_section_requests">Permission requests</string>
     <string name="settings_no_wake">Don\'t wake the screen for a request</string>

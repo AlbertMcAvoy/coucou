@@ -18,7 +18,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.coucou.android.core.IconKind
+import com.coucou.android.core.MotionPolicy
 import com.coucou.android.core.MotionSpec
+import com.coucou.android.core.MotionState
 import com.coucou.android.core.IslandSurface
 import com.coucou.android.core.Tokens
 import com.coucou.android.core.TypeScale
@@ -183,7 +185,7 @@ class IslandOverlay(
         if (opening) {
             width.jump(b.notchWidth.toDouble()); height.jump(0.0); radius.jump(b.cornerSmall.toDouble())
         }
-        val reduced = MotionSpec.isReduced(Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+        val reduced = MotionPolicy.reduced(MotionState.choice, Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
         if (phase == IslandTimeline.Phase.OPEN) {
             val (w, h) = IslandGeometry.sizeFor(b, current.kind)
             val corner = (if (current.kind == IslandSpec.Kind.WORKING) b.cornerSmall else b.cornerLarge).toDouble()
