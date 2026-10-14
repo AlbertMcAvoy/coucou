@@ -52,10 +52,11 @@ object WidgetHub {
         runCatching {
             val manager = AppWidgetManager.getInstance(context)
             var pushed = false
+            val localized = AppLanguage.wrap(context) // before Android 13 the language chosen in the app
             for (kind in widgets) {
                 val ids = manager.getAppWidgetIds(ComponentName(context, kind.provider))
                 if (ids.isEmpty()) continue
-                val rendered = kind.views(context, content)
+                val rendered = kind.views(localized, content)
                 for (id in ids) manager.updateAppWidget(id, rendered)
                 pushed = true
             }
@@ -66,7 +67,7 @@ object WidgetHub {
 
     /** Draws the widgets the system just created or resized, from what the app says now. */
     fun refresh(context: Context, manager: AppWidgetManager, ids: IntArray, views: (Context, WidgetContent) -> RemoteViews) {
-        val rendered = views(context, current(context))
+        val rendered = views(AppLanguage.wrap(context), current(context))
         for (id in ids) runCatching { manager.updateAppWidget(id, rendered) }
     }
 

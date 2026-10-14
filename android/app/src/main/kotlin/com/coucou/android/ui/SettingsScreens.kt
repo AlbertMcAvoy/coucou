@@ -1,5 +1,14 @@
 package com.coucou.android.ui
 
+import com.coucou.android.core.Languages
+import com.coucou.android.app.AppLanguage
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -147,6 +156,45 @@ private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selecte
     }
 }
 
+/** The language of the app: the row shows the one in force; a tap opens the list (the phone's own first, then each language by its own name). */
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    val t = tokens()
+    var open by remember { mutableStateOf(false) }
+    val current = AppLanguage.current(context)
+    val system = stringResource(R.string.language_system)
+    val currentName = Languages.ALL.firstOrNull { it.tag == current }?.name ?: system
+    ListRow(
+        stringResource(R.string.settings_language), hint = currentName, onClick = { open = true },
+        trailing = { CoucouIcon(IconKind.CHEVRON, tint = t.textDim.c(), size = 20.dp) },
+    )
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
+            title = { Text(stringResource(R.string.settings_language)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(stringResource(R.string.language_picker_hint), Modifier.padding(bottom = 8.dp), style = TypeScale.SECONDARY.style(t.textDim.c()))
+                    val options = listOf(Languages.SYSTEM to system) + Languages.ALL.map { it.tag to it.name }
+                    for ((tag, label) in options) {
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = Spacing.MIN_TOUCH.dp)
+                                .selectable(selected = tag == current, role = Role.RadioButton) { open = false; AppLanguage.set(context, tag) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()))
+                            if (tag == current) CoucouIcon(IconKind.CHECK, tint = t.online.c(), size = 22.dp)
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
 /** Room under a list so its last row can scroll above the floating bar (64 + 16 gap + 16 margin). */
 val BarClearance = 96.dp
 
@@ -201,6 +249,8 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         item { SectionHeading(stringResource(R.string.settings_section_display)) }
         item {
             Panel {
+                LanguageRow()
+                RowDivider()
                 ChoiceRow(
                     stringResource(R.string.settings_theme),
                     listOf(

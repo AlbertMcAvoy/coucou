@@ -133,6 +133,20 @@ class AppModel(private val context: Context) : LinkListener {
         }
     }
 
+    /** The language the surfaces (Widgets, the ongoing notification) were last drawn in. */
+    private var surfacesLanguage: String? = null
+
+    /** The app's language is [tag] now: what the Widgets and the notification say is written again in it (once per change). */
+    fun languageChanged(tag: String) {
+        if (surfacesLanguage == tag) return
+        val first = surfacesLanguage == null
+        surfacesLanguage = tag
+        if (first) return // the first look at it, at start: nothing was drawn in another language
+        notifier.forgetOngoing()
+        WidgetHub.refreshAll(context)
+        pushGlance()
+    }
+
     /** What the user chose in Settings (sound, notices, quiet hours). */
     var settings by mutableStateOf(UserSettings.load(kv)); private set
 

@@ -138,6 +138,9 @@ class Notifications(private val context: Context) {
         return b.build()
     }
 
+    /** The language changed: the next push posts the ongoing notification again, whatever it said before. */
+    fun forgetOngoing() = ongoingGate.forget()
+
     /** Only posted again when what it shows changes ([OngoingGate]); the service's own first post counts as the last one. */
     private val ongoingGate = OngoingGate()
 
