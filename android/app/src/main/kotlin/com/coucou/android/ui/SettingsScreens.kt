@@ -230,7 +230,7 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         item {
             Panel {
                 Column(Modifier.padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.about_unofficial), style = TypeScale.BODY.style(t.text.c()))
+                    Text(stringResource(R.string.about_credit), style = TypeScale.BODY.style(t.text.c()))
                     Text(
                         stringResource(R.string.about_repo),
                         Modifier.clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } },
