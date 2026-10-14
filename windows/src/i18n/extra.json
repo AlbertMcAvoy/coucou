@@ -5770,6 +5770,136 @@
    "pt-BR": "Não pode ser mesclada",
    "ru": "Нельзя слить",
    "id": "Tidak bisa digabung"
+  },
+  "Save the URL and the token first": {
+   "zh-Hans": "请先保存地址和令牌",
+   "hi": "पहले URL और टोकन सहेजें",
+   "es": "Guarda primero la URL y el token",
+   "ar": "احفظ العنوان والرمز أولًا",
+   "fr": "Enregistrez d'abord l'URL et le jeton",
+   "bn": "আগে URL আর টোকেন সংরক্ষণ করুন",
+   "pt-BR": "Salve primeiro a URL e o token",
+   "ru": "Сначала сохраните URL и токен",
+   "id": "Simpan URL dan token dulu"
+  },
+  "All projects": {
+   "zh-Hans": "所有项目",
+   "hi": "सभी प्रोजेक्ट",
+   "es": "Todos los proyectos",
+   "ar": "كل المشاريع",
+   "fr": "Tous les projets",
+   "bn": "সব প্রজেক্ট",
+   "pt-BR": "Todos os projetos",
+   "ru": "Все проекты",
+   "id": "Semua proyek"
+  },
+  "Choose…": {
+   "zh-Hans": "选择…",
+   "hi": "चुनें…",
+   "es": "Elegir…",
+   "ar": "اختيار…",
+   "fr": "Choisir…",
+   "bn": "বেছে নিন…",
+   "pt-BR": "Escolher…",
+   "ru": "Выбрать…",
+   "id": "Pilih…"
+  },
+  "Filter": {
+   "zh-Hans": "筛选",
+   "hi": "फ़िल्टर",
+   "es": "Filtrar",
+   "ar": "تصفية",
+   "fr": "Filtrer",
+   "bn": "ফিল্টার",
+   "pt-BR": "Filtrar",
+   "ru": "Фильтр",
+   "id": "Saring"
+  },
+  "Follow all": {
+   "zh-Hans": "关注全部",
+   "hi": "सभी को फ़ॉलो करें",
+   "es": "Seguir todos",
+   "ar": "متابعة الكل",
+   "fr": "Tout suivre",
+   "bn": "সব অনুসরণ করুন",
+   "pt-BR": "Seguir todos",
+   "ru": "Следить за всеми",
+   "id": "Ikuti semua"
+  },
+  "No project": {
+   "zh-Hans": "没有项目",
+   "hi": "कोई प्रोजेक्ट नहीं",
+   "es": "Ningún proyecto",
+   "ar": "لا مشروع",
+   "fr": "Aucun projet",
+   "bn": "কোনো প্রজেক্ট নেই",
+   "pt-BR": "Nenhum projeto",
+   "ru": "Нет проектов",
+   "id": "Tidak ada proyek"
+  },
+  "Couldn't load the projects": {
+   "zh-Hans": "无法加载项目",
+   "hi": "प्रोजेक्ट लोड नहीं हो सके",
+   "es": "No se pudieron cargar los proyectos",
+   "ar": "تعذّر تحميل المشاريع",
+   "fr": "Impossible de charger les projets",
+   "bn": "প্রজেক্টগুলো লোড করা যায়নি",
+   "pt-BR": "Não foi possível carregar os projetos",
+   "ru": "Не удалось загрузить проекты",
+   "id": "Tidak bisa memuat proyek"
+  },
+  "Only these projects' merge requests and pipelines are followed; your To-Do list stays complete.": {
+   "zh-Hans": "只关注这些项目的合并请求和流水线；你的待办列表保持完整。",
+   "hi": "केवल इन प्रोजेक्ट के मर्ज रिक्वेस्ट और पाइपलाइन देखे जाते हैं; आपकी To-Do सूची पूरी रहती है।",
+   "es": "Solo se siguen las merge requests y pipelines de estos proyectos; tu lista de tareas sigue completa.",
+   "ar": "تُتابَع طلبات الدمج وخطوط المعالجة لهذه المشاريع فقط؛ تبقى قائمة مهامك كاملة.",
+   "fr": "Seules les merge requests et pipelines de ces projets sont suivies ; ta liste To-Do reste complète.",
+   "bn": "শুধু এই প্রজেক্টগুলোর মার্জ রিকোয়েস্ট ও পাইপলাইন অনুসরণ করা হয়; আপনার To-Do তালিকা সম্পূর্ণ থাকে।",
+   "pt-BR": "Só as merge requests e pipelines destes projetos são seguidos; sua lista de tarefas continua completa.",
+   "ru": "Отслеживаются только merge request и пайплайны этих проектов; ваш список задач остаётся полным.",
+   "id": "Hanya merge request dan pipeline proyek-proyek ini yang diikuti; daftar To-Do Anda tetap lengkap."
+  },
+  "{count} projects followed": {
+   "zh-Hans": {
+    "other": "已关注 {count} 个项目"
+   },
+   "hi": {
+    "one": "{count} प्रोजेक्ट फ़ॉलो किया",
+    "other": "{count} प्रोजेक्ट फ़ॉलो किए"
+   },
+   "es": {
+    "one": "{count} proyecto seguido",
+    "other": "{count} proyectos seguidos"
+   },
+   "ar": {
+    "zero": "{count} مشاريع متابَعة",
+    "one": "مشروع واحد متابَع",
+    "two": "مشروعان متابَعان",
+    "few": "{count} مشاريع متابَعة",
+    "many": "{count} مشروعًا متابَعًا",
+    "other": "{count} مشروع متابَع"
+   },
+   "fr": {
+    "one": "{count} projet suivi",
+    "other": "{count} projets suivis"
+   },
+   "bn": {
+    "one": "{count}টি প্রজেক্ট অনুসরণ করা হচ্ছে",
+    "other": "{count}টি প্রজেক্ট অনুসরণ করা হচ্ছে"
+   },
+   "pt-BR": {
+    "one": "{count} projeto seguido",
+    "other": "{count} projetos seguidos"
+   },
+   "ru": {
+    "one": "{count} проект отслеживается",
+    "few": "{count} проекта отслеживаются",
+    "many": "{count} проектов отслеживаются",
+    "other": "{count} проекта отслеживаются"
+   },
+   "id": {
+    "other": "{count} proyek diikuti"
+   }
   }
  }
 }

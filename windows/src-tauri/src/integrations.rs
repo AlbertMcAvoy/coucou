@@ -76,6 +76,14 @@ pub fn start(app: AppHandle) {
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
+/// The GitLab projects the user follows (Settings → Integrations → GitLab);
+/// empty means every project.
+fn gitlab_followed(app: &AppHandle) -> Vec<i64> {
+    app.try_state::<crate::Shared>()
+        .map(|shared| shared.settings.lock().unwrap().gitlab_projects.clone())
+        .unwrap_or_default()
+}
+
 /// True when the user has this integration switched on in settings.
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
@@ -887,6 +895,10 @@ const GITLAB_ACTIVITY_CHECKS: usize = 5;
 /// this many days, at most this many projects: one request each, every minute.
 const GITLAB_PIPELINE_DAYS: i64 = 7;
 const GITLAB_PIPELINE_PROJECTS: usize = 10;
+/// Followed projects asked for their pipelines each minute, at most.
+const GITLAB_FOLLOWED_MAX: usize = 20;
+/// Pages of 100 read when listing the user's projects for Settings.
+const GITLAB_PROJECT_PAGES: u32 = 5;
 /// Pipelines updated in this window are read each minute; one seen is
 /// remembered this long, so it is never told twice.
 const GITLAB_PIPELINE_WINDOW_MS: i64 = 15 * 60 * 1000;
@@ -1083,6 +1095,82 @@ fn gitlab_failed_jobs(jobs: &[Value]) -> Vec<Value> {
         })
         .take(GITLAB_CHANGES_KEEP)
         .collect()
+}
+
+/// An MR list kept to the followed projects (all of it when none is followed).
+/// A source that failed stays failed: None is not an empty list.
+fn gitlab_keep_followed(answer: Option<Vec<Value>>, followed: &[i64]) -> Option<Vec<Value>> {
+    if followed.is_empty() {
+        return answer;
+    }
+    answer.map(|list| {
+        list.into_iter()
+            .filter(|mr| mr.get("project_id").and_then(Value::as_i64).is_some_and(|p| followed.contains(&p)))
+            .collect()
+    })
+}
+
+/// One project for Settings: its id, its name, and the group it sits in as
+/// GitLab names it ("Team / Backend"), or the user's own namespace.
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitlabProject {
+    pub id: i64,
+    pub name: String,
+    pub group: String,
+}
+
+/// The projects of an answer to `/projects`, sorted by group then name.
+fn gitlab_project_list(answer: &[Value]) -> Vec<GitlabProject> {
+    let mut out: Vec<GitlabProject> = answer
+        .iter()
+        .filter_map(|p| {
+            let id = p.get("id").and_then(Value::as_i64)?;
+            let name = s(p, "name");
+            // "Team / Backend / api" → "Team / Backend".
+            let full = s(p, "name_with_namespace");
+            let group = full
+                .strip_suffix(&name)
+                .map(|g| g.trim_end().trim_end_matches('/').trim_end().to_string())
+                .filter(|g| !g.is_empty())
+                .unwrap_or_else(|| p.get("namespace").map(|n| s(n, "name")).unwrap_or_default());
+            Some(GitlabProject { id, name, group })
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        a.group.to_lowercase().cmp(&b.group.to_lowercase()).then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    out
+}
+
+/// The projects the user is a member of, not archived, for Settings →
+/// Integrations → GitLab. Asked only from there.
+pub async fn gitlab_projects() -> Result<Vec<GitlabProject>, String> {
+    let token = secrets::get("gitlab-token").ok_or_else(|| crate::i18n::t("Save the URL and the token first"))?;
+    let base = gitlab_base()?;
+    let http = client();
+    let mut all: Vec<Value> = Vec::new();
+    for page in 1..=GITLAB_PROJECT_PAGES {
+        let response = http
+            .get(format!(
+                "{base}/api/v4/projects?membership=true&archived=false&simple=true&order_by=path&sort=asc&per_page=100&page={page}"
+            ))
+            .header("PRIVATE-TOKEN", &token)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .map_err(|e| crate::i18n::tf("No connection: {error}", &[("error", &e.without_url().to_string())]))?;
+        if !response.status().is_success() {
+            return Err(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks the read_api scope")));
+        }
+        let more = response.json::<Vec<Value>>().await.map_err(|_| crate::i18n::t("Unexpected answer from GitLab — check the URL"))?;
+        let full = more.len() == 100;
+        all.extend(more);
+        if !full {
+            break;
+        }
+    }
+    Ok(gitlab_project_list(&all))
 }
 
 /// "https://gl/group/sub/api/-/pipelines/12" → "api".
@@ -1420,8 +1508,11 @@ async fn poll_gitlab(app: AppHandle) {
     let todos = todos_answer.clone().unwrap_or_default();
 
     // ── The user's own merge requests, and who approved the open ones ──
-    let authored_answer =
-        list("merge_requests?scope=created_by_me&state=all&order_by=updated_at&sort=desc&per_page=20".into()).await;
+    let followed = gitlab_followed(&app);
+    let authored_answer = gitlab_keep_followed(
+        list("merge_requests?scope=created_by_me&state=all&order_by=updated_at&sort=desc&per_page=20".into()).await,
+        &followed,
+    );
     let authored = authored_answer.clone().unwrap_or_default();
     let mut approvers: std::collections::HashMap<i64, Vec<String>> = Default::default();
     for mr in authored.iter().filter(|m| s(m, "state") == "opened").take(GITLAB_APPROVAL_CHECKS) {
@@ -1450,8 +1541,8 @@ async fn poll_gitlab(app: AppHandle) {
 
     // ── Every open MR the user is involved in, and the discussion of the updated ones ──
     let mrs = |scope: String| list(format!("merge_requests?{scope}&state=opened&order_by=updated_at&sort=desc&per_page=20"));
-    let assigned_answer = mrs("scope=assigned_to_me".into()).await;
-    let reviewing_answer = mrs(format!("scope=all&reviewer_username={username}")).await;
+    let assigned_answer = gitlab_keep_followed(mrs("scope=assigned_to_me".into()).await, &followed);
+    let reviewing_answer = gitlab_keep_followed(mrs(format!("scope=all&reviewer_username={username}")).await, &followed);
     // All three or nothing: a source missing would pass its MRs off as new later.
     let involved_answer = match (&authored_answer, &assigned_answer, &reviewing_answer) {
         (Some(a), Some(b), Some(c)) => Some(gitlab_involved(a, b, c)),
@@ -1474,16 +1565,22 @@ async fn poll_gitlab(app: AppHandle) {
     // GitLab has no list of a user's pipelines across projects: the projects
     // come from the user's own events, newest first, and each is asked for the
     // pipelines the user started that moved in the last minutes.
-    let since_day = iso_utc(now_ms() as i64 - (GITLAB_PIPELINE_DAYS + 1) * 86_400_000);
-    let projects_answer = list(format!("events?after={}&per_page=100", &since_day[..10])).await;
-    let mut project_ids: Vec<i64> = Vec::new();
-    for event in projects_answer.iter().flatten() {
-        if let Some(pid) = event.get("project_id").and_then(Value::as_i64) {
-            if !project_ids.contains(&pid) && project_ids.len() < GITLAB_PIPELINE_PROJECTS {
-                project_ids.push(pid);
+    // With projects followed, those are the ones asked (GITLAB_FOLLOWED_MAX at most).
+    let (projects_answer, project_ids) = if followed.is_empty() {
+        let since_day = iso_utc(now_ms() as i64 - (GITLAB_PIPELINE_DAYS + 1) * 86_400_000);
+        let answer = list(format!("events?after={}&per_page=100", &since_day[..10])).await;
+        let mut ids: Vec<i64> = Vec::new();
+        for event in answer.iter().flatten() {
+            if let Some(pid) = event.get("project_id").and_then(Value::as_i64) {
+                if !ids.contains(&pid) && ids.len() < GITLAB_PIPELINE_PROJECTS {
+                    ids.push(pid);
+                }
             }
         }
-    }
+        (answer, ids)
+    } else {
+        (Some(Vec::new()), followed.iter().copied().take(GITLAB_FOLLOWED_MAX).collect())
+    };
     let updated_after = iso_utc(now_ms() as i64 - GITLAB_PIPELINE_WINDOW_MS);
     let mut pipelines: Vec<Value> = Vec::new();
     for pid in project_ids {
@@ -1970,6 +2067,29 @@ mod gitlab_tests {
         assert!(run(&mut m, vec![pipe(3, "running")]).is_empty());
         assert_eq!(labels(&run(&mut m, vec![pipe(3, "success")])), vec!["Pipeline passed: api · main"]);
         assert!(run(&mut m, vec![pipe(4, "canceled")]).is_empty(), "canceled is no news");
+    }
+
+    #[test]
+    fn projects_are_grouped_and_sorted_for_settings() {
+        let p = |id: i64, name: &str, full: &str| json!({ "id": id, "name": name, "name_with_namespace": full, "namespace": { "name": "me" } });
+        let list = gitlab_project_list(&[
+            p(1, "web", "Team / Front / web"),
+            p(2, "api", "Team / Backend / api"),
+            p(3, "notes", "notes"),
+            p(4, "Admin", "Team / Backend / Admin"),
+        ]);
+        let shown: Vec<(&str, &str)> = list.iter().map(|x| (x.group.as_str(), x.name.as_str())).collect();
+        assert_eq!(shown, vec![("me", "notes"), ("Team / Backend", "Admin"), ("Team / Backend", "api"), ("Team / Front", "web")]);
+    }
+
+    #[test]
+    fn only_the_followed_projects_merge_requests_are_kept() {
+        let mr = |id: i64, project: i64| json!({ "id": id, "project_id": project });
+        let all = Some(vec![mr(1, 7), mr(2, 8), mr(3, 7)]);
+        let ids = |a: Option<Vec<Value>>| a.unwrap().iter().map(|m| m["id"].as_i64().unwrap()).collect::<Vec<_>>();
+        assert_eq!(ids(gitlab_keep_followed(all.clone(), &[])), vec![1, 2, 3], "none followed: every project");
+        assert_eq!(ids(gitlab_keep_followed(all, &[7])), vec![1, 3]);
+        assert!(gitlab_keep_followed(None, &[7]).is_none(), "a failed source stays failed");
     }
 
     #[test]

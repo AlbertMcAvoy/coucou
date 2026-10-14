@@ -583,6 +583,12 @@ fn open_gitlab(path: Option<String>) {
     }
 }
 
+/// Settings → Integrations → GitLab: the projects the user can follow.
+#[tauri::command]
+async fn gitlab_projects() -> Result<Vec<integrations::GitlabProject>, String> {
+    integrations::gitlab_projects().await
+}
+
 /// Refresh buttons in the integration cards.
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
@@ -811,6 +817,7 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_gitlab,
+            gitlab_projects,
             open_settings_window,
             set_paused,
             shortcuts_status,
