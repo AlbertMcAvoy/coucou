@@ -422,7 +422,13 @@
     "agent_an": "أحد الوكلاء",
     "home_decision_allowed": "سمحتَ لـ%1$s بـ: %2$s",
     "home_decision_denied": "رفضتَ لـ%1$s: %2$s",
-    "agent_an_title": "أحد الوكلاء"
+    "agent_an_title": "أحد الوكلاء",
+    "shortcut_chat_short": "محادثة",
+    "shortcut_chat_long": "الدردشة مع الذكاء الاصطناعي",
+    "shortcut_recent_short": "الأخيرة",
+    "shortcut_recent_long": "القرارات الأخيرة",
+    "shortcut_pair_short": "اقتران جديد",
+    "shortcut_pair_long": "الاقتران من جديد مع حاسوبك"
   },
   "plurals": {
     "widget_n_waiting": {"zero": "%1$d بالانتظار", "one": "%1$d بالانتظار", "two": "%1$d بالانتظار", "few": "%1$d بالانتظار", "many": "%1$d بالانتظار", "other": "%1$d بالانتظار"},

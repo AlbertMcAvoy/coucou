@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">你允许了 %1$s %2$s</string>
     <string name="home_decision_denied">你拒绝了 %1$s 的请求：%2$s</string>
     <string name="agent_an_title">一个代理</string>
+    <string name="shortcut_chat_short">聊天</string>
+    <string name="shortcut_chat_long">与你的 AI 聊天</string>
+    <string name="shortcut_recent_short">最近</string>
+    <string name="shortcut_recent_long">最近的决定</string>
+    <string name="shortcut_pair_short">重新配对</string>
+    <string name="shortcut_pair_long">与你的电脑重新配对</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d 个等待中</item>
     </plurals>

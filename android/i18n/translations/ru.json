@@ -422,7 +422,13 @@
     "agent_an": "агента",
     "home_decision_allowed": "Разрешено для %1$s: %2$s",
     "home_decision_denied": "Отклонено для %1$s: %2$s",
-    "agent_an_title": "Агент"
+    "agent_an_title": "Агент",
+    "shortcut_chat_short": "Чат",
+    "shortcut_chat_long": "Чат с вашим ИИ",
+    "shortcut_recent_short": "Недавние",
+    "shortcut_recent_long": "Недавние решения",
+    "shortcut_pair_short": "Связать снова",
+    "shortcut_pair_long": "Снова связать с вашим компьютером"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d ожидает", "few": "%1$d ожидают", "many": "%1$d ожидают", "other": "%1$d ожидают"},

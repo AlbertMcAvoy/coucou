@@ -39,6 +39,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Long-press the icon: Chat, Recent decisions, Pair again (res/xml/shortcuts.xml). They start LaunchActivity, not this one. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <!-- Scanning the pairing QR code with the camera app opens coucou://pair?... here. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

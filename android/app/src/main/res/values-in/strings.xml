@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">Kamu mengizinkan %1$s untuk %2$s</string>
     <string name="home_decision_denied">Kamu menolak %1$s untuk %2$s</string>
     <string name="agent_an_title">Sebuah agen</string>
+    <string name="shortcut_chat_short">Chat</string>
+    <string name="shortcut_chat_long">Ngobrol dengan AI-mu</string>
+    <string name="shortcut_recent_short">Terbaru</string>
+    <string name="shortcut_recent_long">Keputusan terbaru</string>
+    <string name="shortcut_pair_short">Pasangkan lagi</string>
+    <string name="shortcut_pair_long">Pasangkan lagi dengan komputermu</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>

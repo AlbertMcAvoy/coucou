@@ -422,7 +422,13 @@
     "agent_an": "sebuah agen",
     "home_decision_allowed": "Kamu mengizinkan %1$s untuk %2$s",
     "home_decision_denied": "Kamu menolak %1$s untuk %2$s",
-    "agent_an_title": "Sebuah agen"
+    "agent_an_title": "Sebuah agen",
+    "shortcut_chat_short": "Chat",
+    "shortcut_chat_long": "Ngobrol dengan AI-mu",
+    "shortcut_recent_short": "Terbaru",
+    "shortcut_recent_long": "Keputusan terbaru",
+    "shortcut_pair_short": "Pasangkan lagi",
+    "shortcut_pair_long": "Pasangkan lagi dengan komputermu"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

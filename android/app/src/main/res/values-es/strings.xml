@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">Permitiste a %1$s %2$s</string>
     <string name="home_decision_denied">Denegaste a %1$s %2$s</string>
     <string name="agent_an_title">Un agente</string>
+    <string name="shortcut_chat_short">Chat</string>
+    <string name="shortcut_chat_long">Chatear con tu IA</string>
+    <string name="shortcut_recent_short">Recientes</string>
+    <string name="shortcut_recent_long">Decisiones recientes</string>
+    <string name="shortcut_pair_short">Emparejar</string>
+    <string name="shortcut_pair_long">Volver a emparejar con tu ordenador</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en espera</item>
         <item quantity="many">%1$d en espera</item>

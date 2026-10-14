@@ -422,7 +422,13 @@
     "agent_an": "um agente",
     "home_decision_allowed": "Você permitiu a %1$s %2$s",
     "home_decision_denied": "Você negou a %1$s o pedido para %2$s",
-    "agent_an_title": "Um agente"
+    "agent_an_title": "Um agente",
+    "shortcut_chat_short": "Chat",
+    "shortcut_chat_long": "Conversar com sua IA",
+    "shortcut_recent_short": "Recentes",
+    "shortcut_recent_long": "Decisões recentes",
+    "shortcut_pair_short": "Parear",
+    "shortcut_pair_long": "Parear de novo com seu computador"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},

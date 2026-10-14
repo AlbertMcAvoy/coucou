@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">आपने %1$s को यह करने की अनुमति दी: %2$s</string>
     <string name="home_decision_denied">आपने %1$s को यह करने से रोका: %2$s</string>
     <string name="agent_an_title">एक एजेंट</string>
+    <string name="shortcut_chat_short">चैट</string>
+    <string name="shortcut_chat_long">अपने AI से चैट करें</string>
+    <string name="shortcut_recent_short">हाल के</string>
+    <string name="shortcut_recent_long">हाल के निर्णय</string>
+    <string name="shortcut_pair_short">फिर जोड़ें</string>
+    <string name="shortcut_pair_long">अपने कंप्यूटर से फिर जोड़ें</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d प्रतीक्षा में</item>
         <item quantity="other">%1$d प्रतीक्षा में</item>

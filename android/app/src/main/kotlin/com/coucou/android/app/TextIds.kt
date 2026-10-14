@@ -429,6 +429,12 @@ internal object TextIds {
         "home_decision_allowed" to R.string.home_decision_allowed,
         "home_decision_denied" to R.string.home_decision_denied,
         "agent_an_title" to R.string.agent_an_title,
+        "shortcut_chat_short" to R.string.shortcut_chat_short,
+        "shortcut_chat_long" to R.string.shortcut_chat_long,
+        "shortcut_recent_short" to R.string.shortcut_recent_short,
+        "shortcut_recent_long" to R.string.shortcut_recent_long,
+        "shortcut_pair_short" to R.string.shortcut_pair_short,
+        "shortcut_pair_long" to R.string.shortcut_pair_long,
     )
 
     val plurals: Map<String, Int> = mapOf(

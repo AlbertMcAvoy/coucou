@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">سمحتَ لـ%1$s بـ: %2$s</string>
     <string name="home_decision_denied">رفضتَ لـ%1$s: %2$s</string>
     <string name="agent_an_title">أحد الوكلاء</string>
+    <string name="shortcut_chat_short">محادثة</string>
+    <string name="shortcut_chat_long">الدردشة مع الذكاء الاصطناعي</string>
+    <string name="shortcut_recent_short">الأخيرة</string>
+    <string name="shortcut_recent_long">القرارات الأخيرة</string>
+    <string name="shortcut_pair_short">اقتران جديد</string>
+    <string name="shortcut_pair_long">الاقتران من جديد مع حاسوبك</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

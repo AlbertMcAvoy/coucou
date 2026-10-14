@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">Разрешено для %1$s: %2$s</string>
     <string name="home_decision_denied">Отклонено для %1$s: %2$s</string>
     <string name="agent_an_title">Агент</string>
+    <string name="shortcut_chat_short">Чат</string>
+    <string name="shortcut_chat_long">Чат с вашим ИИ</string>
+    <string name="shortcut_recent_short">Недавние</string>
+    <string name="shortcut_recent_long">Недавние решения</string>
+    <string name="shortcut_pair_short">Связать снова</string>
+    <string name="shortcut_pair_long">Снова связать с вашим компьютером</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d ожидает</item>
         <item quantity="few">%1$d ожидают</item>

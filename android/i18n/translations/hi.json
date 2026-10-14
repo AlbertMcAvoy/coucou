@@ -422,7 +422,13 @@
     "agent_an": "एक एजेंट",
     "home_decision_allowed": "आपने %1$s को यह करने की अनुमति दी: %2$s",
     "home_decision_denied": "आपने %1$s को यह करने से रोका: %2$s",
-    "agent_an_title": "एक एजेंट"
+    "agent_an_title": "एक एजेंट",
+    "shortcut_chat_short": "चैट",
+    "shortcut_chat_long": "अपने AI से चैट करें",
+    "shortcut_recent_short": "हाल के",
+    "shortcut_recent_long": "हाल के निर्णय",
+    "shortcut_pair_short": "फिर जोड़ें",
+    "shortcut_pair_long": "अपने कंप्यूटर से फिर जोड़ें"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

@@ -424,6 +424,12 @@
     <string name="home_decision_allowed">You allowed %1$s to %2$s</string>
     <string name="home_decision_denied">You denied %1$s to %2$s</string>
     <string name="agent_an_title">An agent</string>
+    <string name="shortcut_chat_short">Chat</string>
+    <string name="shortcut_chat_long">Chat with your AI</string>
+    <string name="shortcut_recent_short">Recent</string>
+    <string name="shortcut_recent_long">Recent decisions</string>
+    <string name="shortcut_pair_short">Pair again</string>
+    <string name="shortcut_pair_long">Pair again with your computer</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>

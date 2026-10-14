@@ -423,7 +423,13 @@
     "agent_an": "an agent",
     "home_decision_allowed": "You allowed %1$s to %2$s",
     "home_decision_denied": "You denied %1$s to %2$s",
-    "agent_an_title": "An agent"
+    "agent_an_title": "An agent",
+    "shortcut_chat_short": "Chat",
+    "shortcut_chat_long": "Chat with your AI",
+    "shortcut_recent_short": "Recent",
+    "shortcut_recent_long": "Recent decisions",
+    "shortcut_pair_short": "Pair again",
+    "shortcut_pair_long": "Pair again with your computer"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},
