@@ -436,6 +436,9 @@
     <string name="team_config_title">اختر وكلاءك</string>
     <string name="team_config_hint">اختر حتى %1$d وكلاء. إن لم تختر أحدًا فسيظهر الأكثر نشاطًا.</string>
     <string name="team_config_save">حفظ</string>
+    <string name="share_label">محادثة Coucou</string>
+    <string name="share_not_paired">اقرن حاسوبك أولًا، ثم يمكنك إرسال النص إلى الدردشة.</string>
+    <string name="share_chat_off">الدردشة غير متاحة على حاسوبك، لذلك لم يُحفظ النص المشارَك.</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

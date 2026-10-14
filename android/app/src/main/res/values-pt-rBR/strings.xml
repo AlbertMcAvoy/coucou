@@ -436,6 +436,9 @@
     <string name="team_config_title">Escolha seus agentes</string>
     <string name="team_config_hint">Escolha até %1$d agentes. Sem nenhum escolhido, aparecem os mais ativos.</string>
     <string name="team_config_save">Salvar</string>
+    <string name="share_label">Chat do Coucou</string>
+    <string name="share_not_paired">Pareie primeiro seu computador; depois você poderá enviar texto para o chat.</string>
+    <string name="share_chat_off">O chat não está disponível no seu computador, então o texto compartilhado não foi guardado.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d esperando</item>
         <item quantity="many">%1$d esperando</item>

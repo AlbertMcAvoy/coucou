@@ -436,6 +436,9 @@
     <string name="team_config_title">Выберите агентов</string>
     <string name="team_config_hint">Выберите до %1$d агентов. Если ничего не выбрано, показываются самые активные.</string>
     <string name="team_config_save">Сохранить</string>
+    <string name="share_label">Чат Coucou</string>
+    <string name="share_not_paired">Сначала свяжите компьютер, затем можно отправлять текст в чат.</string>
+    <string name="share_chat_off">На вашем компьютере чат недоступен, поэтому полученный текст не сохранён.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d ожидает</item>
         <item quantity="few">%1$d ожидают</item>

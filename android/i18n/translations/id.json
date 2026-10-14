@@ -434,7 +434,10 @@
     "widget_team_not_running": "Tidak berjalan",
     "team_config_title": "Pilih agenmu",
     "team_config_hint": "Pilih hingga %1$d agen. Jika tidak ada yang dipilih, yang paling sibuk akan tampil.",
-    "team_config_save": "Simpan"
+    "team_config_save": "Simpan",
+    "share_label": "Chat Coucou",
+    "share_not_paired": "Pasangkan komputermu dulu, lalu kamu bisa mengirim teks ke chat.",
+    "share_chat_off": "Chat tidak tersedia di komputermu, jadi teks yang dibagikan tidak disimpan."
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

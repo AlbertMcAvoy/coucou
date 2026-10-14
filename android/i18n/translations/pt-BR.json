@@ -434,7 +434,10 @@
     "widget_team_not_running": "Não está rodando",
     "team_config_title": "Escolha seus agentes",
     "team_config_hint": "Escolha até %1$d agentes. Sem nenhum escolhido, aparecem os mais ativos.",
-    "team_config_save": "Salvar"
+    "team_config_save": "Salvar",
+    "share_label": "Chat do Coucou",
+    "share_not_paired": "Pareie primeiro seu computador; depois você poderá enviar texto para o chat.",
+    "share_chat_off": "O chat não está disponível no seu computador, então o texto compartilhado não foi guardado."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},

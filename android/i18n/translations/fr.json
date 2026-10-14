@@ -434,7 +434,10 @@
     "widget_team_not_running": "À l'arrêt",
     "team_config_title": "Choisis tes agents",
     "team_config_hint": "Choisis jusqu'à %1$d agents. Sans choix, les plus actifs s'affichent.",
-    "team_config_save": "Enregistrer"
+    "team_config_save": "Enregistrer",
+    "share_label": "Chat Coucou",
+    "share_not_paired": "Connecte d'abord ton ordinateur, puis tu pourras envoyer du texte au chat.",
+    "share_chat_off": "Le chat n'est pas disponible sur ton ordinateur, le texte partagé n'a donc pas été gardé."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},

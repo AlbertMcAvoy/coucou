@@ -441,6 +441,9 @@ internal object TextIds {
         "team_config_title" to R.string.team_config_title,
         "team_config_hint" to R.string.team_config_hint,
         "team_config_save" to R.string.team_config_save,
+        "share_label" to R.string.share_label,
+        "share_not_paired" to R.string.share_not_paired,
+        "share_chat_off" to R.string.share_chat_off,
     )
 
     val plurals: Map<String, Int> = mapOf(

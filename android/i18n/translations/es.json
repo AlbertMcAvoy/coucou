@@ -434,7 +434,10 @@
     "widget_team_not_running": "No está en marcha",
     "team_config_title": "Elige tus agentes",
     "team_config_hint": "Elige hasta %1$d agentes. Si no eliges ninguno, se muestran los más activos.",
-    "team_config_save": "Guardar"
+    "team_config_save": "Guardar",
+    "share_label": "Chat de Coucou",
+    "share_not_paired": "Empareja primero tu ordenador y luego podrás enviar texto al chat.",
+    "share_chat_off": "El chat no está disponible en tu ordenador, así que el texto compartido no se guardó."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en espera", "many": "%1$d en espera", "other": "%1$d en espera"},

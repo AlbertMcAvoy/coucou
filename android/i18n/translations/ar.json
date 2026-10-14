@@ -434,7 +434,10 @@
     "widget_team_not_running": "لا يعمل",
     "team_config_title": "اختر وكلاءك",
     "team_config_hint": "اختر حتى %1$d وكلاء. إن لم تختر أحدًا فسيظهر الأكثر نشاطًا.",
-    "team_config_save": "حفظ"
+    "team_config_save": "حفظ",
+    "share_label": "محادثة Coucou",
+    "share_not_paired": "اقرن حاسوبك أولًا، ثم يمكنك إرسال النص إلى الدردشة.",
+    "share_chat_off": "الدردشة غير متاحة على حاسوبك، لذلك لم يُحفظ النص المشارَك."
   },
   "plurals": {
     "widget_n_waiting": {"zero": "%1$d بالانتظار", "one": "%1$d بالانتظار", "two": "%1$d بالانتظار", "few": "%1$d بالانتظار", "many": "%1$d بالانتظار", "other": "%1$d بالانتظار"},

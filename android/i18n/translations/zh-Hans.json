@@ -434,7 +434,10 @@
     "widget_team_not_running": "未运行",
     "team_config_title": "选择你的代理",
     "team_config_hint": "最多选择 %1$d 个代理。不选时显示最活跃的几个。",
-    "team_config_save": "保存"
+    "team_config_save": "保存",
+    "share_label": "Coucou 聊天",
+    "share_not_paired": "请先与你的电脑配对，然后才能把文字发送到聊天。",
+    "share_chat_off": "你的电脑上没有开启聊天，所以没有保留分享的文字。"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d 个等待中"},

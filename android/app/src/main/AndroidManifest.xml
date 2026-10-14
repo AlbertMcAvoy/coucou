@@ -147,6 +147,22 @@
             </intent-filter>
         </activity>
 
+        <!-- "Share to Coucou": text/plain from another app goes into the chat box as a draft, never sent. Exported for the share sheet; it takes one
+             string, cleaned and cut, and nothing else. -->
+        <activity
+            android:name=".app.ShareActivity"
+            android:exported="true"
+            android:label="@string/share_label"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <!-- The quick-settings tile: on while the computer is connected; a tap opens Coucou. -->
         <service
             android:name=".app.GlanceTile"

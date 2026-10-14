@@ -434,7 +434,10 @@
     "widget_team_not_running": "चल नहीं रहा",
     "team_config_title": "अपने एजेंट चुनें",
     "team_config_hint": "%1$d एजेंट तक चुनें। कोई न चुनने पर सबसे सक्रिय एजेंट दिखते हैं।",
-    "team_config_save": "सहेजें"
+    "team_config_save": "सहेजें",
+    "share_label": "Coucou चैट",
+    "share_not_paired": "पहले अपने कंप्यूटर से जुड़ें, फिर आप चैट में टेक्स्ट भेज पाएँगे।",
+    "share_chat_off": "आपके कंप्यूटर पर चैट उपलब्ध नहीं है, इसलिए साझा किया गया टेक्स्ट नहीं रखा गया।"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

@@ -436,6 +436,9 @@
     <string name="team_config_title">Pilih agenmu</string>
     <string name="team_config_hint">Pilih hingga %1$d agen. Jika tidak ada yang dipilih, yang paling sibuk akan tampil.</string>
     <string name="team_config_save">Simpan</string>
+    <string name="share_label">Chat Coucou</string>
+    <string name="share_not_paired">Pasangkan komputermu dulu, lalu kamu bisa mengirim teks ke chat.</string>
+    <string name="share_chat_off">Chat tidak tersedia di komputermu, jadi teks yang dibagikan tidak disimpan.</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>

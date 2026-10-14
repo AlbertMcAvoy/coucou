@@ -72,6 +72,18 @@ class AppModel(private val context: Context) : LinkListener {
     /** Set only by LaunchActivity (not exported), read by MainActivity: see [com.coucou.android.core.PendingLaunch]. */
     val launch = com.coucou.android.core.PendingLaunch()
 
+    /** Text shared to Coucou from another app, waiting to be put in the chat box (see [com.coucou.android.core.ShareDraft]). */
+    val shareDraft = com.coucou.android.core.ShareDraft()
+
+    /** Changes with every share, so a chat screen that is already open notices there is a new draft. */
+    var shareVersion by mutableStateOf(0); private set
+
+    /** Keeps [text] (cleaned) as the draft for the chat box. Called by the share target only. */
+    fun offerShare(text: String?) {
+        shareDraft.offer(text)
+        shareVersion++
+    }
+
     /** Agent tasks finished today, for the Today widget. Kept on this phone only (see [TodayStore]). */
     private val todayCounter = com.coucou.android.core.TodayCounter(TodayStore(context))
 

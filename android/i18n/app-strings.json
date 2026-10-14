@@ -435,7 +435,10 @@
     "widget_team_not_running": "Not running",
     "team_config_title": "Choose your agents",
     "team_config_hint": "Pick up to %1$d agents. With none picked, the busiest ones show.",
-    "team_config_save": "Save"
+    "team_config_save": "Save",
+    "share_label": "Coucou chat",
+    "share_not_paired": "Pair your computer first, then you can send text to chat.",
+    "share_chat_off": "Chat is not available on your computer, so the shared text was not kept."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},

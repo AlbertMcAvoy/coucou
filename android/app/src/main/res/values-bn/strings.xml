@@ -436,6 +436,9 @@
     <string name="team_config_title">আপনার এজেন্ট বাছাই করুন</string>
     <string name="team_config_hint">সর্বোচ্চ %1$d টি এজেন্ট বাছাই করুন। কিছু না বাছলে সবচেয়ে ব্যস্তগুলো দেখানো হয়।</string>
     <string name="team_config_save">সংরক্ষণ</string>
+    <string name="share_label">Coucou চ্যাট</string>
+    <string name="share_not_paired">আগে আপনার কম্পিউটারের সাথে যুক্ত করুন, তারপর চ্যাটে লেখা পাঠাতে পারবেন।</string>
+    <string name="share_chat_off">আপনার কম্পিউটারে চ্যাট চালু নেই, তাই শেয়ার করা লেখা রাখা হয়নি।</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d টি অপেক্ষায়</item>
         <item quantity="other">%1$d টি অপেক্ষায়</item>

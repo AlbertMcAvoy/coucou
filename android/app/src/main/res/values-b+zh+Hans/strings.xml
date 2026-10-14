@@ -436,6 +436,9 @@
     <string name="team_config_title">选择你的代理</string>
     <string name="team_config_hint">最多选择 %1$d 个代理。不选时显示最活跃的几个。</string>
     <string name="team_config_save">保存</string>
+    <string name="share_label">Coucou 聊天</string>
+    <string name="share_not_paired">请先与你的电脑配对，然后才能把文字发送到聊天。</string>
+    <string name="share_chat_off">你的电脑上没有开启聊天，所以没有保留分享的文字。</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d 个等待中</item>
     </plurals>

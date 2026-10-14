@@ -436,6 +436,9 @@
     <string name="team_config_title">Choose your agents</string>
     <string name="team_config_hint">Pick up to %1$d agents. With none picked, the busiest ones show.</string>
     <string name="team_config_save">Save</string>
+    <string name="share_label">Coucou chat</string>
+    <string name="share_not_paired">Pair your computer first, then you can send text to chat.</string>
+    <string name="share_chat_off">Chat is not available on your computer, so the shared text was not kept.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>
