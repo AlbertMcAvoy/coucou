@@ -25,7 +25,7 @@ android {
         versionCode = 6
         versionName = "0.3.4"
         // The app's languages (English and the translations in i18n/translations); the libraries' other languages are left out of the app.
-        resourceConfigurations += listOf("en", "fr", "es", "pt-rBR")
+        resourceConfigurations += listOf("en", "fr", "es", "pt-rBR", "b+zh+Hans", "hi", "bn", "ru", "in", "ar")
     }
     signingConfigs {
         val keystore = releaseKeystore

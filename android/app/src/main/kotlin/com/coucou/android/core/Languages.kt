@@ -15,6 +15,12 @@ object Languages {
         Language("fr", "Français"),
         Language("es", "Español"),
         Language("pt-BR", "Português (Brasil)"),
+        Language("zh-Hans", "简体中文"),
+        Language("hi", "हिन्दी"),
+        Language("bn", "বাংলা"),
+        Language("ru", "Русский"),
+        Language("id", "Bahasa Indonesia"),
+        Language("ar", "العربية", rtl = true),
     )
 
     /** The tag of the language that [tag] (as Android reports it, e.g. "zh-Hans-CN" or "pt-PT") stands for in the app; [SYSTEM] if there is none. */
