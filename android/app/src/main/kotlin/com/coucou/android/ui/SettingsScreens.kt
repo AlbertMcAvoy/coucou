@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +122,7 @@ private fun TimeRow(label: String, minutes: Int, enabled: Boolean, onChange: (In
     ) {
         Text(label, Modifier.weight(1f), style = TypeScale.BODY.style(t.text.c()))
         StepButton("−", "$label, ${QuietHours.STEP} minutes earlier", enabled) { onChange(minutes - QuietHours.STEP) }
-        Text(clock(minutes), Modifier.width(56.dp), style = TypeScale.BODY.style(t.text.c()).copy(fontFamily = FontFamily.Monospace), maxLines = 1)
+        Text(clock(minutes), Modifier.widthIn(min = 56.dp), style = TypeScale.BODY.style(t.text.c()).copy(fontFamily = FontFamily.Monospace), maxLines = 1)
         StepButton("+", "$label, ${QuietHours.STEP} minutes later", enabled) { onChange(minutes + QuietHours.STEP) }
     }
 }
@@ -298,7 +299,7 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                     Text(stringResource(R.string.about_credit), style = TypeScale.BODY.style(t.text.c()))
                     Text(
                         stringResource(R.string.about_repo),
-                        Modifier.clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } },
+                        Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } }.padding(vertical = 14.dp),
                         style = TypeScale.BODY.style(t.text.c()).copy(textDecoration = TextDecoration.Underline),
                     )
                     Text(stringResource(R.string.about_assets), style = TypeScale.SECONDARY.style(t.textDim.c()))
