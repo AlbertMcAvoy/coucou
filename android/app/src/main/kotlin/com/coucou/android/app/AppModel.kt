@@ -142,6 +142,7 @@ class AppModel(private val context: Context) : LinkListener {
         UserSettings.save(kv, next)
         applySound()
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
+        com.coucou.android.core.MotionState.choice = settings.motion
         // Switching the relay on or off rebuilds the connection with the right routes.
         if (relayChanged) currentPairing?.let { restartLink(it) }
     }
@@ -154,6 +155,7 @@ class AppModel(private val context: Context) : LinkListener {
     init {
         applySound()
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
+        com.coucou.android.core.MotionState.choice = settings.motion
     }
 
     /** What the computer says Mochi wears ("auto" or an outfit); the last one it told, kept for when it is away. */

@@ -42,6 +42,8 @@ data class UserSettings(
     val keepScreenOff: Boolean = false,
     /** How a request buzzes the phone; the standard pattern is today's. */
     val vibration: VibrationChoice = VibrationChoice.STANDARD,
+    /** Reduce motion: follow the system (default), always, or never. */
+    val motion: MotionChoice = MotionChoice.SYSTEM,
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -54,6 +56,7 @@ data class UserSettings(
         private const val RELAY = "use_relay"
         private const val NO_WAKE = "no_wake_screen"
         private const val VIBRATION = "vibration_choice"
+        private const val MOTION = "motion_choice"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -70,6 +73,7 @@ data class UserSettings(
                 useRelay = store.getBoolean(RELAY, d.useRelay),
                 keepScreenOff = store.getBoolean(NO_WAKE, d.keepScreenOff),
                 vibration = VibrationChoice.parse(store.getString(VIBRATION, d.vibration.key)),
+                motion = MotionChoice.parse(store.getString(MOTION, d.motion.key)),
             )
         }
 
@@ -84,6 +88,7 @@ data class UserSettings(
             store.put(RELAY, s.useRelay)
             store.put(NO_WAKE, s.keepScreenOff)
             store.put(VIBRATION, s.vibration.key)
+            store.put(MOTION, s.motion.key)
         }
     }
 }
