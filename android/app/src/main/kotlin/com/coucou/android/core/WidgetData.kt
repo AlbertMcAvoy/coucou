@@ -164,6 +164,8 @@ data class WidgetContent(
     val today: Int = 0,
     /** Mochi Big's plan usage: Claude then Codex, each with its main window; empty when the computer sends none or is not connected. */
     val usageRows: List<UsageRing> = emptyList(),
+    /** Every agent that runs, most urgent first (the [tiles] are its first few): the Team widget picks its own from it. */
+    val roster: List<WidgetTile> = emptyList(),
 ) {
     /** Which of the three things Mochi Big's right side shows. */
     val usageSide: UsageSide get() = when {
@@ -258,13 +260,13 @@ object WidgetData {
         today: Int = 0,
         nowMs: Long = 0L,
     ): WidgetContent {
-        val tiles = if (!glance.connected) emptyList() else sessions
+        val roster = if (!glance.connected) emptyList() else sessions
             .sortedBy { GlanceBuilder.rank(it.state) }
-            .take(MAX_ROWS)
             .map { WidgetTile(it.pillId, nameOf(it.pillId), it.state, GlanceBuilder.lineOf(it), colourOf(it)) }
+        val tiles = roster.take(MAX_ROWS)
         val ring = if (glance.connected) ring(usage, nowMs) else null
         val rows = if (glance.connected) usageRows(usage, nowMs) else emptyList()
-        return WidgetContent(glance.headline, glance.tone, glance.connected, glance.waiting, tiles, ring, today.coerceAtLeast(0), rows)
+        return WidgetContent(glance.headline, glance.tone, glance.connected, glance.waiting, tiles, ring, today.coerceAtLeast(0), rows, roster)
     }
 
     /**
