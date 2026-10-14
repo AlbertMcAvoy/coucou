@@ -201,6 +201,14 @@
     <string name="relay_line_away">Your computer is not answering through the relay. It may be asleep or have the relay off.</string>
     <string name="settings_section_sound">Sound</string>
     <string name="settings_section_notices">Notices</string>
+    <string name="settings_section_requests">Permission requests</string>
+    <string name="settings_no_wake">Don\'t wake the screen for a request</string>
+    <string name="settings_no_wake_hint">The request still arrives with its sound and its notification; only the screen stays dark until you look.</string>
+    <string name="settings_vibration">Vibration for a request</string>
+    <string name="vibration_standard">Standard</string>
+    <string name="vibration_short">Short</string>
+    <string name="vibration_off">Off</string>
+    <string name="settings_requests_note">A request is never muted or hidden: these only change how it buzzes and whether it lights the screen.</string>
     <string name="settings_section_display">Display</string>
     <string name="settings_section_more">More</string>
     <string name="settings_section_about">About</string>
