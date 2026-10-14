@@ -459,7 +459,10 @@ own window.
   approval, title changed…), what a mention said, who merged or approved, what
   started a pipeline, how long it took and which jobs failed.
   The pill keeps the last ten pieces of news, details included, through a
-  restart too (in `news-gitlab.json`, next to the log).
+  restart too (in `news-gitlab.json`, next to the log). **Projects → Choose…**
+  lists your projects by group: tick the ones to follow, and only their merge
+  requests and pipelines are watched (twenty at most for pipelines); your To-Do
+  list stays complete. None ticked follows every project.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
