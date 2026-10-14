@@ -428,7 +428,13 @@
     "shortcut_recent_short": "الأخيرة",
     "shortcut_recent_long": "القرارات الأخيرة",
     "shortcut_pair_short": "اقتران جديد",
-    "shortcut_pair_long": "الاقتران من جديد مع حاسوبك"
+    "shortcut_pair_long": "الاقتران من جديد مع حاسوبك",
+    "widget_team_label": "فريقك",
+    "widget_team_description": "الوكلاء الذين تختارهم، جنبًا إلى جنب.",
+    "widget_team_not_running": "لا يعمل",
+    "team_config_title": "اختر وكلاءك",
+    "team_config_hint": "اختر حتى %1$d وكلاء. إن لم تختر أحدًا فسيظهر الأكثر نشاطًا.",
+    "team_config_save": "حفظ"
   },
   "plurals": {
     "widget_n_waiting": {"zero": "%1$d بالانتظار", "one": "%1$d بالانتظار", "two": "%1$d بالانتظار", "few": "%1$d بالانتظار", "many": "%1$d بالانتظار", "other": "%1$d بالانتظار"},

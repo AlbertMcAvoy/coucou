@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">हाल के निर्णय</string>
     <string name="shortcut_pair_short">फिर जोड़ें</string>
     <string name="shortcut_pair_long">अपने कंप्यूटर से फिर जोड़ें</string>
+    <string name="widget_team_label">आपकी टीम</string>
+    <string name="widget_team_description">आपके चुने हुए एजेंट, साथ-साथ।</string>
+    <string name="widget_team_not_running">चल नहीं रहा</string>
+    <string name="team_config_title">अपने एजेंट चुनें</string>
+    <string name="team_config_hint">%1$d एजेंट तक चुनें। कोई न चुनने पर सबसे सक्रिय एजेंट दिखते हैं।</string>
+    <string name="team_config_save">सहेजें</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d प्रतीक्षा में</item>
         <item quantity="other">%1$d प्रतीक्षा में</item>

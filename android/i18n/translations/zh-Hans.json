@@ -428,7 +428,13 @@
     "shortcut_recent_short": "最近",
     "shortcut_recent_long": "最近的决定",
     "shortcut_pair_short": "重新配对",
-    "shortcut_pair_long": "与你的电脑重新配对"
+    "shortcut_pair_long": "与你的电脑重新配对",
+    "widget_team_label": "你的团队",
+    "widget_team_description": "你选择的代理，并排显示。",
+    "widget_team_not_running": "未运行",
+    "team_config_title": "选择你的代理",
+    "team_config_hint": "最多选择 %1$d 个代理。不选时显示最活跃的几个。",
+    "team_config_save": "保存"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d 个等待中"},

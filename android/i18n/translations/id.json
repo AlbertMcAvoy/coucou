@@ -428,7 +428,13 @@
     "shortcut_recent_short": "Terbaru",
     "shortcut_recent_long": "Keputusan terbaru",
     "shortcut_pair_short": "Pasangkan lagi",
-    "shortcut_pair_long": "Pasangkan lagi dengan komputermu"
+    "shortcut_pair_long": "Pasangkan lagi dengan komputermu",
+    "widget_team_label": "Timmu",
+    "widget_team_description": "Agen pilihanmu, berdampingan.",
+    "widget_team_not_running": "Tidak berjalan",
+    "team_config_title": "Pilih agenmu",
+    "team_config_hint": "Pilih hingga %1$d agen. Jika tidak ada yang dipilih, yang paling sibuk akan tampil.",
+    "team_config_save": "Simpan"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

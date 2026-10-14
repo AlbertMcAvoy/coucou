@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Недавние решения</string>
     <string name="shortcut_pair_short">Связать снова</string>
     <string name="shortcut_pair_long">Снова связать с вашим компьютером</string>
+    <string name="widget_team_label">Ваша команда</string>
+    <string name="widget_team_description">Выбранные вами агенты рядом.</string>
+    <string name="widget_team_not_running">Не запущен</string>
+    <string name="team_config_title">Выберите агентов</string>
+    <string name="team_config_hint">Выберите до %1$d агентов. Если ничего не выбрано, показываются самые активные.</string>
+    <string name="team_config_save">Сохранить</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d ожидает</item>
         <item quantity="few">%1$d ожидают</item>

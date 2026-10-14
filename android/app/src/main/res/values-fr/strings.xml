@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Décisions récentes</string>
     <string name="shortcut_pair_short">Reconnecter</string>
     <string name="shortcut_pair_long">Reconnecter avec ton ordinateur</string>
+    <string name="widget_team_label">Ton équipe</string>
+    <string name="widget_team_description">Les agents que tu choisis, côte à côte.</string>
+    <string name="widget_team_not_running">À l\'arrêt</string>
+    <string name="team_config_title">Choisis tes agents</string>
+    <string name="team_config_hint">Choisis jusqu\'à %1$d agents. Sans choix, les plus actifs s\'affichent.</string>
+    <string name="team_config_save">Enregistrer</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en attente</item>
         <item quantity="many">%1$d en attente</item>

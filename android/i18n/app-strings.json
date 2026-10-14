@@ -429,7 +429,13 @@
     "shortcut_recent_short": "Recent",
     "shortcut_recent_long": "Recent decisions",
     "shortcut_pair_short": "Pair again",
-    "shortcut_pair_long": "Pair again with your computer"
+    "shortcut_pair_long": "Pair again with your computer",
+    "widget_team_label": "Your team",
+    "widget_team_description": "The agents you pick, side by side.",
+    "widget_team_not_running": "Not running",
+    "team_config_title": "Choose your agents",
+    "team_config_hint": "Pick up to %1$d agents. With none picked, the busiest ones show.",
+    "team_config_save": "Save"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},

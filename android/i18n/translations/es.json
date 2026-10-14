@@ -428,7 +428,13 @@
     "shortcut_recent_short": "Recientes",
     "shortcut_recent_long": "Decisiones recientes",
     "shortcut_pair_short": "Emparejar",
-    "shortcut_pair_long": "Volver a emparejar con tu ordenador"
+    "shortcut_pair_long": "Volver a emparejar con tu ordenador",
+    "widget_team_label": "Tu equipo",
+    "widget_team_description": "Los agentes que eliges, uno al lado del otro.",
+    "widget_team_not_running": "No está en marcha",
+    "team_config_title": "Elige tus agentes",
+    "team_config_hint": "Elige hasta %1$d agentes. Si no eliges ninguno, se muestran los más activos.",
+    "team_config_save": "Guardar"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en espera", "many": "%1$d en espera", "other": "%1$d en espera"},

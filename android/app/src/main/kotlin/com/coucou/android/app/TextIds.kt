@@ -435,6 +435,12 @@ internal object TextIds {
         "shortcut_recent_long" to R.string.shortcut_recent_long,
         "shortcut_pair_short" to R.string.shortcut_pair_short,
         "shortcut_pair_long" to R.string.shortcut_pair_long,
+        "widget_team_label" to R.string.widget_team_label,
+        "widget_team_description" to R.string.widget_team_description,
+        "widget_team_not_running" to R.string.widget_team_not_running,
+        "team_config_title" to R.string.team_config_title,
+        "team_config_hint" to R.string.team_config_hint,
+        "team_config_save" to R.string.team_config_save,
     )
 
     val plurals: Map<String, Int> = mapOf(

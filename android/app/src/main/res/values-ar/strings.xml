@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">القرارات الأخيرة</string>
     <string name="shortcut_pair_short">اقتران جديد</string>
     <string name="shortcut_pair_long">الاقتران من جديد مع حاسوبك</string>
+    <string name="widget_team_label">فريقك</string>
+    <string name="widget_team_description">الوكلاء الذين تختارهم، جنبًا إلى جنب.</string>
+    <string name="widget_team_not_running">لا يعمل</string>
+    <string name="team_config_title">اختر وكلاءك</string>
+    <string name="team_config_hint">اختر حتى %1$d وكلاء. إن لم تختر أحدًا فسيظهر الأكثر نشاطًا.</string>
+    <string name="team_config_save">حفظ</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

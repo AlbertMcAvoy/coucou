@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Keputusan terbaru</string>
     <string name="shortcut_pair_short">Pasangkan lagi</string>
     <string name="shortcut_pair_long">Pasangkan lagi dengan komputermu</string>
+    <string name="widget_team_label">Timmu</string>
+    <string name="widget_team_description">Agen pilihanmu, berdampingan.</string>
+    <string name="widget_team_not_running">Tidak berjalan</string>
+    <string name="team_config_title">Pilih agenmu</string>
+    <string name="team_config_hint">Pilih hingga %1$d agen. Jika tidak ada yang dipilih, yang paling sibuk akan tampil.</string>
+    <string name="team_config_save">Simpan</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>

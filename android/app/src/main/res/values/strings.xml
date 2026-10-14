@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Recent decisions</string>
     <string name="shortcut_pair_short">Pair again</string>
     <string name="shortcut_pair_long">Pair again with your computer</string>
+    <string name="widget_team_label">Your team</string>
+    <string name="widget_team_description">The agents you pick, side by side.</string>
+    <string name="widget_team_not_running">Not running</string>
+    <string name="team_config_title">Choose your agents</string>
+    <string name="team_config_hint">Pick up to %1$d agents. With none picked, the busiest ones show.</string>
+    <string name="team_config_save">Save</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>

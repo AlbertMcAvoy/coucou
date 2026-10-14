@@ -428,7 +428,13 @@
     "shortcut_recent_short": "Недавние",
     "shortcut_recent_long": "Недавние решения",
     "shortcut_pair_short": "Связать снова",
-    "shortcut_pair_long": "Снова связать с вашим компьютером"
+    "shortcut_pair_long": "Снова связать с вашим компьютером",
+    "widget_team_label": "Ваша команда",
+    "widget_team_description": "Выбранные вами агенты рядом.",
+    "widget_team_not_running": "Не запущен",
+    "team_config_title": "Выберите агентов",
+    "team_config_hint": "Выберите до %1$d агентов. Если ничего не выбрано, показываются самые активные.",
+    "team_config_save": "Сохранить"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d ожидает", "few": "%1$d ожидают", "many": "%1$d ожидают", "other": "%1$d ожидают"},

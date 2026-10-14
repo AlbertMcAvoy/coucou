@@ -428,7 +428,13 @@
     "shortcut_recent_short": "हाल के",
     "shortcut_recent_long": "हाल के निर्णय",
     "shortcut_pair_short": "फिर जोड़ें",
-    "shortcut_pair_long": "अपने कंप्यूटर से फिर जोड़ें"
+    "shortcut_pair_long": "अपने कंप्यूटर से फिर जोड़ें",
+    "widget_team_label": "आपकी टीम",
+    "widget_team_description": "आपके चुने हुए एजेंट, साथ-साथ।",
+    "widget_team_not_running": "चल नहीं रहा",
+    "team_config_title": "अपने एजेंट चुनें",
+    "team_config_hint": "%1$d एजेंट तक चुनें। कोई न चुनने पर सबसे सक्रिय एजेंट दिखते हैं।",
+    "team_config_save": "सहेजें"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

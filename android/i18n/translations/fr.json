@@ -428,7 +428,13 @@
     "shortcut_recent_short": "Récents",
     "shortcut_recent_long": "Décisions récentes",
     "shortcut_pair_short": "Reconnecter",
-    "shortcut_pair_long": "Reconnecter avec ton ordinateur"
+    "shortcut_pair_long": "Reconnecter avec ton ordinateur",
+    "widget_team_label": "Ton équipe",
+    "widget_team_description": "Les agents que tu choisis, côte à côte.",
+    "widget_team_not_running": "À l'arrêt",
+    "team_config_title": "Choisis tes agents",
+    "team_config_hint": "Choisis jusqu'à %1$d agents. Sans choix, les plus actifs s'affichent.",
+    "team_config_save": "Enregistrer"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},

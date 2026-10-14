@@ -428,7 +428,13 @@
     "shortcut_recent_short": "Recentes",
     "shortcut_recent_long": "Decisões recentes",
     "shortcut_pair_short": "Parear",
-    "shortcut_pair_long": "Parear de novo com seu computador"
+    "shortcut_pair_long": "Parear de novo com seu computador",
+    "widget_team_label": "Sua equipe",
+    "widget_team_description": "Os agentes que você escolhe, lado a lado.",
+    "widget_team_not_running": "Não está rodando",
+    "team_config_title": "Escolha seus agentes",
+    "team_config_hint": "Escolha até %1$d agentes. Sem nenhum escolhido, aparecem os mais ativos.",
+    "team_config_save": "Salvar"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},

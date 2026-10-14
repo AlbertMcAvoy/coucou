@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Decisões recentes</string>
     <string name="shortcut_pair_short">Parear</string>
     <string name="shortcut_pair_long">Parear de novo com seu computador</string>
+    <string name="widget_team_label">Sua equipe</string>
+    <string name="widget_team_description">Os agentes que você escolhe, lado a lado.</string>
+    <string name="widget_team_not_running">Não está rodando</string>
+    <string name="team_config_title">Escolha seus agentes</string>
+    <string name="team_config_hint">Escolha até %1$d agentes. Sem nenhum escolhido, aparecem os mais ativos.</string>
+    <string name="team_config_save">Salvar</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d esperando</item>
         <item quantity="many">%1$d esperando</item>

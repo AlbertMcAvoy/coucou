@@ -428,7 +428,13 @@
     "shortcut_recent_short": "সাম্প্রতিক",
     "shortcut_recent_long": "সাম্প্রতিক সিদ্ধান্ত",
     "shortcut_pair_short": "আবার যুক্ত করুন",
-    "shortcut_pair_long": "আপনার কম্পিউটারের সাথে আবার যুক্ত করুন"
+    "shortcut_pair_long": "আপনার কম্পিউটারের সাথে আবার যুক্ত করুন",
+    "widget_team_label": "আপনার টিম",
+    "widget_team_description": "আপনার বাছাই করা এজেন্টরা, পাশাপাশি।",
+    "widget_team_not_running": "চলছে না",
+    "team_config_title": "আপনার এজেন্ট বাছাই করুন",
+    "team_config_hint": "সর্বোচ্চ %1$d টি এজেন্ট বাছাই করুন। কিছু না বাছলে সবচেয়ে ব্যস্তগুলো দেখানো হয়।",
+    "team_config_save": "সংরক্ষণ"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d টি অপেক্ষায়", "other": "%1$d টি অপেক্ষায়"},

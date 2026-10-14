@@ -430,6 +430,12 @@
     <string name="shortcut_recent_long">Decisiones recientes</string>
     <string name="shortcut_pair_short">Emparejar</string>
     <string name="shortcut_pair_long">Volver a emparejar con tu ordenador</string>
+    <string name="widget_team_label">Tu equipo</string>
+    <string name="widget_team_description">Los agentes que eliges, uno al lado del otro.</string>
+    <string name="widget_team_not_running">No está en marcha</string>
+    <string name="team_config_title">Elige tus agentes</string>
+    <string name="team_config_hint">Elige hasta %1$d agentes. Si no eliges ninguno, se muestran los más activos.</string>
+    <string name="team_config_save">Guardar</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en espera</item>
         <item quantity="many">%1$d en espera</item>
