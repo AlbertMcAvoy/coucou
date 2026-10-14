@@ -6,7 +6,7 @@ through your computer's AI providers.
 
 The name, the Mochi character, the icon and the sounds are © Louis Raillé and used with permission (see
 [PERMISSION.md](PERMISSION.md)). The Android code is © Rhytam Biswas under the MIT License (see [LICENSE](LICENSE)). The app is free: no ads, no billing, no analytics.
-It is English only and dark only. Download the signed APK from the [Releases](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) (Android 11 or later; it needs Coucou 0.4.0 or later on Windows or Linux).
+It is English only and dark only (a light theme and more languages come in later versions). Download the signed APK from the [Releases](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) (Android 11 or later; it needs Coucou 0.4.0 or later on Windows or Linux).
 
 ## Screenshots
 
@@ -45,6 +45,7 @@ The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs
 - **Home**: the focused agent as a black hero panel (Mochi in the agent's colour, a plain sentence), the other agents below, plan
   usage and service cards when the computer offers them, and *Recent* (your own Allow/Deny decisions, kept only on the phone).
   Raw tool names become plain words (`core/ToolLabels.kt`); a command or path is never shown without a deliberate tap (`core/SafeText.kt`).
+- **Accessibility**: TalkBack says an agent as "Claude Code, waiting for your OK" (name, state in words, then the line), a tab with an alert as "Home, a request is waiting", and a request sheet or the island is announced when it appears (`core/SpokenLabels.kt`, `core/WidgetSpoken.kt`: every tapped area of every Widget speaks one sentence built from what it shows). Every control is at least 48 dp, sheets scroll and status lines may wrap so the app holds at a font scale of 1.3, and Settings > Display > *Reduce motion* (System, On, Off; System follows Android's "Remove animations") stops Mochi's idle animations and turns the island's and sheets' springs into a fade (`core/MotionPolicy.kt`).
 - **Request alerts** (Settings > Permission requests): *Don't wake the screen for a request* (off by default, the screen wakes as before) and the vibration (Standard is the old pattern, Short, or Off). A request is never muted or hidden by either: it still arrives with Mochi's sound and its notification. The vibration is a notification channel setting that Android cannot change later, so each choice has its own channel id and the old one is deleted (`core/ApprovalAlerts.kt`).
 - **Home says why the link was lost** (not on Wi-Fi, the computer closed the connection, or it cannot be reached: Coucou closed there, phone link off, another network), and the ongoing notification is posted again only when its text changes (`core/OngoingGate.kt`). Predictive back is on (`enableOnBackInvokedCallback`).
 - **Requests**: a sheet rises over any screen. Allow needs the fingerprint or screen lock, Deny does not, taps in the first 600 ms
