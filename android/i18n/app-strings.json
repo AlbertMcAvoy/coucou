@@ -189,7 +189,7 @@
     "settings_section_away": "Away from home Wi-Fi",
     "relay_use": "Use the relay when I'm away",
     "relay_use_hint": "Reaches your computer from mobile data or another network, through the relay you set up. Everything stays end-to-end encrypted. The direct link is always tried first.",
-    "relay_line_none": "This pairing has no relay. On your computer, turn on Away from home Wi-Fi in Settings, then scan the new code.",
+    "relay_line_none": "This pairing has no relay.",
     "relay_line_off": "The relay is off. Coucou only connects when your computer is on this network.",
     "relay_line_direct": "Connected directly on this network.",
     "relay_line_via": "Connected through your relay (%1$s).",
