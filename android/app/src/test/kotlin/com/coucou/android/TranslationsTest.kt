@@ -55,7 +55,7 @@ class TranslationsTest {
             "ago_hours", "ago_hours_minutes", "widget_btn_chat", "chat_model", "app_name", "tab_chat", "chat_title", "settings_volume", "question_ok", "diag_ok", "agent_kind",
             "wardrobe_auto_tag", "usage_pct", "tool_a_file", "widget_mochi_description", "widget_sample_two_waiting",
             // The same word in the language (French "Licences", "Services", "Standard").
-            "licences_title", "services_title", "vibration_standard",
+            "licences_title", "services_title", "vibration_standard", "recap_sessions",
         )
         for (f in files) {
             val t = JSONObject(f.readText()).getJSONObject("strings")

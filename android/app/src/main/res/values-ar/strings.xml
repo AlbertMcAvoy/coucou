@@ -439,6 +439,16 @@
     <string name="share_label">محادثة Coucou</string>
     <string name="share_not_paired">اقرن حاسوبك أولًا، ثم يمكنك إرسال النص إلى الدردشة.</string>
     <string name="share_chat_off">الدردشة غير متاحة على حاسوبك، لذلك لم يُحفظ النص المشارَك.</string>
+    <string name="recap_title">الأسبوع الماضي</string>
+    <string name="recap_time">الوقت مع الوكلاء</string>
+    <string name="recap_sessions">الجلسات</string>
+    <string name="recap_files">الملفات المعدّلة</string>
+    <string name="recap_lines">الأسطر</string>
+    <string name="recap_commands">الأوامر المنفّذة</string>
+    <string name="recap_permissions">الأذونات</string>
+    <string name="recap_allowed_denied">المسموح: %1$d، المرفوض: %2$d</string>
+    <string name="recap_top_agent">الأكثر استخدامًا</string>
+    <string name="recap_project">المشروع الرئيسي</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

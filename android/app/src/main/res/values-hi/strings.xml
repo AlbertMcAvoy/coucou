@@ -439,6 +439,16 @@
     <string name="share_label">Coucou चैट</string>
     <string name="share_not_paired">पहले अपने कंप्यूटर से जुड़ें, फिर आप चैट में टेक्स्ट भेज पाएँगे।</string>
     <string name="share_chat_off">आपके कंप्यूटर पर चैट उपलब्ध नहीं है, इसलिए साझा किया गया टेक्स्ट नहीं रखा गया।</string>
+    <string name="recap_title">पिछला सप्ताह</string>
+    <string name="recap_time">एजेंटों के साथ समय</string>
+    <string name="recap_sessions">सत्र</string>
+    <string name="recap_files">बदली गई फ़ाइलें</string>
+    <string name="recap_lines">पंक्तियाँ</string>
+    <string name="recap_commands">चलाए गए कमांड</string>
+    <string name="recap_permissions">अनुमतियाँ</string>
+    <string name="recap_allowed_denied">%1$d स्वीकृत, %2$d अस्वीकृत</string>
+    <string name="recap_top_agent">सबसे ज़्यादा इस्तेमाल</string>
+    <string name="recap_project">मुख्य प्रोजेक्ट</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d प्रतीक्षा में</item>
         <item quantity="other">%1$d प्रतीक्षा में</item>

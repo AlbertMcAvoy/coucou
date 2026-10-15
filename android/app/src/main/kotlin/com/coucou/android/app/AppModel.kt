@@ -235,6 +235,9 @@ class AppModel(private val context: Context) : LinkListener {
     var diffsOffered by mutableStateOf(false); private set
     /** The Claude and Codex plan usage the computer sent (its switch is on); null: nothing to show. */
     var usage by mutableStateOf<com.coucou.android.link.UsageSnapshot?>(null); private set
+
+    /** Last week's recap the computer sent (its switch is on); null: nothing to show. Held in memory only, never stored. */
+    var recap by mutableStateOf<com.coucou.android.link.Recap?>(null); private set
     /** The read-only service cards the user allowed on the computer; empty: none. */
     var services by mutableStateOf<List<com.coucou.android.link.ServiceCard>>(emptyList()); private set
 
@@ -614,6 +617,7 @@ class AppModel(private val context: Context) : LinkListener {
     private fun stopLink() {
         closeDiff()
         usage = null
+        recap = null
         services = emptyList()
         fallback?.stop()
         fallback = null
@@ -706,6 +710,7 @@ class AppModel(private val context: Context) : LinkListener {
             detailsOffered = Protocol.CAP_DETAILS in caps
             diffsOffered = Protocol.CAP_DIFFS in caps
             if (Protocol.CAP_USAGE !in caps) usage = null
+            if (Protocol.CAP_RECAP !in caps) recap = null
             pushGlance() // the Usage Ring says to turn it on
             if (Protocol.CAP_SERVICES !in caps) services = emptyList()
         }
@@ -716,6 +721,10 @@ class AppModel(private val context: Context) : LinkListener {
             this.usage = usage.takeIf { it.claude != null || it.codex != null }
             pushGlance() // the Usage Ring follows it
         }
+    }
+
+    override fun onRecap(recap: com.coucou.android.link.Recap?) {
+        main.post { this.recap = recap }
     }
 
     override fun onServices(cards: List<com.coucou.android.link.ServiceCard>) {

@@ -439,6 +439,16 @@
     <string name="share_label">Coucou চ্যাট</string>
     <string name="share_not_paired">আগে আপনার কম্পিউটারের সাথে যুক্ত করুন, তারপর চ্যাটে লেখা পাঠাতে পারবেন।</string>
     <string name="share_chat_off">আপনার কম্পিউটারে চ্যাট চালু নেই, তাই শেয়ার করা লেখা রাখা হয়নি।</string>
+    <string name="recap_title">গত সপ্তাহ</string>
+    <string name="recap_time">এজেন্টদের সাথে সময়</string>
+    <string name="recap_sessions">সেশন</string>
+    <string name="recap_files">পরিবর্তিত ফাইল</string>
+    <string name="recap_lines">লাইন</string>
+    <string name="recap_commands">চালানো কমান্ড</string>
+    <string name="recap_permissions">অনুমতি</string>
+    <string name="recap_allowed_denied">%1$d অনুমোদিত, %2$d প্রত্যাখ্যাত</string>
+    <string name="recap_top_agent">সবচেয়ে বেশি ব্যবহৃত</string>
+    <string name="recap_project">প্রধান প্রজেক্ট</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d টি অপেক্ষায়</item>
         <item quantity="other">%1$d টি অপেক্ষায়</item>

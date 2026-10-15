@@ -437,7 +437,17 @@
     "team_config_save": "सहेजें",
     "share_label": "Coucou चैट",
     "share_not_paired": "पहले अपने कंप्यूटर से जुड़ें, फिर आप चैट में टेक्स्ट भेज पाएँगे।",
-    "share_chat_off": "आपके कंप्यूटर पर चैट उपलब्ध नहीं है, इसलिए साझा किया गया टेक्स्ट नहीं रखा गया।"
+    "share_chat_off": "आपके कंप्यूटर पर चैट उपलब्ध नहीं है, इसलिए साझा किया गया टेक्स्ट नहीं रखा गया।",
+    "recap_title": "पिछला सप्ताह",
+    "recap_time": "एजेंटों के साथ समय",
+    "recap_sessions": "सत्र",
+    "recap_files": "बदली गई फ़ाइलें",
+    "recap_lines": "पंक्तियाँ",
+    "recap_commands": "चलाए गए कमांड",
+    "recap_permissions": "अनुमतियाँ",
+    "recap_allowed_denied": "%1$d स्वीकृत, %2$d अस्वीकृत",
+    "recap_top_agent": "सबसे ज़्यादा इस्तेमाल",
+    "recap_project": "मुख्य प्रोजेक्ट"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

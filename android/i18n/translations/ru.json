@@ -437,7 +437,17 @@
     "team_config_save": "Сохранить",
     "share_label": "Чат Coucou",
     "share_not_paired": "Сначала свяжите компьютер, затем можно отправлять текст в чат.",
-    "share_chat_off": "На вашем компьютере чат недоступен, поэтому полученный текст не сохранён."
+    "share_chat_off": "На вашем компьютере чат недоступен, поэтому полученный текст не сохранён.",
+    "recap_title": "Прошлая неделя",
+    "recap_time": "Время с агентами",
+    "recap_sessions": "Сессии",
+    "recap_files": "Изменено файлов",
+    "recap_lines": "Строки",
+    "recap_commands": "Выполнено команд",
+    "recap_permissions": "Разрешения",
+    "recap_allowed_denied": "разрешено: %1$d, отклонено: %2$d",
+    "recap_top_agent": "Чаще всего",
+    "recap_project": "Главный проект"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d ожидает", "few": "%1$d ожидают", "many": "%1$d ожидают", "other": "%1$d ожидают"},

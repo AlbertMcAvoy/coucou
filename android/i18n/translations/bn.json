@@ -437,7 +437,17 @@
     "team_config_save": "সংরক্ষণ",
     "share_label": "Coucou চ্যাট",
     "share_not_paired": "আগে আপনার কম্পিউটারের সাথে যুক্ত করুন, তারপর চ্যাটে লেখা পাঠাতে পারবেন।",
-    "share_chat_off": "আপনার কম্পিউটারে চ্যাট চালু নেই, তাই শেয়ার করা লেখা রাখা হয়নি।"
+    "share_chat_off": "আপনার কম্পিউটারে চ্যাট চালু নেই, তাই শেয়ার করা লেখা রাখা হয়নি।",
+    "recap_title": "গত সপ্তাহ",
+    "recap_time": "এজেন্টদের সাথে সময়",
+    "recap_sessions": "সেশন",
+    "recap_files": "পরিবর্তিত ফাইল",
+    "recap_lines": "লাইন",
+    "recap_commands": "চালানো কমান্ড",
+    "recap_permissions": "অনুমতি",
+    "recap_allowed_denied": "%1$d অনুমোদিত, %2$d প্রত্যাখ্যাত",
+    "recap_top_agent": "সবচেয়ে বেশি ব্যবহৃত",
+    "recap_project": "প্রধান প্রজেক্ট"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d টি অপেক্ষায়", "other": "%1$d টি অপেক্ষায়"},

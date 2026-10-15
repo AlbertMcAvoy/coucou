@@ -114,6 +114,7 @@ import com.coucou.android.ui.DiffSheet
 import com.coucou.android.ui.QuestionSheet
 import com.coucou.android.ui.ServicesPanel
 import com.coucou.android.ui.UsagePanel
+import com.coucou.android.ui.RecapPanel
 import com.coucou.android.ui.WardrobeScreen
 import com.coucou.android.ui.HeroCard
 import com.coucou.android.ui.RecentPanel
@@ -420,6 +421,7 @@ private fun Home(
             }
         }
 
+        if (model.recap != null) item { Box(Modifier.padding(horizontal = Gutter)) { RecapPanel(model.recap) } }
         if (model.usage != null) item { Box(Modifier.padding(horizontal = Gutter)) { UsagePanel(model.usage) } }
         if (model.services.isNotEmpty()) item { Box(Modifier.padding(horizontal = Gutter)) { ServicesPanel(model.services) } }
         item { Box(Modifier.padding(horizontal = Gutter)) { RecentPanel(model.decisions, onHistory) } }

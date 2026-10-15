@@ -439,6 +439,16 @@
     <string name="share_label">Chat Coucou</string>
     <string name="share_not_paired">Pasangkan komputermu dulu, lalu kamu bisa mengirim teks ke chat.</string>
     <string name="share_chat_off">Chat tidak tersedia di komputermu, jadi teks yang dibagikan tidak disimpan.</string>
+    <string name="recap_title">Minggu lalu</string>
+    <string name="recap_time">Waktu bersama agen</string>
+    <string name="recap_sessions">Sesi</string>
+    <string name="recap_files">Berkas diubah</string>
+    <string name="recap_lines">Baris</string>
+    <string name="recap_commands">Perintah dijalankan</string>
+    <string name="recap_permissions">Izin</string>
+    <string name="recap_allowed_denied">%1$d diizinkan, %2$d ditolak</string>
+    <string name="recap_top_agent">Paling sering dipakai</string>
+    <string name="recap_project">Proyek utama</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>

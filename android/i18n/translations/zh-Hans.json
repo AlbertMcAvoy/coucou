@@ -437,7 +437,17 @@
     "team_config_save": "保存",
     "share_label": "Coucou 聊天",
     "share_not_paired": "请先与你的电脑配对，然后才能把文字发送到聊天。",
-    "share_chat_off": "你的电脑上没有开启聊天，所以没有保留分享的文字。"
+    "share_chat_off": "你的电脑上没有开启聊天，所以没有保留分享的文字。",
+    "recap_title": "上周",
+    "recap_time": "与代理协作时间",
+    "recap_sessions": "会话",
+    "recap_files": "修改的文件",
+    "recap_lines": "行数",
+    "recap_commands": "运行的命令",
+    "recap_permissions": "权限",
+    "recap_allowed_denied": "允许 %1$d，拒绝 %2$d",
+    "recap_top_agent": "最常用",
+    "recap_project": "主要项目"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d 个等待中"},

@@ -437,7 +437,17 @@
     "team_config_save": "Salvar",
     "share_label": "Chat do Coucou",
     "share_not_paired": "Pareie primeiro seu computador; depois você poderá enviar texto para o chat.",
-    "share_chat_off": "O chat não está disponível no seu computador, então o texto compartilhado não foi guardado."
+    "share_chat_off": "O chat não está disponível no seu computador, então o texto compartilhado não foi guardado.",
+    "recap_title": "Semana passada",
+    "recap_time": "Tempo com agentes",
+    "recap_sessions": "Sessões",
+    "recap_files": "Arquivos alterados",
+    "recap_lines": "Linhas",
+    "recap_commands": "Comandos executados",
+    "recap_permissions": "Permissões",
+    "recap_allowed_denied": "%1$d permitidas, %2$d negadas",
+    "recap_top_agent": "Mais usado",
+    "recap_project": "Projeto principal"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d esperando", "many": "%1$d esperando", "other": "%1$d esperando"},

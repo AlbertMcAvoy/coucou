@@ -439,6 +439,16 @@
     <string name="share_label">Chat Coucou</string>
     <string name="share_not_paired">Connecte d\'abord ton ordinateur, puis tu pourras envoyer du texte au chat.</string>
     <string name="share_chat_off">Le chat n\'est pas disponible sur ton ordinateur, le texte partagé n\'a donc pas été gardé.</string>
+    <string name="recap_title">La semaine dernière</string>
+    <string name="recap_time">Temps avec les agents</string>
+    <string name="recap_sessions">Sessions</string>
+    <string name="recap_files">Fichiers modifiés</string>
+    <string name="recap_lines">Lignes</string>
+    <string name="recap_commands">Commandes lancées</string>
+    <string name="recap_permissions">Autorisations</string>
+    <string name="recap_allowed_denied">%1$d autorisées, %2$d refusées</string>
+    <string name="recap_top_agent">Le plus utilisé</string>
+    <string name="recap_project">Projet principal</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en attente</item>
         <item quantity="many">%1$d en attente</item>

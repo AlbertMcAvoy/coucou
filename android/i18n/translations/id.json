@@ -437,7 +437,17 @@
     "team_config_save": "Simpan",
     "share_label": "Chat Coucou",
     "share_not_paired": "Pasangkan komputermu dulu, lalu kamu bisa mengirim teks ke chat.",
-    "share_chat_off": "Chat tidak tersedia di komputermu, jadi teks yang dibagikan tidak disimpan."
+    "share_chat_off": "Chat tidak tersedia di komputermu, jadi teks yang dibagikan tidak disimpan.",
+    "recap_title": "Minggu lalu",
+    "recap_time": "Waktu bersama agen",
+    "recap_sessions": "Sesi",
+    "recap_files": "Berkas diubah",
+    "recap_lines": "Baris",
+    "recap_commands": "Perintah dijalankan",
+    "recap_permissions": "Izin",
+    "recap_allowed_denied": "%1$d diizinkan, %2$d ditolak",
+    "recap_top_agent": "Paling sering dipakai",
+    "recap_project": "Proyek utama"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

@@ -438,7 +438,17 @@
     "team_config_save": "Save",
     "share_label": "Coucou chat",
     "share_not_paired": "Pair your computer first, then you can send text to chat.",
-    "share_chat_off": "Chat is not available on your computer, so the shared text was not kept."
+    "share_chat_off": "Chat is not available on your computer, so the shared text was not kept.",
+    "recap_title": "Last week",
+    "recap_time": "Time with agents",
+    "recap_sessions": "Sessions",
+    "recap_files": "Files changed",
+    "recap_lines": "Lines",
+    "recap_commands": "Commands run",
+    "recap_permissions": "Permissions",
+    "recap_allowed_denied": "%1$d allowed, %2$d denied",
+    "recap_top_agent": "Most used",
+    "recap_project": "Top project"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},

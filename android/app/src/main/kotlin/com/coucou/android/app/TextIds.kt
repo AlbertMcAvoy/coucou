@@ -444,6 +444,16 @@ internal object TextIds {
         "share_label" to R.string.share_label,
         "share_not_paired" to R.string.share_not_paired,
         "share_chat_off" to R.string.share_chat_off,
+        "recap_title" to R.string.recap_title,
+        "recap_time" to R.string.recap_time,
+        "recap_sessions" to R.string.recap_sessions,
+        "recap_files" to R.string.recap_files,
+        "recap_lines" to R.string.recap_lines,
+        "recap_commands" to R.string.recap_commands,
+        "recap_permissions" to R.string.recap_permissions,
+        "recap_allowed_denied" to R.string.recap_allowed_denied,
+        "recap_top_agent" to R.string.recap_top_agent,
+        "recap_project" to R.string.recap_project,
     )
 
     val plurals: Map<String, Int> = mapOf(

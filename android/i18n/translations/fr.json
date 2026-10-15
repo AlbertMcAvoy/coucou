@@ -437,7 +437,17 @@
     "team_config_save": "Enregistrer",
     "share_label": "Chat Coucou",
     "share_not_paired": "Connecte d'abord ton ordinateur, puis tu pourras envoyer du texte au chat.",
-    "share_chat_off": "Le chat n'est pas disponible sur ton ordinateur, le texte partagé n'a donc pas été gardé."
+    "share_chat_off": "Le chat n'est pas disponible sur ton ordinateur, le texte partagé n'a donc pas été gardé.",
+    "recap_title": "La semaine dernière",
+    "recap_time": "Temps avec les agents",
+    "recap_sessions": "Sessions",
+    "recap_files": "Fichiers modifiés",
+    "recap_lines": "Lignes",
+    "recap_commands": "Commandes lancées",
+    "recap_permissions": "Autorisations",
+    "recap_allowed_denied": "%1$d autorisées, %2$d refusées",
+    "recap_top_agent": "Le plus utilisé",
+    "recap_project": "Projet principal"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},

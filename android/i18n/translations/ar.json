@@ -437,7 +437,17 @@
     "team_config_save": "حفظ",
     "share_label": "محادثة Coucou",
     "share_not_paired": "اقرن حاسوبك أولًا، ثم يمكنك إرسال النص إلى الدردشة.",
-    "share_chat_off": "الدردشة غير متاحة على حاسوبك، لذلك لم يُحفظ النص المشارَك."
+    "share_chat_off": "الدردشة غير متاحة على حاسوبك، لذلك لم يُحفظ النص المشارَك.",
+    "recap_title": "الأسبوع الماضي",
+    "recap_time": "الوقت مع الوكلاء",
+    "recap_sessions": "الجلسات",
+    "recap_files": "الملفات المعدّلة",
+    "recap_lines": "الأسطر",
+    "recap_commands": "الأوامر المنفّذة",
+    "recap_permissions": "الأذونات",
+    "recap_allowed_denied": "المسموح: %1$d، المرفوض: %2$d",
+    "recap_top_agent": "الأكثر استخدامًا",
+    "recap_project": "المشروع الرئيسي"
   },
   "plurals": {
     "widget_n_waiting": {"zero": "%1$d بالانتظار", "one": "%1$d بالانتظار", "two": "%1$d بالانتظار", "few": "%1$d بالانتظار", "many": "%1$d بالانتظار", "other": "%1$d بالانتظار"},
