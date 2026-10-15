@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">%1$d অনুমোদিত, %2$d প্রত্যাখ্যাত</string>
     <string name="recap_top_agent">সবচেয়ে বেশি ব্যবহৃত</string>
     <string name="recap_project">প্রধান প্রজেক্ট</string>
+    <string name="history_search">সিদ্ধান্ত খুঁজুন</string>
+    <string name="history_no_match">কোনো সিদ্ধান্ত মেলেনি।</string>
+    <string name="history_export">টেক্সট হিসেবে এক্সপোর্ট</string>
+    <string name="history_export_header">Coucou · সাম্প্রতিক সিদ্ধান্ত</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d টি অপেক্ষায়</item>
         <item quantity="other">%1$d টি অপেক্ষায়</item>

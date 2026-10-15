@@ -448,7 +448,11 @@
     "recap_permissions": "Permissions",
     "recap_allowed_denied": "%1$d allowed, %2$d denied",
     "recap_top_agent": "Most used",
-    "recap_project": "Top project"
+    "recap_project": "Top project",
+    "history_search": "Search decisions",
+    "history_no_match": "No decision matches.",
+    "history_export": "Export as text",
+    "history_export_header": "Coucou · recent decisions"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d waiting", "other": "%1$d waiting"},

@@ -447,7 +447,11 @@
     "recap_permissions": "Izin",
     "recap_allowed_denied": "%1$d diizinkan, %2$d ditolak",
     "recap_top_agent": "Paling sering dipakai",
-    "recap_project": "Proyek utama"
+    "recap_project": "Proyek utama",
+    "history_search": "Cari keputusan",
+    "history_no_match": "Tidak ada keputusan yang cocok.",
+    "history_export": "Ekspor sebagai teks",
+    "history_export_header": "Coucou · keputusan terbaru"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

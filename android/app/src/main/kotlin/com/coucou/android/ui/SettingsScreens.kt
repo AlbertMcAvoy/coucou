@@ -1,5 +1,9 @@
 package com.coucou.android.ui
 
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.Intent
+import com.coucou.android.core.HistoryExport
 import com.coucou.android.core.Languages
 import com.coucou.android.app.AppLanguage
 import androidx.compose.ui.platform.LocalContext
@@ -388,14 +392,29 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
 fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
     val zone = remember { ZoneId.systemDefault() }
     val now = System.currentTimeMillis()
-    val groups = HistoryDays.group(model.decisions, now, zone)
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = HistoryExport.filter(model.decisions, query)
+    val groups = HistoryDays.group(shown, now, zone)
+    val context = LocalContext.current
+    val exportHeader = stringResource(R.string.history_export_header)
     val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
     val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
     val t = tokens()
     LazyColumn(Modifier.padding(horizontal = Gutter), verticalArrangement = Arrangement.spacedBy(Gap)) {
         item { ScreenTitle(stringResource(R.string.history_title), onBack) }
         item { Text(stringResource(R.string.history_note), Modifier.padding(horizontal = 4.dp), style = TypeScale.SECONDARY.style(t.textDim.c())) }
-        if (groups.isEmpty()) {
+        if (model.decisions.isNotEmpty()) {
+            item {
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it.take(HistoryExport.MAX_QUERY) }, singleLine = true,
+                    label = { Text(stringResource(R.string.history_search)) }, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (model.decisions.isNotEmpty() && groups.isEmpty()) {
+            item { Panel { Text(stringResource(R.string.history_no_match), Modifier.padding(Gutter), style = TypeScale.BODY.style(t.textDim.c())) } }
+        }
+        if (groups.isEmpty() && model.decisions.isEmpty()) {
             item { Panel { Text(stringResource(R.string.history_empty), Modifier.padding(Gutter), style = TypeScale.BODY.style(t.textDim.c())) } }
         }
         for ((key, list) in groups) {
@@ -429,6 +448,19 @@ fun HistoryScreen(model: AppModel, onBack: () -> Unit) {
             }
         }
         if (groups.isNotEmpty()) {
+            item {
+                PillButton(
+                    stringResource(R.string.history_export),
+                    {
+                        // Plain text to Android's share sheet: it stays on the phone until the user picks where it goes.
+                        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, HistoryExport.text(shown, exportHeader, zone))
+                        context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    },
+                    Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (groups.isNotEmpty() && query.isBlank()) {
             item { PillButton(stringResource(R.string.history_clear), { model.clearDecisions() }, Modifier.fillMaxWidth(), PillKind.DANGER) }
         }
         item { Spacer(Modifier.height(Gutter)) }

@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">%1$d diizinkan, %2$d ditolak</string>
     <string name="recap_top_agent">Paling sering dipakai</string>
     <string name="recap_project">Proyek utama</string>
+    <string name="history_search">Cari keputusan</string>
+    <string name="history_no_match">Tidak ada keputusan yang cocok.</string>
+    <string name="history_export">Ekspor sebagai teks</string>
+    <string name="history_export_header">Coucou · keputusan terbaru</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>

@@ -447,7 +447,11 @@
     "recap_permissions": "Autorisations",
     "recap_allowed_denied": "%1$d autorisées, %2$d refusées",
     "recap_top_agent": "Le plus utilisé",
-    "recap_project": "Projet principal"
+    "recap_project": "Projet principal",
+    "history_search": "Rechercher",
+    "history_no_match": "Aucune décision ne correspond.",
+    "history_export": "Exporter en texte",
+    "history_export_header": "Coucou · décisions récentes"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},

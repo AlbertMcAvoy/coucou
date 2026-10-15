@@ -447,7 +447,11 @@
     "recap_permissions": "अनुमतियाँ",
     "recap_allowed_denied": "%1$d स्वीकृत, %2$d अस्वीकृत",
     "recap_top_agent": "सबसे ज़्यादा इस्तेमाल",
-    "recap_project": "मुख्य प्रोजेक्ट"
+    "recap_project": "मुख्य प्रोजेक्ट",
+    "history_search": "निर्णय खोजें",
+    "history_no_match": "कोई निर्णय मेल नहीं खाता।",
+    "history_export": "टेक्स्ट के रूप में निर्यात करें",
+    "history_export_header": "Coucou · हाल के निर्णय"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

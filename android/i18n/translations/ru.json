@@ -447,7 +447,11 @@
     "recap_permissions": "Разрешения",
     "recap_allowed_denied": "разрешено: %1$d, отклонено: %2$d",
     "recap_top_agent": "Чаще всего",
-    "recap_project": "Главный проект"
+    "recap_project": "Главный проект",
+    "history_search": "Поиск решений",
+    "history_no_match": "Подходящих решений нет.",
+    "history_export": "Экспорт в текст",
+    "history_export_header": "Coucou · недавние решения"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d ожидает", "few": "%1$d ожидают", "many": "%1$d ожидают", "other": "%1$d ожидают"},

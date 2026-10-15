@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">%1$d permitidos, %2$d denegados</string>
     <string name="recap_top_agent">El más usado</string>
     <string name="recap_project">Proyecto principal</string>
+    <string name="history_search">Buscar decisiones</string>
+    <string name="history_no_match">Ninguna decisión coincide.</string>
+    <string name="history_export">Exportar como texto</string>
+    <string name="history_export_header">Coucou · decisiones recientes</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en espera</item>
         <item quantity="many">%1$d en espera</item>

@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">المسموح: %1$d، المرفوض: %2$d</string>
     <string name="recap_top_agent">الأكثر استخدامًا</string>
     <string name="recap_project">المشروع الرئيسي</string>
+    <string name="history_search">ابحث في القرارات</string>
+    <string name="history_no_match">لا يوجد قرار مطابق.</string>
+    <string name="history_export">تصدير كنص</string>
+    <string name="history_export_header">Coucou · القرارات الأخيرة</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

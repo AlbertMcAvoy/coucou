@@ -447,7 +447,11 @@
     "recap_permissions": "অনুমতি",
     "recap_allowed_denied": "%1$d অনুমোদিত, %2$d প্রত্যাখ্যাত",
     "recap_top_agent": "সবচেয়ে বেশি ব্যবহৃত",
-    "recap_project": "প্রধান প্রজেক্ট"
+    "recap_project": "প্রধান প্রজেক্ট",
+    "history_search": "সিদ্ধান্ত খুঁজুন",
+    "history_no_match": "কোনো সিদ্ধান্ত মেলেনি।",
+    "history_export": "টেক্সট হিসেবে এক্সপোর্ট",
+    "history_export_header": "Coucou · সাম্প্রতিক সিদ্ধান্ত"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d টি অপেক্ষায়", "other": "%1$d টি অপেক্ষায়"},

@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">允许 %1$d，拒绝 %2$d</string>
     <string name="recap_top_agent">最常用</string>
     <string name="recap_project">主要项目</string>
+    <string name="history_search">搜索决定</string>
+    <string name="history_no_match">没有符合的决定。</string>
+    <string name="history_export">导出为文本</string>
+    <string name="history_export_header">Coucou · 最近的决定</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d 个等待中</item>
     </plurals>

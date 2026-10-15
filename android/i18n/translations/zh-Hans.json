@@ -447,7 +447,11 @@
     "recap_permissions": "权限",
     "recap_allowed_denied": "允许 %1$d，拒绝 %2$d",
     "recap_top_agent": "最常用",
-    "recap_project": "主要项目"
+    "recap_project": "主要项目",
+    "history_search": "搜索决定",
+    "history_no_match": "没有符合的决定。",
+    "history_export": "导出为文本",
+    "history_export_header": "Coucou · 最近的决定"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d 个等待中"},

@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">%1$d स्वीकृत, %2$d अस्वीकृत</string>
     <string name="recap_top_agent">सबसे ज़्यादा इस्तेमाल</string>
     <string name="recap_project">मुख्य प्रोजेक्ट</string>
+    <string name="history_search">निर्णय खोजें</string>
+    <string name="history_no_match">कोई निर्णय मेल नहीं खाता।</string>
+    <string name="history_export">टेक्स्ट के रूप में निर्यात करें</string>
+    <string name="history_export_header">Coucou · हाल के निर्णय</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d प्रतीक्षा में</item>
         <item quantity="other">%1$d प्रतीक्षा में</item>

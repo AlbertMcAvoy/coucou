@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">разрешено: %1$d, отклонено: %2$d</string>
     <string name="recap_top_agent">Чаще всего</string>
     <string name="recap_project">Главный проект</string>
+    <string name="history_search">Поиск решений</string>
+    <string name="history_no_match">Подходящих решений нет.</string>
+    <string name="history_export">Экспорт в текст</string>
+    <string name="history_export_header">Coucou · недавние решения</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d ожидает</item>
         <item quantity="few">%1$d ожидают</item>

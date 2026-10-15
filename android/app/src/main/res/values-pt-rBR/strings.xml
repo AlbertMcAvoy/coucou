@@ -449,6 +449,10 @@
     <string name="recap_allowed_denied">%1$d permitidas, %2$d negadas</string>
     <string name="recap_top_agent">Mais usado</string>
     <string name="recap_project">Projeto principal</string>
+    <string name="history_search">Buscar decisões</string>
+    <string name="history_no_match">Nenhuma decisão corresponde.</string>
+    <string name="history_export">Exportar como texto</string>
+    <string name="history_export_header">Coucou · decisões recentes</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d esperando</item>
         <item quantity="many">%1$d esperando</item>

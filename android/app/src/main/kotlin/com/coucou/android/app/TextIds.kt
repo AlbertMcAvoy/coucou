@@ -454,6 +454,10 @@ internal object TextIds {
         "recap_allowed_denied" to R.string.recap_allowed_denied,
         "recap_top_agent" to R.string.recap_top_agent,
         "recap_project" to R.string.recap_project,
+        "history_search" to R.string.history_search,
+        "history_no_match" to R.string.history_no_match,
+        "history_export" to R.string.history_export,
+        "history_export_header" to R.string.history_export_header,
     )
 
     val plurals: Map<String, Int> = mapOf(
