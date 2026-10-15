@@ -453,6 +453,8 @@
     <string name="history_no_match">Подходящих решений нет.</string>
     <string name="history_export">Экспорт в текст</string>
     <string name="history_export_header">Coucou · недавние решения</string>
+    <string name="mute_agents">Отключить уведомления агента</string>
+    <string name="mute_agents_hint">Уведомления о завершении, ошибке и лимите выбранных агентов не беспокоят. Запросы и вопросы приходят всегда.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d ожидает</item>
         <item quantity="few">%1$d ожидают</item>

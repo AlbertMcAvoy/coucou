@@ -453,6 +453,8 @@
     <string name="history_no_match">No decision matches.</string>
     <string name="history_export">Export as text</string>
     <string name="history_export_header">Coucou · recent decisions</string>
+    <string name="mute_agents">Mute an agent\'s notices</string>
+    <string name="mute_agents_hint">Finished, failed and limit notices of the agents you pick stay quiet. Requests and questions always come through.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>

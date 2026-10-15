@@ -451,7 +451,9 @@
     "history_search": "Rechercher",
     "history_no_match": "Aucune décision ne correspond.",
     "history_export": "Exporter en texte",
-    "history_export_header": "Coucou · décisions récentes"
+    "history_export_header": "Coucou · décisions récentes",
+    "mute_agents": "Rendre muet un agent",
+    "mute_agents_hint": "Les notices de fin, d'échec et de limite des agents choisis restent silencieuses. Les demandes et les questions arrivent toujours."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en attente", "many": "%1$d en attente", "other": "%1$d en attente"},

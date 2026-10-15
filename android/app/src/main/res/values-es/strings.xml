@@ -453,6 +453,8 @@
     <string name="history_no_match">Ninguna decisión coincide.</string>
     <string name="history_export">Exportar como texto</string>
     <string name="history_export_header">Coucou · decisiones recientes</string>
+    <string name="mute_agents">Silenciar los avisos de un agente</string>
+    <string name="mute_agents_hint">Los avisos de fin, error y límite de los agentes que elijas no suenan. Las solicitudes y las preguntas siempre llegan.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en espera</item>
         <item quantity="many">%1$d en espera</item>

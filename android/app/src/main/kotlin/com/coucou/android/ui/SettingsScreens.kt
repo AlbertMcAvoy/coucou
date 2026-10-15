@@ -1,5 +1,7 @@
 package com.coucou.android.ui
 
+import com.coucou.android.core.AgentMute
+import com.coucou.android.core.TeamChoice
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.Intent
@@ -348,6 +350,8 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                 TimeRow(stringResource(R.string.quiet_to), s.quiet.toMin, s.quiet.enabled) {
                     model.updateSettings(s.copy(quiet = s.quiet.copy(toMin = QuietHours.wrap(it))))
                 }
+                RowDivider()
+                MutedAgentsRows(s.mutedAgents) { id, mute -> model.updateSettings(s.copy(mutedAgents = AgentMute.with(s.mutedAgents, id, mute))) }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -496,5 +500,24 @@ private fun RelayCard(model: AppModel) {
             RowDivider()
         }
         Text(line, Modifier.padding(Spacing.INSIDE.dp), style = TypeScale.SECONDARY.style(t.textDim.c()))
+    }
+}
+
+/**
+ * "Mute an agent's notices": a row that opens the list of agents, each with a switch. Only the finished / failed / limit notices of the agent
+ * go quiet; its requests and questions always come through (said under the list).
+ */
+@Composable
+private fun MutedAgentsRows(muted: Set<String>, onChange: (String, Boolean) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    ListRow(
+        stringResource(R.string.mute_agents), hint = stringResource(R.string.mute_agents_hint), onClick = { open = !open },
+        trailing = { if (muted.isNotEmpty()) Text(muted.size.toString(), style = TypeScale.SECONDARY.style(tokens().textDim.c())) },
+    )
+    if (open) {
+        for (pill in AgentMute.candidates) {
+            RowDivider()
+            SettingSwitch(TeamChoice.nameOf(pill.id), null, pill.id in muted) { onChange(pill.id, it) }
+        }
     }
 }

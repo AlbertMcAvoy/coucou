@@ -453,6 +453,8 @@
     <string name="history_no_match">Aucune décision ne correspond.</string>
     <string name="history_export">Exporter en texte</string>
     <string name="history_export_header">Coucou · décisions récentes</string>
+    <string name="mute_agents">Rendre muet un agent</string>
+    <string name="mute_agents_hint">Les notices de fin, d\'échec et de limite des agents choisis restent silencieuses. Les demandes et les questions arrivent toujours.</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d en attente</item>
         <item quantity="many">%1$d en attente</item>

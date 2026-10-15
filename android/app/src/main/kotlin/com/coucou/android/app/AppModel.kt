@@ -771,7 +771,7 @@ class AppModel(private val context: Context) : LinkListener {
                 val name = agentName(s.pillId)
                 val sound = com.coucou.android.mochi.MochiConst.STATE_SOUND[s.state]
                 if (sound != null && StatusPolicy.stateSoundWanted(prev, s.state, settings)) sounds.play(sound)
-                val a = StatusPolicy.announce(prev, s.state, settings, minute, inForeground)
+                val a = StatusPolicy.announce(prev, s.state, settings, minute, inForeground, s.pillId)
                 if (a.sound && sound != null) sounds.play(sound)
                 if (a.notify) notifier.showStatus(s.pillId, name, s.state, s.statusText)
                 IslandPlan.flash(prev, s, settings, minute, islandAllowed(), this::agentName)?.let { overlay.flash(it) }

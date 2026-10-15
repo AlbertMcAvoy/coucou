@@ -453,6 +453,8 @@
     <string name="history_no_match">কোনো সিদ্ধান্ত মেলেনি।</string>
     <string name="history_export">টেক্সট হিসেবে এক্সপোর্ট</string>
     <string name="history_export_header">Coucou · সাম্প্রতিক সিদ্ধান্ত</string>
+    <string name="mute_agents">কোনো এজেন্টের নোটিশ নীরব করুন</string>
+    <string name="mute_agents_hint">আপনার বাছাই করা এজেন্টদের শেষ, ব্যর্থ ও সীমার নোটিশ নীরব থাকে। অনুরোধ ও প্রশ্ন সবসময় পৌঁছায়।</string>
     <plurals name="widget_n_waiting">
         <item quantity="one">%1$d টি অপেক্ষায়</item>
         <item quantity="other">%1$d টি অপেক্ষায়</item>

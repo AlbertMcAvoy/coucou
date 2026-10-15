@@ -451,7 +451,9 @@
     "history_search": "Buscar decisiones",
     "history_no_match": "Ninguna decisión coincide.",
     "history_export": "Exportar como texto",
-    "history_export_header": "Coucou · decisiones recientes"
+    "history_export_header": "Coucou · decisiones recientes",
+    "mute_agents": "Silenciar los avisos de un agente",
+    "mute_agents_hint": "Los avisos de fin, error y límite de los agentes que elijas no suenan. Las solicitudes y las preguntas siempre llegan."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d en espera", "many": "%1$d en espera", "other": "%1$d en espera"},

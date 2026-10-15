@@ -451,7 +451,9 @@
     "history_search": "搜索决定",
     "history_no_match": "没有符合的决定。",
     "history_export": "导出为文本",
-    "history_export_header": "Coucou · 最近的决定"
+    "history_export_header": "Coucou · 最近的决定",
+    "mute_agents": "静音某个代理的通知",
+    "mute_agents_hint": "所选代理的完成、失败和达到上限通知将保持安静。请求和问题始终会送达。"
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d 个等待中"},

@@ -453,6 +453,8 @@
     <string name="history_no_match">لا يوجد قرار مطابق.</string>
     <string name="history_export">تصدير كنص</string>
     <string name="history_export_header">Coucou · القرارات الأخيرة</string>
+    <string name="mute_agents">كتم إشعارات وكيل</string>
+    <string name="mute_agents_hint">تبقى إشعارات الانتهاء والفشل وبلوغ الحد للوكلاء الذين تختارهم صامتة. الطلبات والأسئلة تصلك دائمًا.</string>
     <plurals name="widget_n_waiting">
         <item quantity="zero">%1$d بالانتظار</item>
         <item quantity="one">%1$d بالانتظار</item>

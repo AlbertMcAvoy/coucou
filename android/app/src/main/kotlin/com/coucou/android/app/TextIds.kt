@@ -458,6 +458,8 @@ internal object TextIds {
         "history_no_match" to R.string.history_no_match,
         "history_export" to R.string.history_export,
         "history_export_header" to R.string.history_export_header,
+        "mute_agents" to R.string.mute_agents,
+        "mute_agents_hint" to R.string.mute_agents_hint,
     )
 
     val plurals: Map<String, Int> = mapOf(

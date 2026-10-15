@@ -451,7 +451,9 @@
     "history_search": "Поиск решений",
     "history_no_match": "Подходящих решений нет.",
     "history_export": "Экспорт в текст",
-    "history_export_header": "Coucou · недавние решения"
+    "history_export_header": "Coucou · недавние решения",
+    "mute_agents": "Отключить уведомления агента",
+    "mute_agents_hint": "Уведомления о завершении, ошибке и лимите выбранных агентов не беспокоят. Запросы и вопросы приходят всегда."
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d ожидает", "few": "%1$d ожидают", "many": "%1$d ожидают", "other": "%1$d ожидают"},

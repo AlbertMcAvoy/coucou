@@ -451,7 +451,9 @@
     "history_search": "Cari keputusan",
     "history_no_match": "Tidak ada keputusan yang cocok.",
     "history_export": "Ekspor sebagai teks",
-    "history_export_header": "Coucou · keputusan terbaru"
+    "history_export_header": "Coucou · keputusan terbaru",
+    "mute_agents": "Bisukan pemberitahuan agen",
+    "mute_agents_hint": "Pemberitahuan selesai, gagal, dan batas dari agen yang kamu pilih tetap senyap. Permintaan dan pertanyaan selalu masuk."
   },
   "plurals": {
     "widget_n_waiting": {"other": "%1$d menunggu"},

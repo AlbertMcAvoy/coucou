@@ -451,7 +451,9 @@
     "history_search": "निर्णय खोजें",
     "history_no_match": "कोई निर्णय मेल नहीं खाता।",
     "history_export": "टेक्स्ट के रूप में निर्यात करें",
-    "history_export_header": "Coucou · हाल के निर्णय"
+    "history_export_header": "Coucou · हाल के निर्णय",
+    "mute_agents": "किसी एजेंट की सूचनाएँ म्यूट करें",
+    "mute_agents_hint": "आपके चुने एजेंटों की पूरा होने, विफल होने और सीमा की सूचनाएँ शांत रहती हैं। अनुरोध और प्रश्न हमेशा पहुँचते हैं।"
   },
   "plurals": {
     "widget_n_waiting": {"one": "%1$d प्रतीक्षा में", "other": "%1$d प्रतीक्षा में"},

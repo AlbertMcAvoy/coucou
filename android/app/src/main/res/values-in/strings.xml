@@ -453,6 +453,8 @@
     <string name="history_no_match">Tidak ada keputusan yang cocok.</string>
     <string name="history_export">Ekspor sebagai teks</string>
     <string name="history_export_header">Coucou · keputusan terbaru</string>
+    <string name="mute_agents">Bisukan pemberitahuan agen</string>
+    <string name="mute_agents_hint">Pemberitahuan selesai, gagal, dan batas dari agen yang kamu pilih tetap senyap. Permintaan dan pertanyaan selalu masuk.</string>
     <plurals name="widget_n_waiting">
         <item quantity="other">%1$d menunggu</item>
     </plurals>
