@@ -6609,7 +6609,9 @@
    "bn": "আইল্যান্ডের অবস্থান",
    "pt-BR": "Posição da ilha",
    "ru": "Положение острова",
-   "id": "Posisi pulau"
+   "id": "Posisi pulau",
+   "de": "Position der Insel",
+   "tr": "Ada konumu"
   },
   "Centre": {
    "zh-Hans": "居中",
@@ -6620,7 +6622,9 @@
    "bn": "মাঝখানে",
    "pt-BR": "Centro",
    "ru": "По центру",
-   "id": "Tengah"
+   "id": "Tengah",
+   "de": "Mitte",
+   "tr": "Orta"
   },
   "Where you left it": {
    "zh-Hans": "你放下的位置",
@@ -6631,7 +6635,9 @@
    "bn": "যেখানে রেখেছিলেন",
    "pt-BR": "Onde você deixou",
    "ru": "Там, где вы его оставили",
-   "id": "Di tempat Anda meninggalkannya"
+   "id": "Di tempat Anda meninggalkannya",
+   "de": "Wo du sie gelassen hast",
+   "tr": "Bıraktığın yerde"
   },
   "or drag the bar along the top edge": {
    "zh-Hans": "或沿屏幕顶边拖动横条",
@@ -6642,7 +6648,9 @@
    "bn": "অথবা বারটি ওপরের কিনারা ধরে টেনে নিন",
    "pt-BR": "ou arraste a barra pela borda superior",
    "ru": "или перетащите полоску вдоль верхнего края",
-   "id": "atau seret bilahnya di sepanjang tepi atas"
+   "id": "atau seret bilahnya di sepanjang tepi atas",
+   "de": "oder ziehe die Leiste am oberen Rand entlang",
+   "tr": "ya da çubuğu üst kenar boyunca sürükle"
   },
   "Reduce": {
    "zh-Hans": "收起",
@@ -6653,7 +6661,9 @@
    "bn": "ছোট করুন",
    "pt-BR": "Reduzir",
    "ru": "Свернуть",
-   "id": "Perkecil"
+   "id": "Perkecil",
+   "de": "Verkleinern",
+   "tr": "Küçült"
   },
   "Keep on screen": {
    "zh-Hans": "始终显示",
@@ -6664,7 +6674,9 @@
    "bn": "স্ক্রিনে রাখুন",
    "pt-BR": "Manter na tela",
    "ru": "Держать на экране",
-   "id": "Tetap di layar"
+   "id": "Tetap di layar",
+   "de": "Auf dem Bildschirm lassen",
+   "tr": "Ekranda tut"
   },
   "otherwise the island tucks away after a minute": {
    "zh-Hans": "否则岛会在一分钟后收起",
@@ -6675,7 +6687,9 @@
    "bn": "নইলে এক মিনিট পরে আইল্যান্ড লুকিয়ে যায়",
    "pt-BR": "senão a ilha se recolhe depois de um minuto",
    "ru": "иначе остров прячется через минуту",
-   "id": "jika tidak, pulau bersembunyi setelah satu menit"
+   "id": "jika tidak, pulau bersembunyi setelah satu menit",
+   "de": "sonst verschwindet die Insel nach einer Minute",
+   "tr": "yoksa ada bir dakika sonra gizlenir"
   },
   "Theme": {
    "zh-Hans": "主题",
@@ -6686,7 +6700,9 @@
    "bn": "থিম",
    "pt-BR": "Tema",
    "ru": "Тема",
-   "id": "Tema"
+   "id": "Tema",
+   "de": "Design",
+   "tr": "Tema"
   },
   "Dark": {
    "zh-Hans": "深色",
@@ -6697,7 +6713,9 @@
    "bn": "গাঢ়",
    "pt-BR": "Escuro",
    "ru": "Тёмная",
-   "id": "Gelap"
+   "id": "Gelap",
+   "de": "Dunkel",
+   "tr": "Koyu"
   },
   "Glass": {
    "zh-Hans": "玻璃",
@@ -6708,7 +6726,9 @@
    "bn": "কাচ",
    "pt-BR": "Vidro",
    "ru": "Стекло",
-   "id": "Kaca"
+   "id": "Kaca",
+   "de": "Glas",
+   "tr": "Cam"
   },
   "Glass: a white, frosted island": {
    "zh-Hans": "玻璃：白色磨砂的岛",
@@ -6719,7 +6739,9 @@
    "bn": "কাচ: একটি সাদা, ঘষা কাচের আইল্যান্ড",
    "pt-BR": "Vidro: uma ilha branca e fosca",
    "ru": "Стекло: белый матовый остров",
-   "id": "Kaca: pulau putih yang buram"
+   "id": "Kaca: pulau putih yang buram",
+   "de": "Glas: eine weiße, matte Insel",
+   "tr": "Cam: beyaz, buzlu bir ada"
   },
   "Looking for WSL distributions…": {
    "zh-Hans": "正在查找 WSL 发行版…",
