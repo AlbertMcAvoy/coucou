@@ -5126,7 +5126,9 @@
    "bn": "টোকেন (read_api)",
    "pt-BR": "Token (read_api)",
    "ru": "Токен (read_api)",
-   "id": "Token (read_api)"
+   "id": "Token (read_api)",
+   "de": "Token (read_api)",
+   "tr": "Token (read_api)"
   },
   "The GitLab URL must start with https://": {
    "zh-Hans": "GitLab 地址必须以 https:// 开头",
@@ -5137,7 +5139,9 @@
    "bn": "GitLab URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
    "pt-BR": "A URL do GitLab deve começar com https://",
    "ru": "URL GitLab должен начинаться с https://",
-   "id": "URL GitLab harus diawali https://"
+   "id": "URL GitLab harus diawali https://",
+   "de": "Die GitLab-URL muss mit https:// beginnen",
+   "tr": "GitLab URL'si https:// ile başlamalı"
   },
   "Token lacks the read_api scope": {
    "zh-Hans": "令牌缺少 read_api 权限",
@@ -5148,7 +5152,9 @@
    "bn": "টোকেনে read_api স্কোপ নেই",
    "pt-BR": "O token não tem o escopo read_api",
    "ru": "У токена нет области read_api",
-   "id": "Token tidak punya cakupan read_api"
+   "id": "Token tidak punya cakupan read_api",
+   "de": "Dem Token fehlt der Scope read_api",
+   "tr": "Token'da read_api kapsamı yok"
   },
   "Unexpected answer from GitLab — check the URL": {
    "zh-Hans": "GitLab 返回了意外的响应 — 请检查地址",
@@ -5159,7 +5165,9 @@
    "bn": "GitLab থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
    "pt-BR": "Resposta inesperada do GitLab — verifique a URL",
    "ru": "Неожиданный ответ GitLab — проверьте URL",
-   "id": "Jawaban tak terduga dari GitLab — periksa URL-nya"
+   "id": "Jawaban tak terduga dari GitLab — periksa URL-nya",
+   "de": "Unerwartete Antwort von GitLab – prüfe die URL",
+   "tr": "GitLab'den beklenmeyen yanıt — URL'yi kontrol et"
   },
   "Your GitLab To-Do list": {
    "zh-Hans": "你的 GitLab 待办列表",
@@ -5170,7 +5178,9 @@
    "bn": "আপনার GitLab To-Do তালিকা",
    "pt-BR": "Sua lista de tarefas do GitLab",
    "ru": "Ваш список задач GitLab",
-   "id": "Daftar To-Do GitLab Anda"
+   "id": "Daftar To-Do GitLab Anda",
+   "de": "Deine GitLab-To-do-Liste",
+   "tr": "GitLab yapılacaklar listen"
   },
   "{count} to do": {
    "zh-Hans": "{count} 项待办",
@@ -5181,7 +5191,9 @@
    "bn": "{count}টি করণীয়",
    "pt-BR": "{count} a fazer",
    "ru": "{count} к выполнению",
-   "id": "{count} untuk dikerjakan"
+   "id": "{count} untuk dikerjakan",
+   "de": "{count} zu erledigen",
+   "tr": "{count} yapılacak"
   },
   "by {name}": {
    "zh-Hans": "作者 {name}",
@@ -5192,7 +5204,9 @@
    "bn": "{name}-এর",
    "pt-BR": "por {name}",
    "ru": "от {name}",
-   "id": "oleh {name}"
+   "id": "oleh {name}",
+   "de": "von {name}",
+   "tr": "{name} tarafından"
   },
   "Nothing new on GitLab": {
    "zh-Hans": "GitLab 上没有新动态",
@@ -5203,7 +5217,9 @@
    "bn": "GitLab-এ নতুন কিছু নেই",
    "pt-BR": "Nada de novo no GitLab",
    "ru": "В GitLab ничего нового",
-   "id": "Tidak ada yang baru di GitLab"
+   "id": "Tidak ada yang baru di GitLab",
+   "de": "Nichts Neues auf GitLab",
+   "tr": "GitLab'de yeni bir şey yok"
   },
   "Yours": {
    "zh-Hans": "你的",
@@ -5214,7 +5230,9 @@
    "bn": "আপনার",
    "pt-BR": "Sua",
    "ru": "Ваш",
-   "id": "Milik Anda"
+   "id": "Milik Anda",
+   "de": "Deine",
+   "tr": "Seninkiler"
   },
   "Assigned": {
    "zh-Hans": "已指派",
@@ -5225,7 +5243,9 @@
    "bn": "নির্ধারিত",
    "pt-BR": "Atribuída",
    "ru": "Назначен",
-   "id": "Ditugaskan"
+   "id": "Ditugaskan",
+   "de": "Zugewiesen",
+   "tr": "Atanan"
   },
   "Review": {
    "zh-Hans": "评审",
@@ -5236,7 +5256,9 @@
    "bn": "রিভিউ",
    "pt-BR": "Revisão",
    "ru": "Ревью",
-   "id": "Tinjauan"
+   "id": "Tinjauan",
+   "de": "Review",
+   "tr": "İnceleme"
   },
   "{count} details — click to show": {
    "zh-Hans": {
@@ -5278,6 +5300,14 @@
    },
    "id": {
     "other": "{count} detail — klik untuk melihat"
+   },
+   "de": {
+    "one": "{count} Detail – klicke, um es anzuzeigen",
+    "other": "{count} Details – klicke, um sie anzuzeigen"
+   },
+   "tr": {
+    "one": "{count} ayrıntı — göstermek için tıkla",
+    "other": "{count} ayrıntı — göstermek için tıkla"
    }
   },
   "{count} updates": {
@@ -5320,6 +5350,14 @@
    },
    "id": {
     "other": "{count} pembaruan"
+   },
+   "de": {
+    "one": "{count} Neuigkeit",
+    "other": "{count} Neuigkeiten"
+   },
+   "tr": {
+    "one": "{count} güncelleme",
+    "other": "{count} güncelleme"
    }
   },
   "{name} update": {
@@ -5331,7 +5369,9 @@
    "bn": "{name} আপডেট",
    "pt-BR": "Novidade no {name}",
    "ru": "Обновление {name}",
-   "id": "Pembaruan {name}"
+   "id": "Pembaruan {name}",
+   "de": "Neuigkeit von {name}",
+   "tr": "{name} güncellemesi"
   },
   "Nothing new": {
    "zh-Hans": "没有新动态",
@@ -5342,7 +5382,9 @@
    "bn": "নতুন কিছু নেই",
    "pt-BR": "Nada de novo",
    "ru": "Ничего нового",
-   "id": "Tidak ada yang baru"
+   "id": "Tidak ada yang baru",
+   "de": "Nichts Neues",
+   "tr": "Yeni bir şey yok"
   },
   "Latest update": {
    "zh-Hans": "最新动态",
@@ -5353,7 +5395,9 @@
    "bn": "সর্বশেষ আপডেট",
    "pt-BR": "Última novidade",
    "ru": "Последнее обновление",
-   "id": "Pembaruan terbaru"
+   "id": "Pembaruan terbaru",
+   "de": "Letzte Neuigkeit",
+   "tr": "Son güncelleme"
   },
   "{count} GitLab updates": {
    "zh-Hans": {
@@ -5395,6 +5439,14 @@
    },
    "id": {
     "other": "{count} pembaruan GitLab"
+   },
+   "de": {
+    "one": "{count} GitLab-Neuigkeit",
+    "other": "{count} GitLab-Neuigkeiten"
+   },
+   "tr": {
+    "one": "{count} GitLab güncellemesi",
+    "other": "{count} GitLab güncellemesi"
    }
   },
   "Review requested": {
@@ -5406,7 +5458,9 @@
    "bn": "রিভিউয়ের অনুরোধ",
    "pt-BR": "Revisão solicitada",
    "ru": "Запрошено ревью",
-   "id": "Tinjauan diminta"
+   "id": "Tinjauan diminta",
+   "de": "Review angefordert",
+   "tr": "İnceleme istendi"
   },
   "Assigned to you": {
    "zh-Hans": "指派给你",
@@ -5417,7 +5471,9 @@
    "bn": "আপনাকে দেওয়া হয়েছে",
    "pt-BR": "Atribuída a você",
    "ru": "Назначено вам",
-   "id": "Ditugaskan kepada Anda"
+   "id": "Ditugaskan kepada Anda",
+   "de": "Dir zugewiesen",
+   "tr": "Sana atandı"
   },
   "Mentioned": {
    "zh-Hans": "提到了你",
@@ -5428,7 +5484,9 @@
    "bn": "আপনাকে উল্লেখ করা হয়েছে",
    "pt-BR": "Mencionado",
    "ru": "Вас упомянули",
-   "id": "Disebut"
+   "id": "Disebut",
+   "de": "Erwähnt",
+   "tr": "Bahsedildin"
   },
   "Pipeline failed": {
    "zh-Hans": "流水线失败",
@@ -5439,7 +5497,9 @@
    "bn": "পাইপলাইন ব্যর্থ",
    "pt-BR": "Pipeline falhou",
    "ru": "Пайплайн упал",
-   "id": "Pipeline gagal"
+   "id": "Pipeline gagal",
+   "de": "Pipeline fehlgeschlagen",
+   "tr": "Pipeline başarısız"
   },
   "Out of the merge train": {
    "zh-Hans": "已移出合并队列",
@@ -5450,7 +5510,9 @@
    "bn": "মার্জ ট্রেন থেকে বাদ",
    "pt-BR": "Fora do merge train",
    "ru": "Убран из merge train",
-   "id": "Keluar dari merge train"
+   "id": "Keluar dari merge train",
+   "de": "Aus dem Merge Train genommen",
+   "tr": "Merge train'den çıkarıldı"
   },
   "Approval needed": {
    "zh-Hans": "需要批准",
@@ -5461,7 +5523,9 @@
    "bn": "অনুমোদন প্রয়োজন",
    "pt-BR": "Aprovação necessária",
    "ru": "Нужно одобрение",
-   "id": "Perlu persetujuan"
+   "id": "Perlu persetujuan",
+   "de": "Genehmigung nötig",
+   "tr": "Onay gerekli"
   },
   "Reviewed": {
    "zh-Hans": "已评审",
@@ -5472,7 +5536,9 @@
    "bn": "রিভিউ হয়েছে",
    "pt-BR": "Revisada",
    "ru": "Проверено",
-   "id": "Ditinjau"
+   "id": "Ditinjau",
+   "de": "Geprüft",
+   "tr": "İncelendi"
   },
   "Access requested": {
    "zh-Hans": "请求访问",
@@ -5483,7 +5549,9 @@
    "bn": "অ্যাক্সেসের অনুরোধ",
    "pt-BR": "Acesso solicitado",
    "ru": "Запрошен доступ",
-   "id": "Akses diminta"
+   "id": "Akses diminta",
+   "de": "Zugriff angefragt",
+   "tr": "Erişim istendi"
   },
   "To-do": {
    "zh-Hans": "待办",
@@ -5494,7 +5562,9 @@
    "bn": "করণীয়",
    "pt-BR": "Tarefa",
    "ru": "Задача",
-   "id": "Tugas"
+   "id": "Tugas",
+   "de": "To-do",
+   "tr": "Yapılacak"
   },
   "Comment: “{text}”": {
    "zh-Hans": "评论：“{text}”",
@@ -5505,7 +5575,9 @@
    "bn": "মন্তব্য: “{text}”",
    "pt-BR": "Comentário: “{text}”",
    "ru": "Комментарий: «{text}»",
-   "id": "Komentar: “{text}”"
+   "id": "Komentar: “{text}”",
+   "de": "Kommentar: „{text}“",
+   "tr": "Yorum: “{text}”"
   },
   "{name} failed": {
    "zh-Hans": "{name} 失败",
@@ -5516,7 +5588,9 @@
    "bn": "{name} ব্যর্থ",
    "pt-BR": "{name} falhou",
    "ru": "{name}: ошибка",
-   "id": "{name} gagal"
+   "id": "{name} gagal",
+   "de": "{name} fehlgeschlagen",
+   "tr": "{name} başarısız"
   },
   "{stage}: {name} failed": {
    "zh-Hans": "{stage}：{name} 失败",
@@ -5527,7 +5601,9 @@
    "bn": "{stage}: {name} ব্যর্থ",
    "pt-BR": "{stage}: {name} falhou",
    "ru": "{stage}: {name} — ошибка",
-   "id": "{stage}: {name} gagal"
+   "id": "{stage}: {name} gagal",
+   "de": "{stage}: {name} fehlgeschlagen",
+   "tr": "{stage}: {name} başarısız"
   },
   "Push": {
    "zh-Hans": "推送",
@@ -5538,7 +5614,9 @@
    "bn": "পুশ",
    "pt-BR": "Push",
    "ru": "Push",
-   "id": "Push"
+   "id": "Push",
+   "de": "Push",
+   "tr": "Push"
   },
   "Run from GitLab": {
    "zh-Hans": "从 GitLab 运行",
@@ -5549,7 +5627,9 @@
    "bn": "GitLab থেকে চালানো",
    "pt-BR": "Executado no GitLab",
    "ru": "Запуск из GitLab",
-   "id": "Dijalankan dari GitLab"
+   "id": "Dijalankan dari GitLab",
+   "de": "Von GitLab aus gestartet",
+   "tr": "GitLab'den başlatıldı"
   },
   "Merge request": {
    "zh-Hans": "合并请求",
@@ -5560,7 +5640,9 @@
    "bn": "মার্জ রিকোয়েস্ট",
    "pt-BR": "Merge request",
    "ru": "Merge request",
-   "id": "Merge request"
+   "id": "Merge request",
+   "de": "Merge Request",
+   "tr": "Merge request"
   },
   "Scheduled": {
    "zh-Hans": "定时",
@@ -5571,7 +5653,9 @@
    "bn": "নির্ধারিত সময়ে",
    "pt-BR": "Agendado",
    "ru": "По расписанию",
-   "id": "Terjadwal"
+   "id": "Terjadwal",
+   "de": "Geplant",
+   "tr": "Zamanlanmış"
   },
   "Trigger": {
    "zh-Hans": "触发器",
@@ -5582,7 +5666,9 @@
    "bn": "ট্রিগার",
    "pt-BR": "Gatilho",
    "ru": "Триггер",
-   "id": "Pemicu"
+   "id": "Pemicu",
+   "de": "Trigger",
+   "tr": "Tetikleyici"
   },
   "Parent pipeline": {
    "zh-Hans": "父流水线",
@@ -5593,7 +5679,9 @@
    "bn": "প্যারেন্ট পাইপলাইন",
    "pt-BR": "Pipeline pai",
    "ru": "Родительский пайплайн",
-   "id": "Pipeline induk"
+   "id": "Pipeline induk",
+   "de": "Übergeordnete Pipeline",
+   "tr": "Üst pipeline"
   },
   "Pipeline": {
    "zh-Hans": "流水线",
@@ -5604,7 +5692,9 @@
    "bn": "পাইপলাইন",
    "pt-BR": "Pipeline",
    "ru": "Пайплайн",
-   "id": "Pipeline"
+   "id": "Pipeline",
+   "de": "Pipeline",
+   "tr": "Pipeline"
   },
   "{seconds} s": {
    "zh-Hans": "{seconds} 秒",
@@ -5615,7 +5705,9 @@
    "bn": "{seconds} সে.",
    "pt-BR": "{seconds} s",
    "ru": "{seconds} с",
-   "id": "{seconds} dtk"
+   "id": "{seconds} dtk",
+   "de": "{seconds} s",
+   "tr": "{seconds} sn"
   },
   "{minutes} min {seconds} s": {
    "zh-Hans": "{minutes} 分 {seconds} 秒",
@@ -5626,7 +5718,9 @@
    "bn": "{minutes} মি. {seconds} সে.",
    "pt-BR": "{minutes} min {seconds} s",
    "ru": "{minutes} мин {seconds} с",
-   "id": "{minutes} mnt {seconds} dtk"
+   "id": "{minutes} mnt {seconds} dtk",
+   "de": "{minutes} min {seconds} s",
+   "tr": "{minutes} dk {seconds} sn"
   },
   "{hours} h {minutes} min": {
    "zh-Hans": "{hours} 小时 {minutes} 分",
@@ -5637,7 +5731,9 @@
    "bn": "{hours} ঘ. {minutes} মি.",
    "pt-BR": "{hours} h {minutes} min",
    "ru": "{hours} ч {minutes} мин",
-   "id": "{hours} j {minutes} mnt"
+   "id": "{hours} j {minutes} mnt",
+   "de": "{hours} h {minutes} min",
+   "tr": "{hours} sa {minutes} dk"
   },
   "Pipeline passed: {project} · {ref}": {
    "zh-Hans": "流水线通过：{project} · {ref}",
@@ -5648,7 +5744,9 @@
    "bn": "পাইপলাইন সফল: {project} · {ref}",
    "pt-BR": "Pipeline passou: {project} · {ref}",
    "ru": "Пайплайн прошёл: {project} · {ref}",
-   "id": "Pipeline lolos: {project} · {ref}"
+   "id": "Pipeline lolos: {project} · {ref}",
+   "de": "Pipeline erfolgreich: {project} · {ref}",
+   "tr": "Pipeline başarılı: {project} · {ref}"
   },
   "Pipeline failed: {project} · {ref}": {
    "zh-Hans": "流水线失败：{project} · {ref}",
@@ -5659,7 +5757,9 @@
    "bn": "পাইপলাইন ব্যর্থ: {project} · {ref}",
    "pt-BR": "Pipeline falhou: {project} · {ref}",
    "ru": "Пайплайн упал: {project} · {ref}",
-   "id": "Pipeline gagal: {project} · {ref}"
+   "id": "Pipeline gagal: {project} · {ref}",
+   "de": "Pipeline fehlgeschlagen: {project} · {ref}",
+   "tr": "Pipeline başarısız: {project} · {ref}"
   },
   "{source} on {ref}": {
    "zh-Hans": "{source}，分支 {ref}",
@@ -5670,7 +5770,9 @@
    "bn": "{ref}-এ {source}",
    "pt-BR": "{source} em {ref}",
    "ru": "{source} в {ref}",
-   "id": "{source} di {ref}"
+   "id": "{source} di {ref}",
+   "de": "{source} auf {ref}",
+   "tr": "{ref} üzerinde {source}"
   },
   "from {name}": {
    "zh-Hans": "来自 {name}",
@@ -5681,7 +5783,9 @@
    "bn": "{name}-এর কাছ থেকে",
    "pt-BR": "de {name}",
    "ru": "от {name}",
-   "id": "dari {name}"
+   "id": "dari {name}",
+   "de": "von {name}",
+   "tr": "{name} tarafından"
   },
   "Merged: {title}": {
    "zh-Hans": "已合并：{title}",
@@ -5692,7 +5796,9 @@
    "bn": "মার্জ হয়েছে: {title}",
    "pt-BR": "Mesclada: {title}",
    "ru": "Слит: {title}",
-   "id": "Digabung: {title}"
+   "id": "Digabung: {title}",
+   "de": "Gemergt: {title}",
+   "tr": "Birleştirildi: {title}"
   },
   "Merged by {name} · {branches}": {
    "zh-Hans": "由 {name} 合并 · {branches}",
@@ -5703,7 +5809,9 @@
    "bn": "{name} মার্জ করেছেন · {branches}",
    "pt-BR": "Mesclada por {name} · {branches}",
    "ru": "Слил {name} · {branches}",
-   "id": "Digabung oleh {name} · {branches}"
+   "id": "Digabung oleh {name} · {branches}",
+   "de": "Gemergt von {name} · {branches}",
+   "tr": "{name} birleştirdi · {branches}"
   },
   "Approved by {name}: {title}": {
    "zh-Hans": "{name} 已批准：{title}",
@@ -5714,7 +5822,9 @@
    "bn": "{name} অনুমোদন করেছেন: {title}",
    "pt-BR": "Aprovada por {name}: {title}",
    "ru": "{name} одобрил: {title}",
-   "id": "Disetujui oleh {name}: {title}"
+   "id": "Disetujui oleh {name}: {title}",
+   "de": "Genehmigt von {name}: {title}",
+   "tr": "{name} onayladı: {title}"
   },
   "Approvals so far: {names}": {
    "zh-Hans": "目前已批准：{names}",
@@ -5725,7 +5835,9 @@
    "bn": "এখন পর্যন্ত অনুমোদন: {names}",
    "pt-BR": "Aprovações até agora: {names}",
    "ru": "Одобрили: {names}",
-   "id": "Persetujuan sejauh ini: {names}"
+   "id": "Persetujuan sejauh ini: {names}",
+   "de": "Bisherige Genehmigungen: {names}",
+   "tr": "Şimdiye kadarki onaylar: {names}"
   },
   "Comment by {name}: {title}": {
    "zh-Hans": "{name} 评论了：{title}",
@@ -5736,7 +5848,9 @@
    "bn": "{name}-এর মন্তব্য: {title}",
    "pt-BR": "Comentário de {name}: {title}",
    "ru": "Комментарий от {name}: {title}",
-   "id": "Komentar dari {name}: {title}"
+   "id": "Komentar dari {name}: {title}",
+   "de": "Kommentar von {name}: {title}",
+   "tr": "{name} yorum yaptı: {title}"
   },
   "Updated by {name}: {title}": {
    "zh-Hans": "{name} 更新了：{title}",
@@ -5747,7 +5861,9 @@
    "bn": "{name} আপডেট করেছেন: {title}",
    "pt-BR": "Atualizada por {name}: {title}",
    "ru": "Обновил {name}: {title}",
-   "id": "Diperbarui oleh {name}: {title}"
+   "id": "Diperbarui oleh {name}: {title}",
+   "de": "Aktualisiert von {name}: {title}",
+   "tr": "{name} güncelledi: {title}"
   },
   "Took {duration}": {
    "zh-Hans": "耗时 {duration}",
@@ -5758,7 +5874,9 @@
    "bn": "{duration} লেগেছে",
    "pt-BR": "Levou {duration}",
    "ru": "Заняло {duration}",
-   "id": "Butuh {duration}"
+   "id": "Butuh {duration}",
+   "de": "Dauer: {duration}",
+   "tr": "Süre: {duration}"
   },
   "Can't be merged": {
    "zh-Hans": "无法合并",
@@ -5769,7 +5887,9 @@
    "bn": "মার্জ করা যাবে না",
    "pt-BR": "Não pode ser mesclada",
    "ru": "Нельзя слить",
-   "id": "Tidak bisa digabung"
+   "id": "Tidak bisa digabung",
+   "de": "Kann nicht gemergt werden",
+   "tr": "Birleştirilemiyor"
   },
   "Save the URL and the token first": {
    "zh-Hans": "请先保存地址和令牌",
@@ -5780,7 +5900,9 @@
    "bn": "আগে URL আর টোকেন সংরক্ষণ করুন",
    "pt-BR": "Salve primeiro a URL e o token",
    "ru": "Сначала сохраните URL и токен",
-   "id": "Simpan URL dan token dulu"
+   "id": "Simpan URL dan token dulu",
+   "de": "Speichere zuerst die URL und das Token",
+   "tr": "Önce URL'yi ve token'ı kaydet"
   },
   "All projects": {
    "zh-Hans": "所有项目",
@@ -5791,7 +5913,9 @@
    "bn": "সব প্রজেক্ট",
    "pt-BR": "Todos os projetos",
    "ru": "Все проекты",
-   "id": "Semua proyek"
+   "id": "Semua proyek",
+   "de": "Alle Projekte",
+   "tr": "Tüm projeler"
   },
   "Choose…": {
    "zh-Hans": "选择…",
@@ -5802,7 +5926,9 @@
    "bn": "বেছে নিন…",
    "pt-BR": "Escolher…",
    "ru": "Выбрать…",
-   "id": "Pilih…"
+   "id": "Pilih…",
+   "de": "Auswählen…",
+   "tr": "Seç…"
   },
   "Filter": {
    "zh-Hans": "筛选",
@@ -5813,7 +5939,9 @@
    "bn": "ফিল্টার",
    "pt-BR": "Filtrar",
    "ru": "Фильтр",
-   "id": "Saring"
+   "id": "Saring",
+   "de": "Filtern",
+   "tr": "Filtrele"
   },
   "Follow all": {
    "zh-Hans": "关注全部",
@@ -5824,7 +5952,9 @@
    "bn": "সব অনুসরণ করুন",
    "pt-BR": "Seguir todos",
    "ru": "Следить за всеми",
-   "id": "Ikuti semua"
+   "id": "Ikuti semua",
+   "de": "Allen folgen",
+   "tr": "Tümünü takip et"
   },
   "No project": {
    "zh-Hans": "没有项目",
@@ -5835,7 +5965,9 @@
    "bn": "কোনো প্রজেক্ট নেই",
    "pt-BR": "Nenhum projeto",
    "ru": "Нет проектов",
-   "id": "Tidak ada proyek"
+   "id": "Tidak ada proyek",
+   "de": "Kein Projekt",
+   "tr": "Proje yok"
   },
   "Couldn't load the projects": {
    "zh-Hans": "无法加载项目",
@@ -5846,18 +5978,22 @@
    "bn": "প্রজেক্টগুলো লোড করা যায়নি",
    "pt-BR": "Não foi possível carregar os projetos",
    "ru": "Не удалось загрузить проекты",
-   "id": "Tidak bisa memuat proyek"
+   "id": "Tidak bisa memuat proyek",
+   "de": "Die Projekte konnten nicht geladen werden",
+   "tr": "Projeler yüklenemedi"
   },
   "Only these projects' merge requests and pipelines are followed; your To-Do list stays complete.": {
    "zh-Hans": "只关注这些项目的合并请求和流水线；你的待办列表保持完整。",
    "hi": "केवल इन प्रोजेक्ट के मर्ज रिक्वेस्ट और पाइपलाइन देखे जाते हैं; आपकी To-Do सूची पूरी रहती है।",
    "es": "Solo se siguen las merge requests y pipelines de estos proyectos; tu lista de tareas sigue completa.",
    "ar": "تُتابَع طلبات الدمج وخطوط المعالجة لهذه المشاريع فقط؛ تبقى قائمة مهامك كاملة.",
-   "fr": "Seules les merge requests et pipelines de ces projets sont suivies ; ta liste To-Do reste complète.",
+   "fr": "Seules les merge requests et pipelines de ces projets sont suivies ; votre liste To-Do reste complète.",
    "bn": "শুধু এই প্রজেক্টগুলোর মার্জ রিকোয়েস্ট ও পাইপলাইন অনুসরণ করা হয়; আপনার To-Do তালিকা সম্পূর্ণ থাকে।",
    "pt-BR": "Só as merge requests e pipelines destes projetos são seguidos; sua lista de tarefas continua completa.",
    "ru": "Отслеживаются только merge request и пайплайны этих проектов; ваш список задач остаётся полным.",
-   "id": "Hanya merge request dan pipeline proyek-proyek ini yang diikuti; daftar To-Do Anda tetap lengkap."
+   "id": "Hanya merge request dan pipeline proyek-proyek ini yang diikuti; daftar To-Do Anda tetap lengkap.",
+   "de": "Nur die Merge Requests und Pipelines dieser Projekte werden verfolgt; deine To-do-Liste bleibt vollständig.",
+   "tr": "Yalnızca bu projelerin merge request'leri ve pipeline'ları takip edilir; yapılacaklar listen eksiksiz kalır."
   },
   "{count} projects followed": {
    "zh-Hans": {
@@ -5899,6 +6035,14 @@
    },
    "id": {
     "other": "{count} proyek diikuti"
+   },
+   "de": {
+    "one": "{count} Projekt verfolgt",
+    "other": "{count} Projekte verfolgt"
+   },
+   "tr": {
+    "one": "{count} proje takip ediliyor",
+    "other": "{count} proje takip ediliyor"
    }
   }
  }
