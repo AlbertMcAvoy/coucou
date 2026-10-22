@@ -3370,6 +3370,14 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
+
 def main():
     raw = b''
     payload = {}
@@ -3429,7 +3437,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3497,7 +3505,7 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3725,6 +3733,14 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
+
 def main():
     raw = b''
     payload = {}
@@ -3784,7 +3800,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3851,7 +3867,7 @@ def main():
         payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
