@@ -6,7 +6,7 @@ package com.coucou.android.core
  * tags, and a test checks that they match the translation files.
  */
 object Languages {
-    data class Language(val tag: String, val name: String, val rtl: Boolean = false)
+    data class Language(val tag: String, val name: String)
 
     /** The empty tag: follow the phone. */
     const val SYSTEM = ""
@@ -20,7 +20,7 @@ object Languages {
         Language("bn", "বাংলা"),
         Language("ru", "Русский"),
         Language("id", "Bahasa Indonesia"),
-        Language("ar", "العربية", rtl = true),
+        Language("ar", "العربية"),
     )
 
     /** The tag of the language that [tag] (as Android reports it, e.g. "zh-Hans-CN" or "pt-PT") stands for in the app; [SYSTEM] if there is none. */
@@ -30,7 +30,4 @@ object Languages {
         val language = tag.substringBefore('-').substringBefore('_').lowercase()
         return ALL.firstOrNull { it.tag.substringBefore('-').equals(language, ignoreCase = true) }?.tag ?: SYSTEM
     }
-
-    /** True when the language chosen reads right to left (the picker's own order and the icons follow Android's layout direction). */
-    fun isRtl(tag: String): Boolean = ALL.firstOrNull { it.tag == tag }?.rtl ?: false
 }
