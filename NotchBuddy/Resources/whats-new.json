@@ -1,0 +1,150 @@
+{
+  "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 14 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
+  "releases": [
+    {
+      "version": "0.5.2",
+      "items": [
+        {
+          "icon": "update",
+          "title": {
+            "en": "New version in the notch",
+            "fr": "Nouvelle version dans le notch",
+            "es": "Nueva versión en el notch",
+            "pt-BR": "Nova versão no notch",
+            "ru": "Новая версия в вырезе",
+            "zh-Hans": "刘海中的新版本",
+            "hi": "नॉच में नया वर्ज़न",
+            "ar": "إصدار جديد في النوتش",
+            "bn": "নচে নতুন ভার্সন",
+            "id": "Versi baru di notch",
+            "de": "Neue Version in der Notch",
+            "tr": "Çentikte yeni sürüm",
+            "th": "เวอร์ชันใหม่ในรอยบาก",
+            "zh-Hant": "瀏海中的新版本"
+          },
+          "detail": {
+            "en": "Mochi tells you when a new Coucou is out. One click installs it.",
+            "fr": "Mochi te prévient quand un nouveau Coucou sort. Un clic l'installe.",
+            "es": "Mochi te avisa cuando sale un nuevo Coucou. Un clic lo instala.",
+            "pt-BR": "O Mochi avisa quando sai um novo Coucou. Um clique instala.",
+            "ru": "Mochi сообщит о новом Coucou. Один клик — и он установлен.",
+            "zh-Hans": "有新版 Coucou 时 Mochi 会告诉你，一键即可安装。",
+            "hi": "नया Coucou आने पर Mochi बताता है। एक क्लिक में इंस्टॉल।",
+            "ar": "يخبرك Mochi بصدور Coucou جديد. نقرة واحدة تثبّته.",
+            "bn": "নতুন Coucou এলে Mochi জানায়। এক ক্লিকে ইনস্টল।",
+            "id": "Mochi memberi tahu saat Coucou baru keluar. Sekali klik untuk memasang.",
+            "de": "Mochi sagt dir, wenn ein neues Coucou da ist. Ein Klick installiert es.",
+            "tr": "Yeni Coucou çıkınca Mochi haber verir. Tek tıkla kurulur.",
+            "th": "Mochi บอกเมื่อมี Coucou ใหม่ คลิกเดียวก็ติดตั้งได้",
+            "zh-Hant": "有新版 Coucou 時 Mochi 會告訴你，一鍵即可安裝。"
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "Four new languages",
+            "fr": "Quatre nouvelles langues",
+            "es": "Cuatro idiomas nuevos",
+            "pt-BR": "Quatro novos idiomas",
+            "ru": "Четыре новых языка",
+            "zh-Hans": "新增四种语言",
+            "hi": "चार नई भाषाएँ",
+            "ar": "أربع لغات جديدة",
+            "bn": "চারটি নতুন ভাষা",
+            "id": "Empat bahasa baru",
+            "de": "Vier neue Sprachen",
+            "tr": "Dört yeni dil",
+            "th": "เพิ่มสี่ภาษาใหม่",
+            "zh-Hant": "新增四種語言"
+          },
+          "detail": {
+            "en": "German, Turkish, Thai and Traditional Chinese: 14 in all.",
+            "fr": "Allemand, turc, thaï et chinois traditionnel : 14 en tout.",
+            "es": "Alemán, turco, tailandés y chino tradicional: 14 en total.",
+            "pt-BR": "Alemão, turco, tailandês e chinês tradicional: 14 no total.",
+            "ru": "Немецкий, турецкий, тайский и традиционный китайский: всего 14.",
+            "zh-Hans": "德语、土耳其语、泰语和繁体中文：共 14 种。",
+            "hi": "जर्मन, तुर्की, थाई और पारंपरिक चीनी: कुल 14।",
+            "ar": "الألمانية والتركية والتايلاندية والصينية التقليدية: 14 لغة.",
+            "bn": "জার্মান, তুর্কি, থাই ও প্রথাগত চীনা: মোট ১৪টি।",
+            "id": "Jerman, Turki, Thai, dan Mandarin Tradisional: total 14.",
+            "de": "Deutsch, Türkisch, Thai und traditionelles Chinesisch: 14 insgesamt.",
+            "tr": "Almanca, Türkçe, Tayca ve Geleneksel Çince: toplam 14.",
+            "th": "เยอรมัน ตุรกี ไทย และจีนตัวเต็ม รวม 14 ภาษา",
+            "zh-Hant": "德文、土耳其文、泰文和繁體中文：共 14 種。"
+          }
+        },
+        {
+          "icon": "checklist",
+          "title": {
+            "en": "Plans from the notch",
+            "fr": "Les plans depuis le notch",
+            "es": "Planes desde el notch",
+            "pt-BR": "Planos pelo notch",
+            "ru": "Планы прямо из выреза",
+            "zh-Hans": "在刘海中处理计划",
+            "hi": "नॉच से प्लान",
+            "ar": "الخطط من النوتش",
+            "bn": "নচ থেকেই প্ল্যান",
+            "id": "Rencana dari notch",
+            "de": "Pläne aus der Notch",
+            "tr": "Planlar çentikten",
+            "th": "จัดการแผนจากรอยบาก",
+            "zh-Hant": "在瀏海中處理計畫"
+          },
+          "detail": {
+            "en": "Approve Claude Code's plan in Auto or Manual mode, or change it.",
+            "fr": "Valide le plan de Claude Code en mode Auto ou Manuel, ou modifie-le.",
+            "es": "Aprueba el plan de Claude Code en modo Auto o Manual, o cámbialo.",
+            "pt-BR": "Aprove o plano do Claude Code no modo Auto ou Manual, ou mude-o.",
+            "ru": "Одобрите план Claude Code в режиме Auto или Manual — или измените его.",
+            "zh-Hans": "以自动或手动模式批准 Claude Code 的计划，或修改它。",
+            "hi": "Claude Code का प्लान Auto या Manual मोड में मंज़ूर करें, या बदलें।",
+            "ar": "وافق على خطة Claude Code بالوضع التلقائي أو اليدوي، أو عدّلها.",
+            "bn": "Claude Code-এর প্ল্যান Auto বা Manual মোডে অনুমোদন করুন, বা বদলান।",
+            "id": "Setujui rencana Claude Code dalam mode Auto atau Manual, atau ubah.",
+            "de": "Gib den Plan von Claude Code im Modus Auto oder Manuell frei – oder ändere ihn.",
+            "tr": "Claude Code'un planını Otomatik veya Manuel modda onayla ya da değiştir.",
+            "th": "อนุมัติแผนของ Claude Code แบบ Auto หรือ Manual หรือแก้ไข",
+            "zh-Hant": "以自動或手動模式核准 Claude Code 的計畫，或修改它。"
+          }
+        },
+        {
+          "icon": "bell",
+          "title": {
+            "en": "Alerts from every pill",
+            "fr": "Les alertes de toutes les pills",
+            "es": "Alertas de todas las píldoras",
+            "pt-BR": "Alertas de todas as pílulas",
+            "ru": "Оповещения от всех пилюль",
+            "zh-Hans": "所有胶囊的提醒",
+            "hi": "हर पिल के अलर्ट",
+            "ar": "تنبيهات من كل الحبوب",
+            "bn": "প্রতিটি পিলের অ্যালার্ট",
+            "id": "Notifikasi dari semua pil",
+            "de": "Hinweise von jeder Pill",
+            "tr": "Tüm araçların uyarıları",
+            "th": "การแจ้งเตือนจากทุกแถบ",
+            "zh-Hant": "所有標籤的提醒"
+          },
+          "detail": {
+            "en": "Another pill that finishes or fails can open the notch for a moment.",
+            "fr": "Une autre pill qui termine ou échoue peut ouvrir le notch un instant.",
+            "es": "Otra píldora que termina o falla puede abrir el notch un momento.",
+            "pt-BR": "Outra pílula que termina ou falha pode abrir o notch por um instante.",
+            "ru": "Другая пилюля, которая завершилась или упала, может ненадолго открыть вырез.",
+            "zh-Hans": "其他胶囊完成或失败时，可短暂打开刘海。",
+            "hi": "कोई दूसरा पिल पूरा या फ़ेल होने पर नॉच पल भर के लिए खुल सकता है।",
+            "ar": "يمكن لحبة أخرى انتهت أو فشلت أن تفتح النوتش للحظة.",
+            "bn": "অন্য পিল শেষ বা ব্যর্থ হলে নচ এক মুহূর্তের জন্য খুলতে পারে।",
+            "id": "Pil lain yang selesai atau gagal bisa membuka notch sebentar.",
+            "de": "Eine andere Pill, die fertig wird oder scheitert, kann die Notch kurz öffnen.",
+            "tr": "Biten ya da hata veren başka bir araç çentiği bir an açabilir.",
+            "th": "แถบอื่นที่เสร็จหรือล้มเหลวเปิดรอยบากได้ชั่วครู่",
+            "zh-Hant": "其他標籤完成或失敗時，可短暫打開瀏海。"
+          }
+        }
+      ]
+    }
+  ]
+}

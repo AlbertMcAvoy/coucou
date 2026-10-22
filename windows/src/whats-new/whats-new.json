@@ -1,0 +1,134 @@
+{
+  "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 12 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
+  "releases": [
+    {
+      "version": "0.5.1",
+      "items": [
+        {
+          "icon": "update",
+          "title": {
+            "en": "New version in the island",
+            "zh-Hans": "岛中的新版本",
+            "hi": "आइलैंड में नया वर्ज़न",
+            "es": "Nueva versión en la isla",
+            "ar": "إصدار جديد في الشريط",
+            "fr": "Nouvelle version dans l'île",
+            "bn": "আইল্যান্ডে নতুন ভার্সন",
+            "pt-BR": "Nova versão na ilha",
+            "ru": "Новая версия на острове",
+            "id": "Versi baru di pulau",
+            "de": "Neue Version in der Insel",
+            "tr": "Adada yeni sürüm"
+          },
+          "detail": {
+            "en": "Coucou tells you when a new version is out. On Windows, one click installs it.",
+            "zh-Hans": "有新版本时 Coucou 会告诉你。在 Windows 上一键即可安装。",
+            "hi": "नया वर्ज़न आने पर Coucou बताता है। Windows पर एक क्लिक में इंस्टॉल।",
+            "es": "Coucou te avisa cuando sale una versión nueva. En Windows, un clic la instala.",
+            "ar": "يخبرك Coucou بصدور إصدار جديد. على Windows تثبّته نقرة واحدة.",
+            "fr": "Coucou te prévient quand une nouvelle version sort. Sur Windows, un clic l'installe.",
+            "bn": "নতুন ভার্সন এলে Coucou জানায়। Windows-এ এক ক্লিকে ইনস্টল।",
+            "pt-BR": "O Coucou avisa quando sai uma nova versão. No Windows, um clique instala.",
+            "ru": "Coucou сообщит о новой версии. В Windows она ставится одним кликом.",
+            "id": "Coucou memberi tahu saat versi baru keluar. Di Windows, sekali klik untuk memasang.",
+            "de": "Coucou sagt dir, wenn eine neue Version da ist. Unter Windows installiert sie ein Klick.",
+            "tr": "Yeni sürüm çıkınca Coucou haber verir. Windows'ta tek tıkla kurulur."
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "German and Turkish",
+            "zh-Hans": "德语和土耳其语",
+            "hi": "जर्मन और तुर्की",
+            "es": "Alemán y turco",
+            "ar": "الألمانية والتركية",
+            "fr": "Allemand et turc",
+            "bn": "জার্মান ও তুর্কি",
+            "pt-BR": "Alemão e turco",
+            "ru": "Немецкий и турецкий",
+            "id": "Jerman dan Turki",
+            "de": "Deutsch und Türkisch",
+            "tr": "Almanca ve Türkçe"
+          },
+          "detail": {
+            "en": "Coucou now speaks 12 languages.",
+            "zh-Hans": "Coucou 现在支持 12 种语言。",
+            "hi": "Coucou अब 12 भाषाएँ बोलता है।",
+            "es": "Coucou ya habla 12 idiomas.",
+            "ar": "يتحدث Coucou الآن 12 لغة.",
+            "fr": "Coucou parle maintenant 12 langues.",
+            "bn": "Coucou এখন ১২টি ভাষায় কথা বলে।",
+            "pt-BR": "O Coucou agora fala 12 idiomas.",
+            "ru": "Теперь Coucou говорит на 12 языках.",
+            "id": "Coucou kini berbicara 12 bahasa.",
+            "de": "Coucou spricht jetzt 12 Sprachen.",
+            "tr": "Coucou artık 12 dil konuşuyor."
+          }
+        },
+        {
+          "icon": "clock",
+          "title": {
+            "en": "A clock in the island",
+            "zh-Hans": "岛中的时钟",
+            "hi": "आइलैंड में घड़ी",
+            "es": "Un reloj en la isla",
+            "ar": "ساعة في الشريط",
+            "fr": "Une horloge dans l'île",
+            "bn": "আইল্যান্ডে ঘড়ি",
+            "pt-BR": "Um relógio na ilha",
+            "ru": "Часы на острове",
+            "id": "Jam di pulau",
+            "de": "Eine Uhr in der Insel",
+            "tr": "Adada saat"
+          },
+          "detail": {
+            "en": "Optional, in the middle of the compact island.",
+            "zh-Hans": "可选，显示在紧凑岛的中间。",
+            "hi": "वैकल्पिक, कॉम्पैक्ट आइलैंड के बीच में।",
+            "es": "Opcional, en el centro de la isla compacta.",
+            "ar": "اختيارية، في منتصف الشريط المصغّر.",
+            "fr": "En option, au milieu de l'île compacte.",
+            "bn": "ঐচ্ছিক, ছোট আইল্যান্ডের মাঝখানে।",
+            "pt-BR": "Opcional, no meio da ilha compacta.",
+            "ru": "По желанию, в центре компактного острова.",
+            "id": "Opsional, di tengah pulau ringkas.",
+            "de": "Optional, in der Mitte der kompakten Insel.",
+            "tr": "İsteğe bağlı, kompakt adanın ortasında."
+          }
+        },
+        {
+          "icon": "bolt",
+          "title": {
+            "en": "Lighter on Linux",
+            "zh-Hans": "Linux 上更轻快",
+            "hi": "Linux पर हल्का",
+            "es": "Más ligero en Linux",
+            "ar": "أخف على Linux",
+            "fr": "Plus léger sous Linux",
+            "bn": "Linux-এ আরও হালকা",
+            "pt-BR": "Mais leve no Linux",
+            "ru": "Легче на Linux",
+            "id": "Lebih ringan di Linux",
+            "de": "Leichter unter Linux",
+            "tr": "Linux'ta daha hafif"
+          },
+          "detail": {
+            "en": "The closed window no longer keeps a processor core busy on KDE.",
+            "zh-Hans": "在 KDE 上，关闭的窗口不再占用一个处理器核心。",
+            "hi": "KDE पर बंद विंडो अब प्रोसेसर का एक कोर व्यस्त नहीं रखती।",
+            "es": "La ventana cerrada ya no mantiene ocupado un núcleo en KDE.",
+            "ar": "لم تعد النافذة المغلقة تُشغل نواة معالج على KDE.",
+            "fr": "La fenêtre fermée n'occupe plus un cœur du processeur sous KDE.",
+            "bn": "KDE-তে বন্ধ উইন্ডো আর প্রসেসরের একটি কোর ব্যস্ত রাখে না।",
+            "pt-BR": "A janela fechada não ocupa mais um núcleo no KDE.",
+            "ru": "Закрытое окно больше не занимает ядро процессора в KDE.",
+            "id": "Jendela yang ditutup tak lagi menyibukkan satu inti prosesor di KDE.",
+            "de": "Das geschlossene Fenster hält unter KDE keinen Prozessorkern mehr beschäftigt.",
+            "tr": "Kapalı pencere KDE'de artık bir işlemci çekirdeğini meşgul etmiyor."
+          }
+        }
+      ]
+    }
+  ]
+}
