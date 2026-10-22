@@ -36,6 +36,9 @@ jobs:
       - name: Test question queue
         run: bash scripts/test-question-queue.sh
 
+      - name: Test session titles in the relay
+        run: python3 scripts/test-session-title.py
+
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh
 
