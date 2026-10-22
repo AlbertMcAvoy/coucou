@@ -768,4 +768,26 @@ mod tests {
         assert_eq!(base64(b"f"), "Zg==");
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
     }
+
+    #[test]
+    fn gowas_real_release_names_on_linux_and_windows() {
+        // GOWA's release.yml (GoReleaser): whatsapp_<version>_<os>_<arch>.zip, one checksums.txt for
+        // Linux and Windows (checksums-macos.txt is the Mac's), and the binary named <os>-<arch>[.exe].
+        let json = r#"{"tag_name":"v9.0.1","assets":[
+            {"name":"checksums-macos.txt","size":228,"browser_download_url":"https://github.com/a/b/releases/download/v9.0.1/checksums-macos.txt"},
+            {"name":"checksums.txt","size":700,"browser_download_url":"https://github.com/a/b/releases/download/v9.0.1/checksums.txt"},
+            {"name":"whatsapp_9.0.1_linux_amd64.zip","size":13900000,"browser_download_url":"https://github.com/y"},
+            {"name":"whatsapp_9.0.1_linux_armv7.zip","size":13000000,"browser_download_url":"https://github.com/v"},
+            {"name":"whatsapp_9.0.1_windows_amd64.zip","size":14000000,"browser_download_url":"https://github.com/w"}]}"#;
+        let (_, assets) = release::parse(json.as_bytes()).unwrap();
+        for os in ["linux", "windows"] {
+            let (zip, sums) = release::pick(&assets, os, "amd64").unwrap();
+            assert_eq!(zip.name, format!("whatsapp_9.0.1_{os}_amd64.zip"));
+            assert_eq!(sums.map(|s| s.name.as_str()), Some("checksums.txt"));
+        }
+        let names = vec!["windows-amd64.exe".to_string()];
+        assert_eq!(release::binary_entry(&names, "windows", "amd64").map(String::as_str), Some("windows-amd64.exe"));
+        let names = vec!["linux-amd64".to_string()];
+        assert_eq!(release::binary_entry(&names, "linux", "amd64").map(String::as_str), Some("linux-amd64"));
+    }
 }
