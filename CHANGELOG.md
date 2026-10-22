@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Mochi turns blue when a new version waits** *(macOS GitHub build, Windows, Linux)* — once you agreed to look for updates, a newer Coucou turns Mochi blue with a little up arrow whenever he has nothing else to tell you, and opening the island shows **Update now** first. Later hides it for a day. Approvals and questions always come first
+- **What's new, after the update** — once Coucou updated itself, the island shows what the new version brings (with an icon each, in your language), then *Your Coucou so far*: agent sessions, time with your agents, lines written, approvals from the island, words dictated and time saved with Flow, calls transcribed. All of it is counted on your computer and never leaves it. And, if Coucou saves you time, **Buy Mochi a coffee**
 - **Coucou for Android 0.3.0**, by @Rhytam23 — a bigger release (versionCode 3). It works with Coucou 0.5.0 on Windows and Linux; the weekly recap needs the next Windows and Linux build.
   - **Clearer link** — Home names the likely cause when the computer is out of reach (computer closed, other network, phone link off); predictive back; the ongoing notification is updated only when its text changes.
   - **Permission requests** — choose the vibration (default, short, off) and whether a request wakes the screen (off by default). Allow still needs your fingerprint or screen lock, and approvals are never muted or hidden.
