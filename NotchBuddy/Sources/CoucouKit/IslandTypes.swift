@@ -84,6 +84,10 @@ struct AgentTask: Identifiable, Equatable {
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+
+    /// The client pill this task belongs to: its id, or for a session's own pill
+    /// ("integration_claude#2") the pill of its client. Compare this, not `id`, to a pill ID.
+    var pill: String { PillCatalog.basePillId(id) }
 }
 
 enum AgentSource: Equatable {

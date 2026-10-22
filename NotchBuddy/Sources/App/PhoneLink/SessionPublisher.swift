@@ -174,6 +174,8 @@ struct SessionSnapshot: Equatable {
     /// The question's choices (QuestionPayload JSON) and its fingerprint, for answering from the iPhone.
     var questionPayload: String = ""
     var questionFingerprint: String = ""
+    /// False for a question's own record ("<pill>#q2"): it is not a session to send work to.
+    var takesInstructions = true
 
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
                     questions: [QueuedQuestion]) -> [String: SessionSnapshot] {
@@ -203,7 +205,7 @@ struct SessionSnapshot: Equatable {
                 questionPayload: payload?.json ?? "",
                 questionFingerprint: payload?.fingerprint ?? "")
             // Questions from other sessions behind the same pill get a record of their own
-            // ("<pill>#2"…), so each one shows up and is answered on its own.
+            // ("<pill>#q2"…), so each one shows up and is answered on its own.
             for entry in questions where entry.pillId == task.id && entry.slot > 1 {
                 let payload = QuestionPayload(ask: entry.question)
                 result[entry.phoneRecordId] = SessionSnapshot(
@@ -220,7 +222,8 @@ struct SessionSnapshot: Equatable {
                     approvalFingerprint: "",
                     question: entry.question.questions.map(\.question).joined(separator: "\n"),
                     questionPayload: payload.json,
-                    questionFingerprint: payload.fingerprint)
+                    questionFingerprint: payload.fingerprint,
+                    takesInstructions: false)
             }
         }
         return result
@@ -264,7 +267,9 @@ struct SessionSnapshot: Equatable {
         #if APPSTORE
         record["acceptsInstructions"] = false
         #else
-        record["acceptsInstructions"] = InstructionRunner.isEnabled && (pillId == "integration_claude" || pillId == "agent_cursor")
+        let client = PillCatalog.basePillId(pillId)
+        record["acceptsInstructions"] = InstructionRunner.isEnabled && takesInstructions
+            && (client == "integration_claude" || client == "agent_cursor")
         #endif
         record.encryptedValues["name"] = name
         record.encryptedValues["steps"] = steps

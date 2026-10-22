@@ -29,7 +29,7 @@ enum QuestionQueueTests {
 
         // Slots: the pill's own iPhone record first, then one record per extra question
         precondition(q.entries.map(\.slot) == [1, 2])
-        precondition(q.entries.map(\.phoneRecordId) == ["integration_claude", "integration_claude#2"])
+        precondition(q.entries.map(\.phoneRecordId) == ["integration_claude", "integration_claude#q2"])
 
         // Another pill counts its own slots
         let c = entry(3, session: "s3", pill: "agent_codex")
@@ -89,14 +89,14 @@ enum QuestionQueueTests {
             QuestionQueue.question(answering: fingerprint, onRecord: record, in: same.entries, fingerprintOf: fp)?.id
         }
         precondition(answered("Same?", "integration_claude") == s1.id)
-        precondition(answered("Same?", "integration_claude#2") == s2.id)
+        precondition(answered("Same?", "integration_claude#q2") == s2.id)
         precondition(answered("Other?", "agent_codex") == other.id)
         precondition(answered("Same?", "") == s1.id)               // no record named: the oldest
         precondition(answered("Same?", "agent_codex") == nil)      // not the question on that record
         precondition(answered("Gone?", "integration_claude") == nil)
         _ = same.remove(id: s1.id)
         precondition(answered("Same?", "integration_claude") == nil)   // answered already
-        precondition(answered("Same?", "integration_claude#2") == s2.id)
+        precondition(answered("Same?", "integration_claude#q2") == s2.id)
 
         print("QuestionQueue tests: all passed")
     }

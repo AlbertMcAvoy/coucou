@@ -24,9 +24,10 @@ struct QueuedQuestion: Equatable, Sendable {
     var received = Date()
 
     /// The iPhone record that shows this question: the pill's own for the first question
-    /// behind a pill, "<pill>#<slot>" for the others, so each session's question is answered
-    /// on its own. The iPhone sends this id back with its answer.
-    var phoneRecordId: String { slot == 1 ? pillId : "\(pillId)#\(slot)" }
+    /// behind a pill, "<pill>#q<slot>" for the others, so each session's question is answered
+    /// on its own (a session's own pill is "<pill>#<n>": the two never meet). The iPhone sends
+    /// this id back with its answer.
+    var phoneRecordId: String { slot == 1 ? pillId : "\(pillId)#q\(slot)" }
 }
 
 struct QuestionQueue: Sendable {

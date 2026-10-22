@@ -70,26 +70,26 @@ final class HookServer: @unchecked Sendable {
     /// Note shown when a request was answered outside Coucou.
     @MainActor
     private func handledNote(pill: String) -> String {
-        switch pill {
+        switch PillCatalog.basePillId(pill) {
         case "agent_cursor":  return "Handled in Cursor."
         case "agent_codex":   return "Handled in Codex."
         case "agent_copilot": return "Handled in Copilot CLI."
         case "agent_muse":    return "Handled in Muse Code."
         case "agent_hermes":  return "Handled in Hermes."
-        default:              return "Handled in \(claudeHostName)."
+        default:              return "Handled in \(claudeHostName(pill: pill))."
         }
     }
 
     /// Note shown when a request waited too long and went back to the agent.
     @MainActor
     private func waitingNote(pill: String) -> String {
-        switch pill {
+        switch PillCatalog.basePillId(pill) {
         case "agent_cursor":  return "Still waiting in Cursor."
         case "agent_codex":   return "Still waiting in Codex."
         case "agent_copilot": return "Still waiting in Copilot CLI."
         case "agent_muse":    return "Still waiting in Muse Code."
         case "agent_hermes":  return "Still waiting in Hermes."
-        default:              return "Still waiting in \(claudeHostName)."
+        default:              return "Still waiting in \(claudeHostName(pill: pill))."
         }
     }
 
@@ -1142,10 +1142,10 @@ final class HookServer: @unchecked Sendable {
         showQuestionHead()
     }
 
-    /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
+    /// "VS Code", "Warp"… — where the session behind a Claude Code pill runs.
     @MainActor
-    private var claudeHostName: String {
-        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
+    private func claudeHostName(pill: String) -> String {
+        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == pill }?.hostApp)
     }
 
     /// Records the session an event came from, then refreshes its card.
@@ -1174,13 +1174,14 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
+        if PillCatalog.basePillId(pill) == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
-    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
-    /// If the task already exists (persistent), just updates name/cwd.
-    /// If missing (transient), creates it and inserts after the main pill.
+    /// Updates or transiently creates a workspace pill (VS Code or Cursor) task, or a session's
+    /// own pill. If the task already exists (persistent), just updates name/cwd.
+    /// If missing (transient), creates it and inserts after the main pill (a session's own
+    /// pill: after its client's).
     /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
@@ -1191,7 +1192,7 @@ final class HookServer: @unchecked Sendable {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if PillCatalog.basePillId(id) == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1201,9 +1202,12 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if task.pill == "integration_claude" { task.hostApp = hostApp }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
-        if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
+        // A session's own pill goes after its client's other pills, so they stay together.
+        if let sibling = state.tasks.lastIndex(where: { $0.pill == task.pill }) {
+            state.tasks.insert(task, at: sibling + 1)
+        } else if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {
             state.tasks.insert(task, at: 0)
