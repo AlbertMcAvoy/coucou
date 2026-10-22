@@ -24,6 +24,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
+        #if !APPSTORE
+        // Before anything writes its settings: did Coucou just update itself? (What's new, once.)
+        WhatsNewCenter.shared.noteLaunch()
+        #endif
         // Warm up Keychain cache on main thread BEFORE any poller or view touches it
         _ = KeychainStore.shared
         #if APPSTORE

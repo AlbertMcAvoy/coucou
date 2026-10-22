@@ -131,6 +131,9 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      # What's new after an update, once in the notch (WhatsNewViews.swift; GitHub build)
+      - path: Resources/whats-new.json
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
