@@ -111,6 +111,9 @@ def check(label, path, version, langs):
 
 
 def main():
+    # Windows runners print in cp1252 by default: ✓ and the translations need UTF-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     only = sys.argv[1] if len(sys.argv) > 1 else None
     if only in (None, "mac"):
         check("Mac", ROOT / "NotchBuddy/Resources/whats-new.json", mac_version(), MAC_LANGS)
