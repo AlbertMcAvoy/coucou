@@ -22,12 +22,18 @@ struct QueuedQuestion: Equatable, Sendable {
     var slot: Int = 1
     /// When the question arrived (answers sent before it are not for it).
     var received = Date()
+    /// The pill the question shows on when its session popped out of `pillId` (SessionBoard),
+    /// nil when it shows on `pillId` itself.
+    var shownPill: String? = nil
 
-    /// The iPhone record that shows this question: the pill's own for the first question
-    /// behind a pill, "<pill>#q<slot>" for the others, so each session's question is answered
-    /// on its own (a session's own pill is "<pill>#<n>": the two never meet). The iPhone sends
-    /// this id back with its answer.
-    var phoneRecordId: String { slot == 1 ? pillId : "\(pillId)#q\(slot)" }
+    /// Where the card and the focus find the question.
+    var displayPill: String { shownPill ?? pillId }
+
+    /// The iPhone record that shows this question: the popped-out pill's own when its session
+    /// popped out, else the pill's own for the first question behind a pill, "<pill>#q<slot>"
+    /// for the others, so each session's question is answered on its own (a popped-out pill is
+    /// "<pill>#<n>": the two never meet). The iPhone sends this id back with its answer.
+    var phoneRecordId: String { shownPill ?? (slot == 1 ? pillId : "\(pillId)#q\(slot)") }
 }
 
 struct QuestionQueue: Sendable {
@@ -68,7 +74,8 @@ struct QuestionQueue: Sendable {
             return .accepted(replaced: replaced)
         }
         guard entries.count < maxPending else { return .rejectedFull }
-        let taken = Set(entries.filter { $0.pillId == entry.pillId }.map(\.slot))
+        // A popped-out question has its pill's record: the slots count the others only.
+        let taken = Set(entries.filter { $0.pillId == entry.pillId && $0.shownPill == nil }.map(\.slot))
         entry.slot = (1...).first { !taken.contains($0) }!
         entries.append(entry)
         return .accepted(replaced: nil)

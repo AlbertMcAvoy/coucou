@@ -154,7 +154,7 @@ struct OverviewView: View {
                 // Diff overlay — replaces ticker when a diff step is tapped
                 if let diffId = activeDiffId,
                    let task = agent,
-                   let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
+                   let diff = state.sessionDiffs[task.pill]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
                     DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
                         .transition(.opacity)
@@ -214,7 +214,7 @@ struct OverviewView: View {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
                 _ = id
             } else if let task = state.focusTask,
-                      let last = state.sessionDiffs[task.id]?.last {
+                      let last = state.sessionDiffs[task.pill]?.last {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
             }
         }
@@ -441,7 +441,7 @@ struct QuestionView: View {
     /// With questions from several sessions waiting, the pill named after the session that asks.
     private var asker: AgentTask? {
         guard state.waitingQuestions.count > 1, let head = state.waitingQuestions.first,
-              var task = state.tasks.first(where: { $0.id == head.pillId }) else { return nil }
+              var task = state.tasks.first(where: { $0.id == head.displayPill }) else { return nil }
         if !head.projectName.isEmpty { task.name = head.projectName }
         return task
     }

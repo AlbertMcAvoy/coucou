@@ -183,9 +183,10 @@ struct SessionSnapshot: Equatable {
         // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
         for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
             let hasApproval = approval?.pillId == task.id
-            // The pill's record carries the first question behind it, as it always has.
+            // The pill's record carries the first question behind it, as it always has; a
+            // session popped out of its pill (SessionBoard) has its own pill, and record.
             let question = task.state == .question
-                ? questions.first(where: { $0.pillId == task.id && $0.slot == 1 })?.question
+                ? questions.first(where: { $0.phoneRecordId == task.id })?.question
                 : nil
             let questionText = question?.questions.map(\.question).joined(separator: "\n") ?? ""
             let payload = question.map(QuestionPayload.init(ask:))
@@ -206,7 +207,7 @@ struct SessionSnapshot: Equatable {
                 questionFingerprint: payload?.fingerprint ?? "")
             // Questions from other sessions behind the same pill get a record of their own
             // ("<pill>#q2"…), so each one shows up and is answered on its own.
-            for entry in questions where entry.pillId == task.id && entry.slot > 1 {
+            for entry in questions where entry.pillId == task.id && entry.shownPill == nil && entry.slot > 1 {
                 let payload = QuestionPayload(ask: entry.question)
                 result[entry.phoneRecordId] = SessionSnapshot(
                     pillId: entry.phoneRecordId,

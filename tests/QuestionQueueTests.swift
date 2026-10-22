@@ -98,6 +98,21 @@ enum QuestionQueueTests {
         precondition(answered("Same?", "integration_claude") == nil)   // answered already
         precondition(answered("Same?", "integration_claude#q2") == s2.id)
 
+        // A question whose session popped out of its pill shows on (and is answered from) that
+        // pill's record; the slots count the other questions only
+        var out = QuestionQueue()
+        var popped = entry(10, session: "p1")
+        popped.shownPill = "integration_claude#2"
+        _ = out.enqueue(popped)
+        let inside = entry(11, session: "p2")
+        _ = out.enqueue(inside)
+        precondition(out.entry(id: popped.id)?.phoneRecordId == "integration_claude#2")
+        precondition(out.entry(id: popped.id)?.displayPill == "integration_claude#2")
+        precondition(out.entry(id: inside.id)?.phoneRecordId == "integration_claude")
+        precondition(out.entry(id: inside.id)?.displayPill == "integration_claude")
+        precondition(QuestionQueue.question(answering: "q10", onRecord: "integration_claude#2", in: out.entries,
+                                            fingerprintOf: { $0.questions.map(\.question).joined() })?.id == popped.id)
+
         print("QuestionQueue tests: all passed")
     }
 }
