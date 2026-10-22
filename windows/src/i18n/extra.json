@@ -5169,58 +5169,6 @@
       "de": "Du hast jetzt Coucou {version}",
       "tr": "Artık Coucou {version} sürümündesin"
     },
-    "All changes": {
-      "zh-Hans": "全部更改",
-      "hi": "सभी बदलाव",
-      "es": "Todos los cambios",
-      "ar": "كل التغييرات",
-      "fr": "Tous les changements",
-      "bn": "সব পরিবর্তন",
-      "pt-BR": "Todas as mudanças",
-      "ru": "Все изменения",
-      "id": "Semua perubahan",
-      "de": "Alle Änderungen",
-      "tr": "Tüm değişiklikler"
-    },
-    "Your Coucou so far": {
-      "zh-Hans": "你目前的 Coucou",
-      "hi": "अब तक आपका Coucou",
-      "es": "Tu Coucou hasta ahora",
-      "ar": "Coucou الخاص بك حتى الآن",
-      "fr": "Ton Coucou jusqu'ici",
-      "bn": "এখন পর্যন্ত আপনার Coucou",
-      "pt-BR": "Seu Coucou até agora",
-      "ru": "Ваш Coucou на сегодня",
-      "id": "Coucou-mu sejauh ini",
-      "de": "Dein Coucou bisher",
-      "tr": "Şimdiye kadar Coucou'n"
-    },
-    "Coucou is free and open source. If it saves you time, you can buy Mochi a coffee.": {
-      "zh-Hans": "Coucou 免费且开源。如果它为你节省了时间，可以请 Mochi 喝杯咖啡。",
-      "hi": "Coucou मुफ़्त और ओपन सोर्स है। अगर यह आपका समय बचाता है, तो Mochi को एक कॉफ़ी पिला सकते हैं।",
-      "es": "Coucou es gratis y de código abierto. Si te ahorra tiempo, puedes invitar a Mochi a un café.",
-      "ar": "Coucou مجاني ومفتوح المصدر. إذا وفّر عليك الوقت، يمكنك أن تدعو Mochi إلى فنجان قهوة.",
-      "fr": "Coucou est gratuit et open source. S'il te fait gagner du temps, tu peux offrir un café à Mochi.",
-      "bn": "Coucou বিনামূল্যে ও ওপেন সোর্স। এটি আপনার সময় বাঁচালে Mochi-কে একটা কফি খাওয়াতে পারেন।",
-      "pt-BR": "O Coucou é gratuito e de código aberto. Se ele poupa seu tempo, você pode pagar um café para o Mochi.",
-      "ru": "Coucou бесплатный и с открытым кодом. Если он экономит вам время, можно угостить Mochi кофе.",
-      "id": "Coucou gratis dan open source. Kalau Coucou menghemat waktumu, kamu bisa mentraktir Mochi kopi.",
-      "de": "Coucou ist kostenlos und Open Source. Wenn es dir Zeit spart, kannst du Mochi einen Kaffee ausgeben.",
-      "tr": "Coucou ücretsiz ve açık kaynaklı. Sana zaman kazandırıyorsa Mochi'ye bir kahve ısmarlayabilirsin."
-    },
-    "Buy Mochi a coffee": {
-      "zh-Hans": "请 Mochi 喝杯咖啡",
-      "hi": "Mochi को कॉफ़ी पिलाएँ",
-      "es": "Invita a Mochi a un café",
-      "ar": "ادعُ Mochi إلى قهوة",
-      "fr": "Offrir un café à Mochi",
-      "bn": "Mochi-কে কফি খাওয়ান",
-      "pt-BR": "Pague um café para o Mochi",
-      "ru": "Угостить Mochi кофе",
-      "id": "Traktir Mochi kopi",
-      "de": "Mochi einen Kaffee ausgeben",
-      "tr": "Mochi'ye kahve ısmarla"
-    },
     "agent session": {
       "zh-Hans": "次智能体会话",
       "hi": "एजेंट सत्र",
