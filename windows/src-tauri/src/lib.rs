@@ -950,6 +950,7 @@ pub fn run() {
             update::update_shown,
             update::update_show,
             update::update_later,
+            tray::tray_update_hint,
             update::update_dismiss,
             update::update_install,
             update::update_open_page,
