@@ -36,6 +36,9 @@ jobs:
       - name: Test question queue
         run: bash scripts/test-question-queue.sh
 
+      - name: Test the session board (sessions behind a pill, popping out, places)
+        run: bash scripts/test-session-board.sh
+
       - name: Test session titles in the relay
         run: python3 scripts/test-session-title.py
 
