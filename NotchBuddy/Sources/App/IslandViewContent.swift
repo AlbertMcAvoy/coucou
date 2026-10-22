@@ -100,7 +100,7 @@ struct OverviewView: View {
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                 Spacer(minLength: 2)
-                                if agent.steps.count > 1 {
+                                if agent.steps.count > 1 && agent.sessionLines.isEmpty {
                                     Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
                                         .font(.system(size: 11))
                                         .foregroundColor(Color(hex: "#6B7079"))
@@ -111,9 +111,16 @@ struct OverviewView: View {
                             .padding(.leading, 108)
                             .padding(.trailing, 36)
 
-                            TickerView(task: agent, onDiffTap: { diffIdx in
-                                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
-                            })
+                            // Several sessions share the pill: one line each, instead of the steps.
+                            Group {
+                                if agent.sessionLines.isEmpty {
+                                    TickerView(task: agent, onDiffTap: { diffIdx in
+                                        withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                                    })
+                                } else {
+                                    SessionLinesView(lines: agent.sessionLines)
+                                }
+                            }
                                 .frame(height: 44)
                                 .padding(.top, 6)
                                 .padding(.leading, 108)
@@ -2283,7 +2290,7 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 2)
-                    if task.steps.count > 1 {
+                    if task.steps.count > 1 && task.sessionLines.isEmpty {
                         Text("\(min(task.stepIndex + 1, task.steps.count))/\(task.steps.count)")
                             .font(.system(size: 11))
                             .foregroundColor(Color(hex: "#6B7079"))
@@ -2294,7 +2301,14 @@ struct IntegrationCardView: View {
                 .padding(.leading, 108)
                 .padding(.trailing, 36)
 
-                TickerView(task: task, onDiffTap: onDiffTap)
+                // Several sessions share the pill: one line each, instead of the steps.
+                Group {
+                    if task.sessionLines.isEmpty {
+                        TickerView(task: task, onDiffTap: onDiffTap)
+                    } else {
+                        SessionLinesView(lines: task.sessionLines)
+                    }
+                }
                     .frame(height: 44)
                     .padding(.top, 6)
                     .padding(.leading, 108)
@@ -3872,6 +3886,55 @@ struct N8nDetailView: View {
 
 // MARK: - Ticker (overview scrolling task steps) V2
 
+/// The sessions sharing a pill, one line each: its state, title and last step. The bold one is
+/// the session the pill shows (its name, steps and state are the pill's). A session waiting for
+/// you is not here: it has a pill of its own until it is answered.
+struct SessionLinesView: View {
+    let lines: [SessionLine]
+
+    var body: some View {
+        // Three lines fit; with more, two and how many others.
+        let shown = lines.count <= 3 ? lines : Array(lines.prefix(2))
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(shown) { line in
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color(hex: Self.color(line.state)))
+                        .frame(width: 5, height: 5)
+                    Text(line.title)
+                        .font(.system(size: 11, weight: line.isShown ? .semibold : .regular))
+                        .foregroundColor(Color(hex: line.isShown ? "#F5F6F8" : "#C5C8CD"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
+                    Text(line.lastStep)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            if shown.count < lines.count {
+                Text(verbatim: "+\(lines.count - shown.count)")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    static func color(_ state: BotState) -> String {
+        switch state {
+        case .approval:                  return "#F59E0B"
+        case .question:                  return "#22D3EE"
+        case .error, .ratelimit:         return "#F87171"
+        case .finished:                  return "#4ADE80"
+        case .idle, .sleeping, .dizzy:   return "#6B7079"
+        default:                         return "#60A5FA"
+        }
+    }
+}
+
 struct TickerView: View {
     let task: AgentTask?
     var onDiffTap: ((Int) -> Void)? = nil
@@ -4114,14 +4177,6 @@ struct AgentPillsView: View {
     @ObservedObject var state: AppState
     @State private var swapping = false
 
-    private var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
-    }
-
-    private var displayTasks: [AgentTask] {
-        Array(others.prefix(4))
-    }
-
     private let columns = [
         GridItem(.flexible(), spacing: 4),
         GridItem(.flexible(), spacing: 4)
@@ -4131,44 +4186,93 @@ struct AgentPillsView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
             LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(displayTasks) { task in
-                    #if !APPSTORE
-                    if task.id == "integration_music" {
-                        MusicPill(task: task, state: state, swapping: $swapping) {
+                ForEach(state.gridSlots, id: \.id) { slot in
+                    switch slot {
+                    case .pill(let id):
+                        if let task = state.tasks.first(where: { $0.id == id }) { pill(task) }
+                    case .waiting(let ids):
+                        WaitingStackPill(count: ids.count) {
                             swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else if task.id == "integration_spotify" {
-                        SpotifyPill(task: task, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else {
-                        AgentPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
+                            state.setFocus(ids[0])
                             SoundEngine.shared.play("blip")
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                         }
                     }
-                    #else
-                    AgentPill(task: task, state: state, swapping: $swapping) {
-                        swapping = true
-                        state.setFocus(task.id)
-                        SoundEngine.shared.play("blip")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                    }
-                    #endif
                 }
             }
             .padding(.horizontal, 8)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func pill(_ task: AgentTask) -> some View {
+        #if !APPSTORE
+        if task.id == "integration_music" {
+            MusicPill(task: task, state: state, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        } else if task.id == "integration_spotify" {
+            SpotifyPill(task: task, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        } else {
+            AgentPill(task: task, state: state, swapping: $swapping) {
+                swapping = true
+                state.setFocus(task.id)
+                SoundEngine.shared.play("blip")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+            }
+        }
+        #else
+        AgentPill(task: task, state: state, swapping: $swapping) {
+            swapping = true
+            state.setFocus(task.id)
+            SoundEngine.shared.play("blip")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+        }
+        #endif
+    }
+}
+
+/// "+N" in the last place beside the focused pill: more sessions wait for you than there are
+/// places (SessionBoard.slots). A tap shows the first of them; the cards still come in order.
+struct WaitingStackPill: View {
+    let count: Int
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: { onTap() }) {
+            ZStack {
+                Capsule()
+                    .fill(isHovered ? Color(hex: "#F59E0B").opacity(0.18) : Color(hex: "#0E0F11"))
+                Capsule()
+                    .stroke(Color(hex: "#F59E0B").opacity(isHovered ? 0.55 : 0.3), lineWidth: 1)
+                HStack(spacing: 4) {
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text(verbatim: "+\(count)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .monospacedDigit()
+                }
+                .foregroundColor(isHovered ? Color(hex: "#FCD34D") : Color(hex: "#C9A35A"))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = hovering }
+        }
     }
 }
 
