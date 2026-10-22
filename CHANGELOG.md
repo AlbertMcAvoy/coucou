@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Coucou for Android 0.3.0**, by @Rhytam23 — a bigger release (versionCode 3). It works with Coucou 0.5.0 on Windows and Linux; the weekly recap needs the next Windows and Linux build.
+  - **Clearer link** — Home names the likely cause when the computer is out of reach (computer closed, other network, phone link off); predictive back; the ongoing notification is updated only when its text changes.
+  - **Permission requests** — choose the vibration (default, short, off) and whether a request wakes the screen (off by default). Allow still needs your fingerprint or screen lock, and approvals are never muted or hidden.
+  - **Look** — a light theme (System, Light, Dark) and the phone's own colours on Android 12 and later; Reduce motion, TalkBack in words, large text and 48 dp touch targets.
+  - **Nine more languages** — French, Spanish, Brazilian Portuguese, Simplified Chinese, Hindi, Bengali, Russian, Indonesian and Arabic (right to left), with a language picker.
+  - **Quick actions** — launcher shortcuts (Chat, Recent decisions, Pair again), a Team widget, and Share to Coucou (the text lands in the chat box and is never sent).
+  - **Weekly recap and history** — last week's counts on Home (optional, off by default, behind its own switch on the computer), search and export of recent decisions as text, and a per-agent mute for finished, failed and limit notices (requests and questions are never muted).
+  - Fixes #629: the *Away from home Wi-Fi* section only shows when the pairing carries a relay (#682 by @Rhytam23)
+
 ## 0.5.2 — October 20, 2026
 
 New versions now come to you: Mochi says it in the notch and one click installs it. Plus four new languages and a round of community work.
