@@ -9,6 +9,34 @@ import type { BotEmoteName, IslandViewName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { NO_UPDATE, mayOffer, type UpdateOffer, type UpdateStatus } from "../core/update";
+import { updateWaiting, type Later } from "../whats-new/whats-new";
+
+/**
+ * "Later" for the blue Mochi (whats-new.ts): which version, and when. Rust
+ * keeps its own snooze for the card coming back by itself; this one only says
+ * whether Mochi stays blue and a click opens on the update. A per-install
+ * convenience, so the webview's storage is enough: lost, Mochi is blue again.
+ */
+const LATER_KEY = "coucou.update.later";
+
+function readLater(): Later | null {
+  try {
+    const raw = window.localStorage?.getItem(LATER_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<Later>;
+    return typeof v.version === "string" && typeof v.at === "number" ? { version: v.version, at: v.at } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLater(later: Later) {
+  try {
+    window.localStorage?.setItem(LATER_KEY, JSON.stringify(later));
+  } catch {
+    // Storage refused: the blue only comes back sooner.
+  }
+}
 
 /** What the update card needs from the island. */
 export interface UpdateHost {
@@ -81,8 +109,22 @@ class UpdateController {
   }
 
   later() {
+    const version = this.status.latest?.version;
+    if (version) {
+      this.laterMemo = { version, at: Date.now() };
+      writeLater(this.laterMemo);
+    }
     void Bridge.updateLater();
     this.host?.collapse();
+    State.notify();
+  }
+
+  private laterMemo: Later | null | undefined;
+
+  /** A newer version waits for the user (Mochi turns blue, a click opens on it). */
+  waiting(nowMs = Date.now()): boolean {
+    if (this.laterMemo === undefined) this.laterMemo = readLater();
+    return !this.asking && updateWaiting(this.status, this.laterMemo, nowMs);
   }
 
   /** OK on a failed update or on "up to date". */
