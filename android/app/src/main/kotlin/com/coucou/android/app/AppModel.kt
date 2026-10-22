@@ -72,6 +72,18 @@ class AppModel(private val context: Context) : LinkListener {
     /** Set only by LaunchActivity (not exported), read by MainActivity: see [com.coucou.android.core.PendingLaunch]. */
     val launch = com.coucou.android.core.PendingLaunch()
 
+    /** Text shared to Coucou from another app, waiting to be put in the chat box (see [com.coucou.android.core.ShareDraft]). */
+    val shareDraft = com.coucou.android.core.ShareDraft()
+
+    /** Changes with every share, so a chat screen that is already open notices there is a new draft. */
+    var shareVersion by mutableStateOf(0); private set
+
+    /** Keeps [text] (cleaned) as the draft for the chat box. Called by the share target only. */
+    fun offerShare(text: String?) {
+        shareDraft.offer(text)
+        shareVersion++
+    }
+
     /** Agent tasks finished today, for the Today widget. Kept on this phone only (see [TodayStore]). */
     private val todayCounter = com.coucou.android.core.TodayCounter(TodayStore(context))
 
@@ -133,6 +145,20 @@ class AppModel(private val context: Context) : LinkListener {
         }
     }
 
+    /** The language the surfaces (Widgets, the ongoing notification) were last drawn in. */
+    private var surfacesLanguage: String? = null
+
+    /** The app's language is [tag] now: what the Widgets and the notification say is written again in it (once per change). */
+    fun languageChanged(tag: String) {
+        if (surfacesLanguage == tag) return
+        val first = surfacesLanguage == null
+        surfacesLanguage = tag
+        if (first) return // the first look at it, at start: nothing was drawn in another language
+        notifier.forgetOngoing()
+        WidgetHub.refreshAll(context)
+        pushGlance()
+    }
+
     /** What the user chose in Settings (sound, notices, quiet hours). */
     var settings by mutableStateOf(UserSettings.load(kv)); private set
 
@@ -142,6 +168,7 @@ class AppModel(private val context: Context) : LinkListener {
         UserSettings.save(kv, next)
         applySound()
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
+        com.coucou.android.core.MotionState.choice = settings.motion
         // Switching the relay on or off rebuilds the connection with the right routes.
         if (relayChanged) currentPairing?.let { restartLink(it) }
     }
@@ -154,6 +181,7 @@ class AppModel(private val context: Context) : LinkListener {
     init {
         applySound()
         notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
+        com.coucou.android.core.MotionState.choice = settings.motion
     }
 
     /** What the computer says Mochi wears ("auto" or an outfit); the last one it told, kept for when it is away. */
@@ -207,6 +235,9 @@ class AppModel(private val context: Context) : LinkListener {
     var diffsOffered by mutableStateOf(false); private set
     /** The Claude and Codex plan usage the computer sent (its switch is on); null: nothing to show. */
     var usage by mutableStateOf<com.coucou.android.link.UsageSnapshot?>(null); private set
+
+    /** Last week's recap the computer sent (its switch is on); null: nothing to show. Held in memory only, never stored. */
+    var recap by mutableStateOf<com.coucou.android.link.Recap?>(null); private set
     /** The read-only service cards the user allowed on the computer; empty: none. */
     var services by mutableStateOf<List<com.coucou.android.link.ServiceCard>>(emptyList()); private set
 
@@ -371,7 +402,7 @@ class AppModel(private val context: Context) : LinkListener {
 
     /** The name the user knows the agent by: the session's own name, else the pill catalog. */
     fun agentName(pillId: String): String =
-        sessions.firstOrNull { it.pillId == pillId }?.agent?.takeIf { it.isNotBlank() } ?: Pills.byId(pillId)?.name ?: "An agent"
+        sessions.firstOrNull { it.pillId == pillId }?.agent?.takeIf { it.isNotBlank() } ?: Pills.byId(pillId)?.name ?: com.coucou.android.core.Texts.t("agent_an_title", "An agent")
 
     val isPaired get() = store.loadPairing() != null
 
@@ -586,6 +617,7 @@ class AppModel(private val context: Context) : LinkListener {
     private fun stopLink() {
         closeDiff()
         usage = null
+        recap = null
         services = emptyList()
         fallback?.stop()
         fallback = null
@@ -678,6 +710,7 @@ class AppModel(private val context: Context) : LinkListener {
             detailsOffered = Protocol.CAP_DETAILS in caps
             diffsOffered = Protocol.CAP_DIFFS in caps
             if (Protocol.CAP_USAGE !in caps) usage = null
+            if (Protocol.CAP_RECAP !in caps) recap = null
             pushGlance() // the Usage Ring says to turn it on
             if (Protocol.CAP_SERVICES !in caps) services = emptyList()
         }
@@ -688,6 +721,10 @@ class AppModel(private val context: Context) : LinkListener {
             this.usage = usage.takeIf { it.claude != null || it.codex != null }
             pushGlance() // the Usage Ring follows it
         }
+    }
+
+    override fun onRecap(recap: com.coucou.android.link.Recap?) {
+        main.post { this.recap = recap }
     }
 
     override fun onServices(cards: List<com.coucou.android.link.ServiceCard>) {
@@ -734,7 +771,7 @@ class AppModel(private val context: Context) : LinkListener {
                 val name = agentName(s.pillId)
                 val sound = com.coucou.android.mochi.MochiConst.STATE_SOUND[s.state]
                 if (sound != null && StatusPolicy.stateSoundWanted(prev, s.state, settings)) sounds.play(sound)
-                val a = StatusPolicy.announce(prev, s.state, settings, minute, inForeground)
+                val a = StatusPolicy.announce(prev, s.state, settings, minute, inForeground, s.pillId)
                 if (a.sound && sound != null) sounds.play(sound)
                 if (a.notify) notifier.showStatus(s.pillId, name, s.state, s.statusText)
                 IslandPlan.flash(prev, s, settings, minute, islandAllowed(), this::agentName)?.let { overlay.flash(it) }
