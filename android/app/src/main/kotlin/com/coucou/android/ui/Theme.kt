@@ -71,7 +71,7 @@ fun CoucouTheme(theme: ThemeChoice = ThemeChoice.SYSTEM, dynamic: Boolean = fals
     val context = LocalContext.current
     var tokens = if (dark) Tokens.DARK else Tokens.LIGHT
     var colours = scheme(if (dark) Palette.DARK else Palette.LIGHT, tokens)
-    if (dynamic && ThemePolicy.dynamicAvailable(Build.VERSION.SDK_INT)) {
+    if (dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ThemePolicy.dynamicAvailable(Build.VERSION.SDK_INT)) {
         val cs = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         tokens = fromDynamic(tokens, cs)
         colours = cs

@@ -29,8 +29,8 @@ object WidgetHub {
     /** A Widget drawn once for all its copies ([views]), or once per copy when each has its own choice ([each], the Team widget). */
     private class Kind(
         val provider: Class<out AppWidgetProvider>,
-        val views: ((Context, WidgetContent) -> RemoteViews)? = null,
         val each: ((Context, WidgetContent, Int) -> RemoteViews)? = null,
+        val views: ((Context, WidgetContent) -> RemoteViews)? = null,
     )
 
     private val widgets = listOf(

@@ -93,9 +93,10 @@ fun BottomSheetHost(onDismiss: () -> Unit, wash: Color? = null, announce: String
             visible = shown, modifier = Modifier.align(Alignment.BottomCenter),
             enter = if (reducedMotion()) fadeIn(tween(MotionSpec.REDUCED_MS)) else slideInVertically(spring(dampingRatio = 0.72f, stiffness = 400f)) { it } + fadeIn(),
         ) {
+            val washAlpha = (tokens().washAlpha * 0.9).toFloat()
             Column(
                 Modifier.fillMaxWidth().clip(shape).background(Color(tokens().sheet)).border(1.dp, Color(tokens().heroLine), shape)
-                    .then(if (wash != null) Modifier.drawBehind { drawWash(wash, (tokens().washAlpha * 0.9).toFloat()) } else Modifier)
+                    .then(if (wash != null) Modifier.drawBehind { drawWash(wash, washAlpha) } else Modifier)
                     .pointerInput(Unit) { detectTapGestures { } }
                     // A large font can make the sheet taller than the screen: it scrolls, so Deny and Allow are always reachable.
                     .verticalScroll(rememberScrollState())
