@@ -58,8 +58,27 @@ class UpdateController {
     await onEvent<UpdateStatus>("update-status", (s) => {
       this.status = s;
       State.notify();
+      this.syncTray();
     });
     await onEvent<UpdateOffer>("update-offer", (offer) => this.offer(offer));
+    this.syncTray();
+    // A day after Later the blue comes back, island hidden or not: a look every half hour.
+    if (!this.trayLook) {
+      const look = setInterval(() => this.syncTray(), 30 * 60 * 1000) as unknown as { unref?: () => void };
+      look.unref?.(); // the tests run this in Node: the timer must not keep them alive
+      this.trayLook = true;
+    }
+  }
+
+  private trayBlue = false;
+  private trayLook = false;
+
+  /** The tray Mochi follows: blue while a new version waits, like the island's. */
+  private syncTray() {
+    const on = this.waiting();
+    if (on === this.trayBlue) return;
+    this.trayBlue = on;
+    void Bridge.trayUpdateHint(on);
   }
 
   offer(offer: UpdateOffer) {
@@ -97,6 +116,7 @@ class UpdateController {
   answer(yes: boolean) {
     this.asking = false;
     void Bridge.updateSetConsent(yes);
+    this.syncTray();
     this.host?.collapse();
   }
 
@@ -117,6 +137,7 @@ class UpdateController {
     void Bridge.updateLater();
     this.host?.collapse();
     State.notify();
+    this.syncTray();
   }
 
   private laterMemo: Later | null | undefined;

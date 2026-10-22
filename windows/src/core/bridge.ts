@@ -454,6 +454,8 @@ export const Bridge = {
   /** Settings → Install X: opens the island's update card. */
   updateShow: () => call<void>("update_show"),
   updateLater: () => call<void>("update_later"),
+  /** Blue Mochi in the tray while a new version waits (tray.rs). */
+  trayUpdateHint: (on: boolean) => call<void>("tray_update_hint", { on }),
   updateDismiss: () => call<void>("update_dismiss"),
   /** "Update now" (Windows): download, check the SHA-256, run the installer, quit. */
   updateInstall: () => call<void>("update_install"),
