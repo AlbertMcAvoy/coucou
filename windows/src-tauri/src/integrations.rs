@@ -549,30 +549,51 @@ async fn poll_github(app: AppHandle) {
         .and_then(Value::as_i64)
         .unwrap_or(0);
 
-    let repos = http
-        .get("https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Coucou")
-        .send()
-        .await;
-    let stars: i64 = match repos {
-        Ok(r) if r.status().is_success() => r
-            .json::<Value>()
-            .await
-            .ok()
-            .and_then(|v| v.as_array().cloned())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
-                    .sum()
-            })
-            .unwrap_or(0),
-        _ => 0,
-    };
+    let total_repos = public + private;
+    let max_pages = calculate_repo_pages(total_repos);
+    let mut stars: i64 = 0;
 
-    GITHUB.cache.lock().unwrap().stats = Some((public + private, stars));
+    for page in 1..=max_pages {
+        let url = format!(
+            "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed&page={page}"
+        );
+        let resp = http
+            .get(&url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "Coucou")
+            .send()
+            .await;
+        match resp {
+            Ok(r) if r.status().is_success() => {
+                let Ok(list) = r.json::<Vec<Value>>().await else { break };
+                let count = list.len();
+                stars += sum_repo_stars(&list);
+                if count < 100 {
+                    break;
+                }
+            }
+            _ => break,
+        }
+    }
+
+    GITHUB.cache.lock().unwrap().stats = Some((total_repos, stars));
     emit_github(&app);
+}
+
+pub(crate) fn calculate_repo_pages(total_repos: i64) -> usize {
+    if total_repos <= 0 {
+        1
+    } else {
+        usize::try_from((total_repos + 99) / 100).unwrap_or(1).clamp(1, 50)
+    }
+}
+
+pub(crate) fn sum_repo_stars(repos: &[Value]) -> i64 {
+    repos
+        .iter()
+        .filter_map(|r| r.get("stargazers_count").and_then(Value::as_i64))
+        .sum()
 }
 
 // ── GitHub pulse and activity (GithubPoller.swift) ────────────────────────────
@@ -1311,5 +1332,28 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn calculate_repo_pages_bounds_correctly() {
+        assert_eq!(calculate_repo_pages(0), 1);
+        assert_eq!(calculate_repo_pages(1), 1);
+        assert_eq!(calculate_repo_pages(100), 1);
+        assert_eq!(calculate_repo_pages(101), 2);
+        assert_eq!(calculate_repo_pages(200), 2);
+        assert_eq!(calculate_repo_pages(500), 5);
+        assert_eq!(calculate_repo_pages(5000), 50);
+        assert_eq!(calculate_repo_pages(9999), 50);
+    }
+
+    #[test]
+    fn sum_repo_stars_sums_stargazers_count() {
+        let repos = vec![
+            json!({ "name": "repo1", "stargazers_count": 42 }),
+            json!({ "name": "repo2", "stargazers_count": 10 }),
+            json!({ "name": "repo3" }),
+            json!({ "name": "repo4", "stargazers_count": 0 }),
+        ];
+        assert_eq!(sum_repo_stars(&repos), 52);
     }
 }
