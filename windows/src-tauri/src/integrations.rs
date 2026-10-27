@@ -1104,8 +1104,8 @@ async fn poll_n8n(app: AppHandle) {
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
     let list_urls = [
-        format!("{base}/api/v1/executions?limit=1&includeData=false"),
-        format!("{base}/rest/executions?limit=1&includeData=false"),
+        format!("{base}/api/v1/executions?limit=10&includeData=false"),
+        format!("{base}/rest/executions?limit=10&includeData=false"),
     ];
 
     let mut items: Option<Vec<Value>> = None;
@@ -1130,17 +1130,10 @@ async fn poll_n8n(app: AppHandle) {
         }
     }
 
-    let Some(first) = items.and_then(|list| list.into_iter().next()) else { return };
-    let id = match first.get("id") {
-        Some(Value::String(s)) => s.clone(),
-        Some(Value::Number(n)) => n.to_string(),
-        _ => return,
-    };
+    let Some(first) = items.as_deref().and_then(find_terminal_execution) else { return };
+    let Some(id) = parse_execution_id(first) else { return };
 
     let status = first.get("status").and_then(Value::as_str).unwrap_or("");
-    if !["success", "error", "crashed", "canceled", "failed"].contains(&status) {
-        return;
-    }
     if !is_new("n8n", &id) {
         return;
     }
@@ -1252,6 +1245,24 @@ fn fmt_value(v: &Value) -> String {
     }
 }
 
+pub(crate) fn find_terminal_execution(list: &[Value]) -> Option<&Value> {
+    const TERMINAL: [&str; 5] = ["success", "error", "crashed", "canceled", "failed"];
+    list.iter().find(|item| {
+        item.get("status")
+            .and_then(Value::as_str)
+            .map(|s| TERMINAL.contains(&s))
+            .unwrap_or(false)
+    })
+}
+
+pub(crate) fn parse_execution_id(item: &Value) -> Option<String> {
+    match item.get("id") {
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(Value::Number(n)) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1311,5 +1322,24 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn find_terminal_execution_skips_running_and_finds_terminal() {
+        let list = vec![
+            json!({ "id": "1", "status": "running" }),
+            json!({ "id": "2", "status": "waiting" }),
+            json!({ "id": "3", "status": "error" }),
+            json!({ "id": "4", "status": "success" }),
+        ];
+        let term = find_terminal_execution(&list).unwrap();
+        assert_eq!(term["id"], "3");
+    }
+
+    #[test]
+    fn parse_execution_id_handles_string_and_number() {
+        assert_eq!(parse_execution_id(&json!({ "id": "abc-123" })), Some("abc-123".to_string()));
+        assert_eq!(parse_execution_id(&json!({ "id": 42 })), Some("42".to_string()));
+        assert_eq!(parse_execution_id(&json!({ "foo": "bar" })), None);
     }
 }
