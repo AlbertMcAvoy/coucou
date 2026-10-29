@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Chat on your Claude plan, no API key** — with no Anthropic key saved, the chat is answered by your own Claude Code (`claude -p`), signed in with your account: on Windows and Linux the chat, Flow's clean-up and the notes of a call (#903 by @RomainBrocheton), on the Mac the chat (GitHub build). Each run loads none of your settings or hooks, no MCP server, saves no session, and may only search the web or, with no web at all, read the file you dropped. Saving a key switches back to the API
+
 ## 0.5.4 — October 29, 2026
 
 Reliability: bugs reported by @romainb82 and others, fixed by the community.

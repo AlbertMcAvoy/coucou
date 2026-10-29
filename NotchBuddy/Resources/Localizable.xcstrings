@@ -75094,6 +75094,95 @@
           }
         }
       }
+    },
+    "chat.relay.no-key" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No key: your Claude Code answers instead, with your account."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de clé : ton Claude Code répond à la place, avec ton compte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin clave: responde tu Claude Code, con tu cuenta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem chave: o seu Claude Code responde no lugar, com a sua conta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет ключа: вместо него отвечает ваш Claude Code с вашей учётной записью."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有密钥：改由你的 Claude Code 用你的账户回答。"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanpa kunci: Claude Code-mu yang menjawab, dengan akunmu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Schlüssel: Dein Claude Code antwortet stattdessen, mit deinem Konto."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anahtar yok: Bunun yerine Claude Code’un kendi hesabınla yanıtlar."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีคีย์: Claude Code ของคุณจะตอบแทน ด้วยบัญชีของคุณ"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有金鑰：改由你的 Claude Code 用你的帳戶回答。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
