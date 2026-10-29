@@ -1756,6 +1756,28 @@ final class HookServer: @unchecked Sendable {
         #endif
     }
 
+    // MARK: - Removing Coucou's own hook entries (both builds)
+
+    /// Removes entries containing "nb-hook" from a Gemini- or Claude-format groups array
+    /// (matcher + hooks[]), handling the legacy flat format too (command at top level).
+    /// Used by both paths' install/uninstall so only Coucou's own entries are removed;
+    /// whole groups are dropped only when every entry in them was ours.
+    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
+        groups.compactMap { group -> [String: Any]? in
+            // Legacy flat entry — command at group level
+            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
+            // Group format — filter inner hooks
+            if var innerHooks = group["hooks"] as? [[String: Any]] {
+                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
+                if innerHooks.isEmpty { return nil }
+                var updated = group
+                updated["hooks"] = innerHooks
+                return updated
+            }
+            return group
+        }
+    }
+
     // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
 
     #if !APPSTORE
@@ -2005,26 +2027,6 @@ final class HookServer: @unchecked Sendable {
         }
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-    }
-
-    /// Removes entries containing "nb-hook" from a Gemini- or Claude-format groups array
-    /// (matcher + hooks[]), handling the legacy flat format too (command at top level).
-    /// Used by both paths' install/uninstall so only Coucou's own entries are removed;
-    /// whole groups are dropped only when every entry in them was ours.
-    private func removeNbHookEntries(from groups: [[String: Any]]) -> [[String: Any]] {
-        groups.compactMap { group -> [String: Any]? in
-            // Legacy flat entry — command at group level
-            if let cmd = group["command"] as? String, cmd.contains("nb-hook") { return nil }
-            // Group format — filter inner hooks
-            if var innerHooks = group["hooks"] as? [[String: Any]] {
-                innerHooks.removeAll { ($0["command"] as? String)?.contains("nb-hook") == true }
-                if innerHooks.isEmpty { return nil }
-                var updated = group
-                updated["hooks"] = innerHooks
-                return updated
-            }
-            return group
-        }
     }
 
     // MARK: - Codex hook installer  (#if !APPSTORE only)
