@@ -11,13 +11,15 @@ final class N8nPoller: @unchecked Sendable {
     private var lastExecutionId: String = ""
     private var isFirstLoad: Bool = true
 
-    private static let isoFormatterFractional: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is thread-safe; only read after creation.
+    nonisolated(unsafe) private static let isoFormatterFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
-    private static let isoFormatterStandard: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is thread-safe; only read after creation.
+    nonisolated(unsafe) private static let isoFormatterStandard: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f
