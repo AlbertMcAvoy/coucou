@@ -20,7 +20,8 @@
             "de": "Chat ohne API-Schlüssel",
             "tr": "API anahtarı olmadan sohbet",
             "th": "แชตโดยไม่ต้องใช้คีย์ API",
-            "zh-Hant": "免 API 金鑰即可聊天"
+            "zh-Hant": "免 API 金鑰即可聊天",
+            "ko": "API 키 없이 채팅"
           },
           "detail": {
             "en": "No key? Your own Claude Code answers, on your Claude plan.",
@@ -36,7 +37,8 @@
             "de": "Kein Schlüssel? Dein Claude Code antwortet, über dein Claude-Abo.",
             "tr": "Anahtar yok mu? Claude Code’un, Claude planınla yanıtlar.",
             "th": "ไม่มีคีย์? Claude Code ของคุณตอบให้ ด้วยแพ็กเกจ Claude ของคุณ",
-            "zh-Hant": "沒有金鑰？由你的 Claude Code 用你的 Claude 方案回答。"
+            "zh-Hant": "沒有金鑰？由你的 Claude Code 用你的 Claude 方案回答。",
+            "ko": "키가 없나요? 내 Claude Code가 내 Claude 요금제로 답합니다."
           }
         },
         {
@@ -55,7 +57,8 @@
             "de": "Jede Sitzung für sich",
             "tr": "Her oturum ayrı",
             "th": "แยกแต่ละเซสชัน",
-            "zh-Hant": "每個工作階段各自獨立"
+            "zh-Hant": "每個工作階段各自獨立",
+            "ko": "세션마다 따로"
           },
           "detail": {
             "en": "Two terminals, two names. The session waiting for you takes a place in the grid.",
@@ -71,7 +74,8 @@
             "de": "Zwei Terminals, zwei Namen. Die Sitzung, die auf dich wartet, bekommt einen Platz im Raster.",
             "tr": "İki terminal, iki ad. Seni bekleyen oturum ızgarada bir yer alır.",
             "th": "สองเทอร์มินัล สองชื่อ เซสชันที่รอคุณจะได้ที่ในตาราง",
-            "zh-Hant": "兩個終端機，兩個名稱。等你處理的工作階段會佔據格狀中的一個位置。"
+            "zh-Hant": "兩個終端機，兩個名稱。等你處理的工作階段會佔據格狀中的一個位置。",
+            "ko": "터미널 두 개, 이름 두 개. 나를 기다리는 세션이 그리드에 자리를 잡습니다."
           }
         }
       ]
@@ -170,7 +174,8 @@
             "de": "Mochi wird blau bei Updates",
             "tr": "Güncellemede Mochi maviye döner",
             "th": "Mochi เป็นสีฟ้าเมื่อมีอัปเดต",
-            "zh-Hant": "有更新時 Mochi 變藍"
+            "zh-Hant": "有更新時 Mochi 變藍",
+            "ko": "업데이트가 있으면 모찌가 파랗게 돼요"
           },
           "detail": {
             "en": "A new Coucou turns him blue, in the notch and the menu bar. One click installs it.",
@@ -186,7 +191,8 @@
             "de": "Ein neues Coucou macht ihn blau, in der Notch und der Menüleiste. Ein Klick installiert es.",
             "tr": "Yeni Coucou onu çentikte ve menü çubuğunda maviye çevirir. Tek tıkla kurulur.",
             "th": "เมื่อมี Coucou ใหม่ เขาจะเป็นสีฟ้าในรอยบากและแถบเมนู คลิกเดียวติดตั้ง",
-            "zh-Hant": "有新版 Coucou 時，瀏海和選單列中的它會變藍，一鍵安裝。"
+            "zh-Hant": "有新版 Coucou 時，瀏海和選單列中的它會變藍，一鍵安裝。",
+            "ko": "새 Coucou가 나오면 모찌가 노치와 메뉴 막대에서 파랗게 변해요. 클릭 한 번이면 설치돼요."
           }
         },
         {
@@ -205,7 +211,8 @@
             "de": "Neuigkeiten, direkt hier",
             "tr": "Yenilikler, tam burada",
             "th": "มีอะไรใหม่ ดูได้ที่นี่",
-            "zh-Hant": "更新內容，就在這裡"
+            "zh-Hant": "更新內容，就在這裡",
+            "ko": "새 소식을 여기서 바로"
           },
           "detail": {
             "en": "After each update: what it brings, then your Coucou so far.",
@@ -221,7 +228,8 @@
             "de": "Nach jedem Update: was es bringt, dann dein Coucou bisher.",
             "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n.",
             "th": "หลังอัปเดตแต่ละครั้ง: ดูของใหม่ แล้วดู Coucou ของคุณจนถึงตอนนี้",
-            "zh-Hant": "每次更新後：先看新內容，再看你的 Coucou 至今。"
+            "zh-Hant": "每次更新後：先看新內容，再看你的 Coucou 至今。",
+            "ko": "업데이트할 때마다 새로 뭐가 생겼는지 보여 주고, 지금까지의 Coucou도 알려 줘요."
           }
         },
         {
@@ -240,7 +248,8 @@
             "de": "Mochi einen Kaffee spendieren",
             "tr": "Mochi’ye kahve ısmarla",
             "th": "เลี้ยงกาแฟ Mochi",
-            "zh-Hant": "請 Mochi 喝咖啡"
+            "zh-Hant": "請 Mochi 喝咖啡",
+            "ko": "모찌에게 커피 사 주기"
           },
           "detail": {
             "en": "Coucou stays free and open source. If it saves you time, a coffee says thanks.",
@@ -256,7 +265,8 @@
             "de": "Coucou bleibt kostenlos und Open Source. Spart es dir Zeit, sagt ein Kaffee Danke.",
             "tr": "Coucou ücretsiz ve açık kaynak kalıyor. Zaman kazandırıyorsa bir kahve teşekkür olur.",
             "th": "Coucou ยังฟรีและเป็นโอเพนซอร์ส ถ้าช่วยประหยัดเวลา กาแฟสักแก้วคือคำขอบคุณ",
-            "zh-Hant": "Coucou 依然免費開源。如果它幫你省了時間，一杯咖啡就是感謝。"
+            "zh-Hant": "Coucou 依然免費開源。如果它幫你省了時間，一杯咖啡就是感謝。",
+            "ko": "Coucou는 계속 무료 오픈소스예요. 시간을 아껴 줬다면 커피 한 잔으로 마음을 전해 주세요."
           }
         }
       ]
