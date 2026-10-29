@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Mac: each session apart behind its pill** — two VS Code windows stay one VS Code pill, but each session keeps its own name, steps and finish; a session waiting for you pops out beside the pill, and the open card lists them (#878 by @NikitaBulichev, #429)
+- **Mac and iPhone: questions from several sessions wait side by side** instead of sending each other back to the terminal, and every waiting question reaches the iPhone (#877, #874 by @NikitaBulichev)
+- **Sessions named after their title** — Claude Code's own title when you never used /rename, so two VS Code sessions in one repository no longer both read its folder (#876 by @NikitaBulichev)
+- **Claude Code on a remote machine** — the relay runs on a Linux server reached over SSH, follows `COUCOU_SOCKET`, and counts VS Code Remote sessions as VS Code; setup in [docs/REMOTE.md](docs/REMOTE.md) (#875 by @NikitaBulichev)
+
 ## 0.5.4 — October 29, 2026
 
 Reliability: bugs reported by @romainb82 and others, fixed by the community.
