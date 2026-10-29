@@ -2,6 +2,81 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 14 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.6",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat on your AI subscription",
+            "zh-Hans": "用你的 AI 订阅聊天",
+            "hi": "अपनी AI सदस्यता से चैट",
+            "es": "Chat con tu suscripción de IA",
+            "ar": "دردشة باشتراكك في الذكاء الاصطناعي",
+            "fr": "Le chat sur ton abonnement IA",
+            "bn": "আপনার AI সাবস্ক্রিপশনে চ্যাট",
+            "pt-BR": "Chat com sua assinatura de IA",
+            "ru": "Чат по вашей подписке на ИИ",
+            "id": "Chat dengan langganan AI-mu",
+            "de": "Chat mit deinem KI-Abo",
+            "tr": "Yapay zekâ aboneliğinizle sohbet",
+            "ko": "내 AI 구독으로 채팅",
+            "ja": "AI サブスクリプションでチャット"
+          },
+          "detail": {
+            "en": "Claude, Gemini, ChatGPT, Cursor or Copilot, no key: turn it on in Settings → Chat.",
+            "zh-Hans": "Claude、Gemini、ChatGPT、Cursor 或 Copilot，无需密钥：在 设置 → 聊天 中开启。",
+            "hi": "Claude, Gemini, ChatGPT, Cursor या Copilot, बिना कुंजी: सेटिंग्स → चैट में चालू करें।",
+            "es": "Claude, Gemini, ChatGPT, Cursor o Copilot, sin clave: actívalo en Ajustes → Chat.",
+            "ar": "Claude وGemini وChatGPT وCursor وCopilot دون مفتاح: فعّله من الإعدادات ← الدردشة.",
+            "fr": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sans clé : active-le dans Réglages → Chat.",
+            "bn": "Claude, Gemini, ChatGPT, Cursor বা Copilot, কী ছাড়াই: সেটিংস → চ্যাট-এ চালু করুন।",
+            "pt-BR": "Claude, Gemini, ChatGPT, Cursor ou Copilot, sem chave: ative em Ajustes → Chat.",
+            "ru": "Claude, Gemini, ChatGPT, Cursor или Copilot без ключа: включите в Настройки → Чат.",
+            "id": "Claude, Gemini, ChatGPT, Cursor, atau Copilot, tanpa kunci: nyalakan di Pengaturan → Chat.",
+            "de": "Claude, Gemini, ChatGPT, Cursor oder Copilot ohne Schlüssel: in Einstellungen → Chat einschalten.",
+            "tr": "Claude, Gemini, ChatGPT, Cursor veya Copilot, anahtarsız: Ayarlar → Sohbet'ten açın.",
+            "ko": "Claude, Gemini, ChatGPT, Cursor, Copilot을 키 없이: 설정 → 채팅에서 켜세요.",
+            "ja": "Claude、Gemini、ChatGPT、Cursor、Copilot をキーなしで：設定 → チャットでオンに。"
+          }
+        },
+        {
+          "icon": "languages",
+          "title": {
+            "en": "Korean and Japanese",
+            "zh-Hans": "韩语和日语",
+            "hi": "कोरियाई और जापानी",
+            "es": "Coreano y japonés",
+            "ar": "الكورية واليابانية",
+            "fr": "Coréen et japonais",
+            "bn": "কোরিয়ান ও জাপানি",
+            "pt-BR": "Coreano e japonês",
+            "ru": "Корейский и японский",
+            "id": "Bahasa Korea dan Jepang",
+            "de": "Koreanisch und Japanisch",
+            "tr": "Korece ve Japonca",
+            "ko": "한국어와 일본어",
+            "ja": "韓国語と日本語"
+          },
+          "detail": {
+            "en": "Coucou now speaks 14 languages. Korean thanks to @lovyestar.",
+            "zh-Hans": "Coucou 现在支持 14 种语言。韩语由 @lovyestar 贡献。",
+            "hi": "Coucou अब 14 भाषाएँ बोलता है। कोरियाई @lovyestar की बदौलत।",
+            "es": "Coucou ya habla 14 idiomas. El coreano gracias a @lovyestar.",
+            "ar": "يتحدث Coucou الآن 14 لغة. الكورية بفضل @lovyestar.",
+            "fr": "Coucou parle maintenant 14 langues. Le coréen grâce à @lovyestar.",
+            "bn": "Coucou এখন 14টি ভাষায় কথা বলে। কোরিয়ান @lovyestar-এর সৌজন্যে।",
+            "pt-BR": "O Coucou agora fala 14 idiomas. O coreano graças a @lovyestar.",
+            "ru": "Coucou теперь говорит на 14 языках. Корейский — благодаря @lovyestar.",
+            "id": "Coucou kini berbicara 14 bahasa. Bahasa Korea berkat @lovyestar.",
+            "de": "Coucou spricht jetzt 14 Sprachen. Koreanisch dank @lovyestar.",
+            "tr": "Coucou artık 14 dil konuşuyor. Korece @lovyestar sayesinde.",
+            "ko": "Coucou가 이제 14개 언어를 지원합니다. 한국어는 @lovyestar 덕분이에요.",
+            "ja": "Coucou は 14 言語に対応しました。韓国語は @lovyestar のおかげです。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.5",
       "items": [
         {
