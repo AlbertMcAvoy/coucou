@@ -399,6 +399,27 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
+fn parse_stripe_balance(json: &Value) -> (i64, String) {
+    let mut buckets: Vec<Value> = Vec::new();
+    for k in ["available", "pending"] {
+        if let Some(arr) = json.get(k).and_then(Value::as_array) {
+            buckets.extend(arr.iter().cloned());
+        }
+    }
+    let currency = buckets
+        .first()
+        .and_then(|b| b.get("currency"))
+        .and_then(Value::as_str)
+        .unwrap_or("eur")
+        .to_string();
+    let amount: i64 = buckets
+        .iter()
+        .filter(|b| b.get("currency").and_then(Value::as_str) == Some(&currency))
+        .filter_map(|b| b.get("amount").and_then(Value::as_i64))
+        .sum();
+    (amount, currency)
+}
+
 async fn poll_stripe(app: AppHandle) {
     let Some(key) = secrets::get("stripe-api-key") else { return };
     let auth = format!("Basic {}", crate::claude::base64_for(format!("{key}:").as_bytes()));
@@ -413,23 +434,7 @@ async fn poll_stripe(app: AppHandle) {
     let (amount, currency) = match balance {
         Ok(r) if r.status().is_success() => {
             let json: Value = r.json().await.unwrap_or(json!({}));
-            let mut buckets: Vec<Value> = Vec::new();
-            for k in ["available", "pending"] {
-                if let Some(arr) = json.get(k).and_then(Value::as_array) {
-                    buckets.extend(arr.iter().cloned());
-                }
-            }
-            let currency = buckets
-                .first()
-                .and_then(|b| b.get("currency"))
-                .and_then(Value::as_str)
-                .unwrap_or("eur")
-                .to_string();
-            let amount: i64 = buckets
-                .iter()
-                .filter_map(|b| b.get("amount").and_then(Value::as_i64))
-                .sum();
-            (amount, currency)
+            parse_stripe_balance(&json)
         }
         Ok(r) => {
             let code = r.status().as_u16();
@@ -1311,5 +1316,22 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn stripe_balance_does_not_mix_different_currencies() {
+        let payload = json!({
+            "available": [
+                { "amount": 10000, "currency": "eur" },
+                { "amount": 5000, "currency": "usd" }
+            ],
+            "pending": [
+                { "amount": 2000, "currency": "eur" },
+                { "amount": 3000, "currency": "usd" }
+            ]
+        });
+        let (amount, currency) = parse_stripe_balance(&payload);
+        assert_eq!(currency, "eur");
+        assert_eq!(amount, 12000);
     }
 }
