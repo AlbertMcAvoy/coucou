@@ -1365,6 +1365,9 @@ mod tests {
         let (amount, currency) = parse_stripe_balance(&payload);
         assert_eq!(currency, "eur");
         assert_eq!(amount, 12000);
+    }
+
+    #[test]
     fn calculate_repo_pages_bounds_correctly() {
         assert_eq!(calculate_repo_pages(0), 1);
         assert_eq!(calculate_repo_pages(1), 1);
@@ -1385,6 +1388,9 @@ mod tests {
             json!({ "name": "repo4", "stargazers_count": 0 }),
         ];
         assert_eq!(sum_repo_stars(&repos), 52);
+    }
+
+    #[test]
     fn find_terminal_execution_skips_running_and_finds_terminal() {
         let list = vec![
             json!({ "id": "1", "status": "running" }),
