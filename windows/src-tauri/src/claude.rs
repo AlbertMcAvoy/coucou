@@ -193,7 +193,10 @@ async fn send_through_claude_code(
     let turn = chat.begin(claude_code::PROVIDER);
     let reads_file = turn.first && matches!(context, Some(ChatContext::File { .. }));
     let inbox = crate::files::inbox_dir();
-    let tools: &[&str] = if reads_file { &["WebSearch", "WebFetch", "Read"] } else { &["WebSearch", "WebFetch"] };
+    // Reading a dropped file, the run gets no web at all: a file written to
+    // steer the model could otherwise send what it reads (or the other files
+    // in the inbox) to a website through a fetch or a search.
+    let tools: &[&str] = if reads_file { &["Read"] } else { &["WebSearch", "WebFetch"] };
     let prompt = claude_code::chat_prompt(&turn.history, turn.first, context.as_ref(), &query);
     let text = claude_code::ask(&claude_code::Request {
         model,
