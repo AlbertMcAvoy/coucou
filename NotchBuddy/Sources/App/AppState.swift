@@ -167,6 +167,22 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        #if !APPSTORE
+        // Through the subscription: Claude Code takes the model aliases; the other tools
+        // use the model chosen in them.
+        if usesSubscription(provider) {
+            providerModelFetchError.removeValue(forKey: provider)
+            if provider == .anthropic {
+                var models = Self.claudeCodeModels
+                if !models.contains(where: { $0.id == claudeModel }) { models.insert((claudeModel, claudeModel), at: 0) }
+                fetchedProviderModels[provider] = models
+            } else {
+                let tool = (provider.installedCLI ?? provider.subscriptionCLIs.first)?.displayName ?? provider.displayName
+                fetchedProviderModels[provider] = [("", String(format: String(localized: "chat.subscriptions.default-model"), tool))]
+            }
+            return
+        }
+        #endif
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -218,6 +234,7 @@ final class AppState: ObservableObject {
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
+            case .cursor, .copilot:  models = []  // subscription only, handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -249,11 +266,16 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == moonshotChatModel }) {
                         moonshotChatModel = models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .cursor, .copilot: break
                 }
             }
         }
     }
+
+    /// The models offered when Claude Code answers: its aliases always point at the latest.
+    static let claudeCodeModels: [(id: String, label: String)] = [
+        ("sonnet", "Claude Sonnet"), ("opus", "Claude Opus"), ("haiku", "Claude Haiku"),
+    ]
 
     /// The model currently active for chat (provider-aware).
     var activeChatModel: String {
@@ -266,6 +288,7 @@ final class AppState: ObservableObject {
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
+        case .cursor, .copilot: return ""
         }
     }
 
