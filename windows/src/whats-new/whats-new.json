@@ -2,6 +2,42 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 12 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.5",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat with no API key",
+            "zh-Hans": "无需 API 密钥即可聊天",
+            "hi": "API कुंजी के बिना चैट",
+            "es": "Chat sin clave de API",
+            "ar": "دردشة دون مفتاح API",
+            "fr": "Le chat sans clé API",
+            "bn": "API কী ছাড়াই চ্যাট",
+            "pt-BR": "Chat sem chave de API",
+            "ru": "Чат без API-ключа",
+            "id": "Chat tanpa kunci API",
+            "de": "Chat ohne API-Schlüssel",
+            "tr": "API anahtarı olmadan sohbet"
+          },
+          "detail": {
+            "en": "No key? Your own Claude Code answers the chat, Flow and your notes, on your plan.",
+            "zh-Hans": "没有密钥？你的 Claude Code 会用你的套餐处理聊天、Flow 和笔记。",
+            "hi": "कुंजी नहीं? आपका Claude Code आपके प्लान पर चैट, Flow और नोट्स संभालता है।",
+            "es": "¿Sin clave? Tu Claude Code responde al chat, a Flow y a tus notas, con tu plan.",
+            "ar": "لا مفتاح؟ يتولى Claude Code الدردشة وFlow والملاحظات ضمن اشتراكك.",
+            "fr": "Pas de clé ? Ton Claude Code répond au chat, à Flow et aux notes, sur ton abonnement.",
+            "bn": "কী নেই? আপনার Claude Code আপনার প্ল্যানে চ্যাট, Flow ও নোট সামলায়।",
+            "pt-BR": "Sem chave? O seu Claude Code responde ao chat, ao Flow e às notas, no seu plano.",
+            "ru": "Нет ключа? Ваш Claude Code отвечает в чате, во Flow и в заметках — по вашему тарифу.",
+            "id": "Tanpa kunci? Claude Code-mu menangani chat, Flow, dan catatan dengan paketmu.",
+            "de": "Kein Schlüssel? Dein Claude Code übernimmt Chat, Flow und Notizen, über dein Abo.",
+            "tr": "Anahtar yok mu? Claude Code’un sohbeti, Flow’u ve notları planınla yanıtlar."
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.4",
       "items": [
         {

@@ -2,6 +2,81 @@
   "about": "What's new, shown once in the notch after Coucou updates itself (WhatsNew.swift). Every Mac release adds its entry here, in the 14 languages, before release.sh: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.5",
+      "items": [
+        {
+          "icon": "chat",
+          "title": {
+            "en": "Chat with no API key",
+            "fr": "Le chat sans clé API",
+            "es": "Chat sin clave de API",
+            "pt-BR": "Chat sem chave de API",
+            "ru": "Чат без API-ключа",
+            "zh-Hans": "无需 API 密钥即可聊天",
+            "hi": "API कुंजी के बिना चैट",
+            "ar": "دردشة دون مفتاح API",
+            "bn": "API কী ছাড়াই চ্যাট",
+            "id": "Chat tanpa kunci API",
+            "de": "Chat ohne API-Schlüssel",
+            "tr": "API anahtarı olmadan sohbet",
+            "th": "แชตโดยไม่ต้องใช้คีย์ API",
+            "zh-Hant": "免 API 金鑰即可聊天"
+          },
+          "detail": {
+            "en": "No key? Your own Claude Code answers, on your Claude plan.",
+            "fr": "Pas de clé ? Ton Claude Code répond, sur ton abonnement Claude.",
+            "es": "¿Sin clave? Responde tu Claude Code, con tu plan de Claude.",
+            "pt-BR": "Sem chave? O seu Claude Code responde, no seu plano do Claude.",
+            "ru": "Нет ключа? Отвечает ваш Claude Code — по вашему тарифу Claude.",
+            "zh-Hans": "没有密钥？由你的 Claude Code 用你的 Claude 套餐回答。",
+            "hi": "कुंजी नहीं? आपका Claude Code आपके Claude प्लान पर जवाब देता है।",
+            "ar": "لا مفتاح؟ يجيب Claude Code الخاص بك ضمن اشتراكك في Claude.",
+            "bn": "কী নেই? আপনার Claude Code আপনার Claude প্ল্যানেই উত্তর দেয়।",
+            "id": "Tanpa kunci? Claude Code-mu yang menjawab, dengan paket Claude-mu.",
+            "de": "Kein Schlüssel? Dein Claude Code antwortet, über dein Claude-Abo.",
+            "tr": "Anahtar yok mu? Claude Code’un, Claude planınla yanıtlar.",
+            "th": "ไม่มีคีย์? Claude Code ของคุณตอบให้ ด้วยแพ็กเกจ Claude ของคุณ",
+            "zh-Hant": "沒有金鑰？由你的 Claude Code 用你的 Claude 方案回答。"
+          }
+        },
+        {
+          "icon": "terminal",
+          "title": {
+            "en": "Every session apart",
+            "fr": "Chaque session à part",
+            "es": "Cada sesión por separado",
+            "pt-BR": "Cada sessão separada",
+            "ru": "Каждая сессия отдельно",
+            "zh-Hans": "每个会话各自独立",
+            "hi": "हर सत्र अलग",
+            "ar": "كل جلسة على حدة",
+            "bn": "প্রতিটি সেশন আলাদা",
+            "id": "Setiap sesi terpisah",
+            "de": "Jede Sitzung für sich",
+            "tr": "Her oturum ayrı",
+            "th": "แยกแต่ละเซสชัน",
+            "zh-Hant": "每個工作階段各自獨立"
+          },
+          "detail": {
+            "en": "Two terminals, two names. The session waiting for you takes a place in the grid.",
+            "fr": "Deux terminaux, deux noms. La session qui t’attend prend une place dans la grille.",
+            "es": "Dos terminales, dos nombres. La sesión que te espera ocupa un lugar en la cuadrícula.",
+            "pt-BR": "Dois terminais, dois nomes. A sessão que espera por você ganha um lugar na grade.",
+            "ru": "Два терминала — два имени. Сессия, которая ждёт вас, занимает место в сетке.",
+            "zh-Hans": "两个终端，两个名称。等你处理的会话会占据网格中的一个位置。",
+            "hi": "दो टर्मिनल, दो नाम। आपका इंतज़ार करता सत्र ग्रिड में जगह लेता है।",
+            "ar": "طرفيتان، اسمان. الجلسة التي تنتظرك تأخذ مكانًا في الشبكة.",
+            "bn": "দুটি টার্মিনাল, দুটি নাম। যে সেশন আপনার অপেক্ষায়, সে গ্রিডে জায়গা নেয়।",
+            "id": "Dua terminal, dua nama. Sesi yang menunggumu mendapat tempat di grid.",
+            "de": "Zwei Terminals, zwei Namen. Die Sitzung, die auf dich wartet, bekommt einen Platz im Raster.",
+            "tr": "İki terminal, iki ad. Seni bekleyen oturum ızgarada bir yer alır.",
+            "th": "สองเทอร์มินัล สองชื่อ เซสชันที่รอคุณจะได้ที่ในตาราง",
+            "zh-Hant": "兩個終端機，兩個名稱。等你處理的工作階段會佔據格狀中的一個位置。"
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.4",
       "items": [
         {
