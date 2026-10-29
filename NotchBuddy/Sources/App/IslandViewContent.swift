@@ -1475,7 +1475,7 @@ struct PromptView: View {
                             Circle()
                                 .fill(Color(hex: state.chatProvider.accentHex))
                                 .frame(width: 6, height: 6)
-                            Text(state.activeChatModel)
+                            Text(state.chatChipLabel)
                                 .font(.system(size: 10.5, weight: .medium))
                                 .foregroundColor(Color(hex: "#7B8089"))
                             Image(systemName: "chevron.up.chevron.down")
@@ -1632,6 +1632,8 @@ struct ModelPickerView: View {
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                // Cursor and Copilot answer only through the subscription switched on in Settings.
+                if p.subscriptionOnly { return state.usesSubscription(p) || state.chatProvider == p }
                 return true
             }
             ChipFlowLayout(spacing: 6) {
@@ -1713,6 +1715,8 @@ struct ModelPickerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(models, id: \.id) { model in
                         Button {
+                            // The tool's own default model: nothing to pick.
+                            guard !model.id.isEmpty else { isPresented = false; return }
                             switch state.chatProvider {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
@@ -1722,6 +1726,7 @@ struct ModelPickerView: View {
                             case .deepseek:  state.deepseekChatModel = model.id
                             case .qwen:      state.qwenChatModel = model.id
                             case .moonshot:  state.moonshotChatModel = model.id
+                            case .cursor, .copilot: break
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1729,11 +1734,11 @@ struct ModelPickerView: View {
                             HStack {
                                 Text(model.label)
                                     .font(.system(size: 12))
-                                    .foregroundColor(state.activeChatModel == model.id
+                                    .foregroundColor(state.pickerModel == model.id
                                                      ? Color(hex: state.chatProvider.accentHex)
                                                      : Color(hex: "#C8CDD4"))
                                 Spacer()
-                                if state.activeChatModel == model.id {
+                                if state.pickerModel == model.id {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(Color(hex: state.chatProvider.accentHex))
@@ -1741,7 +1746,7 @@ struct ModelPickerView: View {
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
-                            .background(state.activeChatModel == model.id
+                            .background(state.pickerModel == model.id
                                         ? Color(hex: state.chatProvider.accentHex).opacity(0.1)
                                         : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -2008,9 +2013,9 @@ struct IntegrationCardView: View {
             return true  // public market data: no key, nothing to set up
         case "integration_portfolio":
             return PortfolioSettings.hasAnyAccount
-        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil || ClaudeCodeRelay.isAvailable
-        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
-        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil || AppState.shared.subscriptionReady(.anthropic)
+        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil || AppState.shared.subscriptionReady(.google)
+        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil || AppState.shared.subscriptionReady(.openai)
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
@@ -2177,6 +2182,9 @@ struct IntegrationCardView: View {
                 if provider.isLocal {
                     let model = provider == .ollama ? appState.ollamaChatModel : appState.lmstudioChatModel
                     return String(localized: "Connected · \(model)")
+                }
+                if let tool = appState.subscriptionTool(provider) {
+                    return String(format: String(localized: "chat.subscriptions.pill"), tool)
                 }
                 let model: String
                 switch task.id {
