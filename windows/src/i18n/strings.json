@@ -1120,6 +1120,19 @@
    "de": "Chat",
    "tr": "Sohbet"
   },
+  "Chat on the plan you already pay for. Coucou asks your AI's official terminal tool, signed in with your own account: it never sees your password or your key.": {
+   "zh-Hans": "用你已经付费的套餐聊天。Coucou 会调用你的 AI 的官方终端工具，并使用你自己的账户登录：它永远看不到你的密码或密钥。",
+   "hi": "उस प्लान से चैट करें जिसका आप पहले से भुगतान करते हैं। Coucou आपकी AI के आधिकारिक टर्मिनल टूल से पूछता है, जो आपके अपने खाते से साइन इन है: वह आपका पासवर्ड या कुंजी कभी नहीं देखता।",
+   "es": "Chatea con el plan que ya pagas. Coucou usa la herramienta oficial de terminal de tu IA, con tu propia cuenta: nunca ve tu contraseña ni tu clave.",
+   "ar": "تحدّث باستخدام الخطة التي تدفع ثمنها بالفعل. يستعين Coucou بأداة الطرفية الرسمية للذكاء الاصطناعي الخاص بك، المسجّلة بحسابك أنت: لا يرى أبدًا كلمة مرورك أو مفتاحك.",
+   "fr": "Discute avec l'abonnement que tu paies déjà. Coucou passe par l'outil terminal officiel de ton IA, connecté à ton propre compte : il ne voit jamais ton mot de passe ni ta clé.",
+   "bn": "যে প্ল্যানের জন্য আপনি আগেই টাকা দেন, সেটি দিয়েই চ্যাট করুন। Coucou আপনার AI-এর অফিশিয়াল টার্মিনাল টুলকে জিজ্ঞেস করে, যা আপনার নিজের অ্যাকাউন্টে সাইন ইন করা: এটি কখনো আপনার পাসওয়ার্ড বা কী দেখে না।",
+   "pt-BR": "Converse usando o plano que você já paga. O Coucou usa a ferramenta oficial de terminal da sua IA, conectada à sua própria conta: ele nunca vê sua senha nem sua chave.",
+   "ru": "Общайтесь в рамках подписки, за которую вы уже платите. Coucou обращается к официальному терминальному инструменту вашего ИИ, вошедшему в вашу учётную запись: он никогда не видит ваш пароль или ключ.",
+   "id": "Chat dengan paket yang sudah kamu bayar. Coucou memakai alat terminal resmi AI-mu, masuk dengan akunmu sendiri: Coucou tidak pernah melihat kata sandi atau kuncimu.",
+   "de": "Chatte mit dem Abo, das du schon bezahlst. Coucou fragt das offizielle Terminal-Tool deiner KI, angemeldet mit deinem eigenen Konto: Es sieht nie dein Passwort oder deinen Schlüssel.",
+   "tr": "Zaten ödediğiniz planla sohbet edin. Coucou, yapay zekânızın kendi hesabınızla oturum açmış resmi terminal aracına sorar: şifrenizi veya anahtarınızı asla görmez."
+  },
   "Chat with {name}": {
    "zh-Hans": "与 {name} 聊天",
    "hi": "{name} के साथ चैट",
@@ -3356,6 +3369,19 @@
    "de": "Hooks installieren",
    "tr": "Hook'ları kur"
   },
+  "Install it": {
+   "zh-Hans": "去安装",
+   "hi": "इंस्टॉल करें",
+   "es": "Instalarlo",
+   "ar": "تثبيته",
+   "fr": "L'installer",
+   "bn": "ইনস্টল করুন",
+   "pt-BR": "Instalar",
+   "ru": "Установить",
+   "id": "Pasang",
+   "de": "Installieren",
+   "tr": "Yükle"
+  },
   "Install plugin": {
    "zh-Hans": "安装插件",
    "hi": "प्लगइन इंस्टॉल करें",
@@ -4487,19 +4513,6 @@
    "de": "Keine Fehlerdetails verfügbar.",
    "tr": "Hata ayrıntısı yok."
   },
-  "No key: your Claude Code answers instead, with your account.": {
-   "zh-Hans": "没有密钥：改由你的 Claude Code 用你的账户回答。",
-   "hi": "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।",
-   "es": "Sin clave: responde tu Claude Code, con tu cuenta.",
-   "ar": "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك.",
-   "fr": "Pas de clé : ton Claude Code répond à la place, avec ton compte.",
-   "bn": "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।",
-   "pt-BR": "Sem chave: o seu Claude Code responde no lugar, com a sua conta.",
-   "ru": "Нет ключа: вместо него отвечает ваш Claude Code с вашей учётной записью.",
-   "id": "Tanpa kunci: Claude Code-mu yang menjawab, dengan akunmu.",
-   "de": "Kein Schlüssel: Dein Claude Code antwortet stattdessen, mit deinem Konto.",
-   "tr": "Anahtar yok: Bunun yerine Claude Code’un kendi hesabınla yanıtlar."
-  },
   "No messages": {
    "zh-Hans": "没有邮件",
    "hi": "कोई संदेश नहीं",
@@ -4786,6 +4799,19 @@
    "de": "Nicht angefordert",
    "tr": "İstenmedi"
   },
+  "Not signed in yet? Run this once in Terminal: {0}": {
+   "zh-Hans": "还没登录？在终端里运行一次：{0}",
+   "hi": "अभी तक साइन इन नहीं किया? टर्मिनल में एक बार चलाएँ: {0}",
+   "es": "¿Aún no has iniciado sesión? Ejecuta una vez en la Terminal: {0}",
+   "ar": "لم تسجّل الدخول بعد؟ شغّل مرة واحدة في Terminal: {0}",
+   "fr": "Pas encore connecté ? Lance une fois dans le Terminal : {0}",
+   "bn": "এখনও সাইন ইন করেননি? টার্মিনালে একবার চালান: {0}",
+   "pt-BR": "Ainda não entrou? Rode uma vez no Terminal: {0}",
+   "ru": "Ещё не вошли? Выполните один раз в Терминале: {0}",
+   "id": "Belum masuk? Jalankan sekali di Terminal: {0}",
+   "de": "Noch nicht angemeldet? Einmal im Terminal ausführen: {0}",
+   "tr": "Henüz oturum açmadınız mı? Terminal'de bir kez çalıştırın: {0}"
+  },
   "Notch": {
    "zh-Hans": "刘海",
    "hi": "नॉच",
@@ -4902,6 +4928,19 @@
    "id": "Baik, biarkan seperti itu",
    "de": "OK, bleibt unverändert",
    "tr": "Tamam, olduğu gibi bırakıyorum"
+  },
+  "Off: the chat uses your API key below.": {
+   "zh-Hans": "已关闭：聊天使用下方的 API 密钥。",
+   "hi": "बंद: चैट नीचे दी गई आपकी API कुंजी का इस्तेमाल करती है।",
+   "es": "Desactivado: el chat usa tu clave API de abajo.",
+   "ar": "متوقف: تستخدم الدردشة مفتاح API أدناه.",
+   "fr": "Désactivé : le chat utilise ta clé API ci-dessous.",
+   "bn": "বন্ধ: চ্যাট নিচের আপনার API কী ব্যবহার করে।",
+   "pt-BR": "Desligado: o chat usa sua chave de API abaixo.",
+   "ru": "Выключено: чат использует ваш API-ключ ниже.",
+   "id": "Mati: chat memakai kunci API-mu di bawah.",
+   "de": "Aus: Der Chat nutzt deinen API-Schlüssel unten.",
+   "tr": "Kapalı: sohbet aşağıdaki API anahtarınızı kullanır."
   },
   "Ollama disconnected.": {
    "zh-Hans": "Ollama 已断开连接。",
@@ -7516,6 +7555,19 @@
    "de": "Die Tasten für die Notch und ihre Aktionen.",
    "tr": "Çentiği ve işlemlerini açan tuşlar."
   },
+  "The model chosen in {tool}": {
+   "zh-Hans": "在 {tool} 中选择的模型",
+   "hi": "{tool} में चुना गया मॉडल",
+   "es": "El modelo elegido en {tool}",
+   "ar": "النموذج المختار في {tool}",
+   "fr": "Le modèle choisi dans {tool}",
+   "bn": "{tool}-এ বেছে নেওয়া মডেল",
+   "pt-BR": "O modelo escolhido no {tool}",
+   "ru": "Модель, выбранная в {tool}",
+   "id": "Model yang dipilih di {tool}",
+   "de": "Das in {tool} gewählte Modell",
+   "tr": "{tool} içinde seçilen model"
+  },
   "The most accurate, offline, 25 languages. Downloaded once (about 650 MB).": {
    "zh-Hans": "最准确，离线可用，支持 25 种语言。只需下载一次（约 650 MB）。",
    "hi": "सबसे सटीक, ऑफ़लाइन, 25 भाषाएँ। एक बार डाउनलोड (लगभग 650 MB)।",
@@ -7957,6 +8009,19 @@
    "id": "Mengunggah {name}",
    "de": "{name} wird hochgeladen",
    "tr": "{name} yükleniyor"
+  },
+  "Use my subscription": {
+   "zh-Hans": "使用我的订阅",
+   "hi": "मेरी सदस्यता इस्तेमाल करें",
+   "es": "Usar mi suscripción",
+   "ar": "استخدام اشتراكي",
+   "fr": "Utiliser mon abonnement",
+   "bn": "আমার সাবস্ক্রিপশন ব্যবহার করুন",
+   "pt-BR": "Usar minha assinatura",
+   "ru": "Использовать мою подписку",
+   "id": "Pakai langgananku",
+   "de": "Mein Abo verwenden",
+   "tr": "Aboneliğimi kullan"
   },
   "Used by the chat. The list comes from your Anthropic account.": {
    "zh-Hans": "由聊天使用。列表来自你的 Anthropic 账户。",
@@ -8647,6 +8712,19 @@
    "de": "Du sprichst",
    "tr": "Konuştuğun dil"
   },
+  "Your AI subscriptions": {
+   "zh-Hans": "你的 AI 订阅",
+   "hi": "आपकी AI सदस्यताएँ",
+   "es": "Tus suscripciones de IA",
+   "ar": "اشتراكاتك في الذكاء الاصطناعي",
+   "fr": "Tes abonnements IA",
+   "bn": "আপনার AI সাবস্ক্রিপশন",
+   "pt-BR": "Suas assinaturas de IA",
+   "ru": "Ваши подписки на ИИ",
+   "id": "Langganan AI-mu",
+   "de": "Deine KI-Abos",
+   "tr": "Yapay zekâ abonelikleriniz"
+  },
   "Your Coucou so far": {
    "zh-Hans": "你的 Coucou 至今",
    "hi": "अब तक आपका Coucou",
@@ -8750,6 +8828,19 @@
    "id": "Diktemu akan muncul di sini. Tahan {0} di aplikasi apa pun dan bicaralah.",
    "de": "Deine Diktate erscheinen hier. Halte in einer beliebigen App {0} gedrückt und sprich.",
    "tr": "Diktelerin burada görünür. Herhangi bir uygulamada {0} tuşunu basılı tut ve konuş."
+  },
+  "Your plan · {0}": {
+   "zh-Hans": "你的套餐 · {0}",
+   "hi": "आपका प्लान · {0}",
+   "es": "Tu plan · {0}",
+   "ar": "خطتك · {0}",
+   "fr": "Ton abonnement · {0}",
+   "bn": "আপনার প্ল্যান · {0}",
+   "pt-BR": "Seu plano · {0}",
+   "ru": "Ваша подписка · {0}",
+   "id": "Paketmu · {0}",
+   "de": "Dein Abo · {0}",
+   "tr": "Planınız · {0}"
   },
   "Your voice is turned into text by your Mac's speech recognition, on-device when your Mac supports it; Coucou sends it nowhere. After pasting, the clipboard gets back what it held.": {
    "zh-Hans": "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。",
@@ -9154,6 +9245,19 @@
    "de": "{0} Std. %02lld",
    "tr": "{0} sa %02lld"
   },
+  "{0} is not installed. Install it from Settings → Chat, sign in once in Terminal, then ask again.": {
+   "zh-Hans": "{0} 未安装。请在 设置 → 聊天 中安装，在终端登录一次，然后再问一次。",
+   "hi": "{0} इंस्टॉल नहीं है। सेटिंग्स → चैट से इसे इंस्टॉल करें, टर्मिनल में एक बार साइन इन करें, फिर दोबारा पूछें।",
+   "es": "{0} no está instalado. Instálalo desde Ajustes → Chat, inicia sesión una vez en la Terminal y vuelve a preguntar.",
+   "ar": "{0} غير مثبّت. ثبّته من الإعدادات ← الدردشة، وسجّل الدخول مرة واحدة في Terminal، ثم اسأل مجددًا.",
+   "fr": "{0} n'est pas installé. Installe-le depuis Réglages → Chat, connecte-toi une fois dans le Terminal, puis redemande.",
+   "bn": "{0} ইনস্টল করা নেই। সেটিংস → চ্যাট থেকে এটি ইনস্টল করুন, টার্মিনালে একবার সাইন ইন করুন, তারপর আবার জিজ্ঞেস করুন।",
+   "pt-BR": "O {0} não está instalado. Instale em Ajustes → Chat, entre uma vez no Terminal e pergunte de novo.",
+   "ru": "{0} не установлен. Установите его в Настройки → Чат, один раз войдите в Терминале и спросите снова.",
+   "id": "{0} belum terpasang. Pasang dari Pengaturan → Chat, masuk sekali di Terminal, lalu tanya lagi.",
+   "de": "{0} ist nicht installiert. Installiere es über Einstellungen → Chat, melde dich einmal im Terminal an und frag dann erneut.",
+   "tr": "{0} yüklü değil. Ayarlar → Sohbet'ten yükleyin, Terminal'de bir kez oturum açın, sonra tekrar sorun."
+  },
   "{0} min": {
    "zh-Hans": "{0} 分钟",
    "hi": "{0} मिनट",
@@ -9270,6 +9374,32 @@
    "id": "{n} menit lalu",
    "de": "vor {n} Min.",
    "tr": "{n} dk önce"
+  },
+  "{tool} found ✓": {
+   "zh-Hans": "已找到 {tool} ✓",
+   "hi": "{tool} मिला ✓",
+   "es": "{tool} encontrado ✓",
+   "ar": "تم العثور على {tool} ✓",
+   "fr": "{tool} trouvé ✓",
+   "bn": "{tool} পাওয়া গেছে ✓",
+   "pt-BR": "{tool} encontrado ✓",
+   "ru": "{tool} найден ✓",
+   "id": "{tool} ditemukan ✓",
+   "de": "{tool} gefunden ✓",
+   "tr": "{tool} bulundu ✓"
+  },
+  "{tool} not found.": {
+   "zh-Hans": "未找到 {tool}。",
+   "hi": "{tool} नहीं मिला।",
+   "es": "No se encontró {tool}.",
+   "ar": "لم يتم العثور على {tool}.",
+   "fr": "{tool} introuvable.",
+   "bn": "{tool} পাওয়া যায়নি।",
+   "pt-BR": "{tool} não encontrado.",
+   "ru": "{tool} не найден.",
+   "id": "{tool} tidak ditemukan.",
+   "de": "{tool} nicht gefunden.",
+   "tr": "{tool} bulunamadı."
   },
   "« OK Coucou », Mochi's voice and the dictation key.": {
    "zh-Hans": "“OK Coucou”、Mochi 的声音和听写按键。",
