@@ -3410,16 +3410,24 @@ extension Notification.Name {
 // MARK: - nb-hook shell wrapper (same for both GitHub and App Store)
 // Invoked by Claude Code via /bin/sh or directly via shebang.
 // Always exits 0 — never blocks Claude Code.
-// Checks xcode-select before running python3 to avoid triggering the
+// On macOS, checks xcode-select before running python3 to avoid triggering the
 // "install developer tools" dialog on machines without Xcode CLI tools.
+// Elsewhere (the hook copied to a Linux machine reached over SSH, docs/REMOTE.md)
+// it runs the python3 found in PATH.
 
 private let nbHookShellWrapper = """
 #!/bin/sh
 # Coucou hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
+PY=""
+if [ "$(uname -s)" = "Darwin" ]; then
+    xcode-select -p >/dev/null 2>&1 && PY=/usr/bin/python3
+else
+    PY=$(command -v python3 2>/dev/null)
+fi
 out=""
-if xcode-select -p >/dev/null 2>&1; then
-    out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
+if [ -n "$PY" ]; then
+    out=$("$PY" "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
     rc=$?
     if [ "$rc" -ne 0 ] || [ -z "$out" ]; then
         out=""
@@ -3553,6 +3561,14 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
+
 def main():
     raw = b''
     payload = {}
@@ -3567,8 +3583,10 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
+    # COUCOU_SOCKET points the relay at another socket, for instance the one an
+    # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).
     socket_path = os.path.expanduser(
-        '~/Library/Application Support/NotchBuddy/nb.sock'
+        os.environ.get('COUCOU_SOCKET') or '~/Library/Application Support/NotchBuddy/nb.sock'
     )
 
     # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
@@ -3610,7 +3628,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3678,7 +3696,7 @@ def main():
 
     # Enrich with terminal context
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3918,6 +3936,14 @@ def add_session_name(payload):
     except Exception:
         pass
 
+def term_program(env):
+    # VS Code's Claude Code extension on a remote machine (Remote - SSH) has neither
+    # TERM_PROGRAM nor the app's bundle ID; its entrypoint still says where it runs.
+    term = env.get('TERM_PROGRAM', '')
+    if not term and not env.get('__CFBundleIdentifier') and env.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-vscode':
+        return 'vscode'
+    return term
+
 def main():
     raw = b''
     payload = {}
@@ -3932,8 +3958,10 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
+    # COUCOU_SOCKET points the relay at another socket, for instance the one an
+    # `ssh -R` tunnel forwards from the Mac to a remote machine (docs/REMOTE.md).
     socket_path = os.path.expanduser(
-        '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
+        os.environ.get('COUCOU_SOCKET') or '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
     )
 
     # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
@@ -3975,7 +4003,7 @@ def main():
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        payload.setdefault('term_program', term_program(env))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -4042,7 +4070,7 @@ def main():
         payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('term_program', term_program(env))
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
