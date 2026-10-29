@@ -6092,19 +6092,6 @@
       "de": "Schalte eine andere Pill aus, um Platz für WhatsApp zu schaffen (höchstens {max}).",
       "tr": "WhatsApp’a yer açmak için başka bir hapı kapat (en fazla {max})."
     },
-    "No key: your Claude Code answers instead, with your account.": {
-      "zh-Hans": "没有密钥：改由你的 Claude Code 用你的账户回答。",
-      "hi": "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।",
-      "es": "Sin clave: responde tu Claude Code, con tu cuenta.",
-      "ar": "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك.",
-      "fr": "Pas de clé : ton Claude Code répond à la place, avec ton compte.",
-      "bn": "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।",
-      "pt-BR": "Sem chave: seu Claude Code responde no lugar, com sua conta.",
-      "ru": "Ключа нет: вместо него отвечает ваш Claude Code с вашей учётной записью.",
-      "id": "Tidak ada kunci: Claude Code Anda yang menjawab, dengan akun Anda.",
-      "de": "Kein Schlüssel: Stattdessen antwortet dein Claude Code mit deinem Konto.",
-      "tr": "Anahtar yok: bunun yerine Claude Code'unuz hesabınızla yanıtlıyor."
-    },
     "Claude Code is not installed.": {
       "zh-Hans": "未安装 Claude Code。",
       "hi": "Claude Code इंस्टॉल नहीं है।",
